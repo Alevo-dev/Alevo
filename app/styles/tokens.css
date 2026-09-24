@@ -1,0 +1,146 @@
+/* ============================================================================
+   Alevo — Design Tokens (SINGLE SOURCE OF TRUTH)
+   Colors · Fonts · Sizing · Spacing · Radius · Shadows · Motion
+   Change the brand here and it flows everywhere. No raw hex/px in components.
+   Palette derived from the Alevo logo (blue -> violet gradient, cyan + magenta
+   glows), warmed for a human, editorial feel.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand ramp (theme-independent) ---------------------------------- */
+  --brand-blue: #3b9eff;
+  --brand-blue-light: #7dd3fc;
+  --brand-violet: #7c3aed;
+  --brand-violet-light: #a78bfa;
+  --brand-cyan: #22d3ee;
+  --brand-magenta: #d946ef;
+  --brand-coral: #f5a97f; /* warm human accent — used sparingly */
+
+  --brand-gradient: linear-gradient(
+    120deg,
+    var(--brand-blue) 0%,
+    var(--brand-violet) 55%,
+    var(--brand-magenta) 100%
+  );
+  --brand-gradient-cool: linear-gradient(
+    120deg,
+    var(--brand-blue) 0%,
+    var(--brand-violet) 100%
+  );
+  --brand-gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--brand-blue) 16%, transparent),
+    color-mix(in oklab, var(--brand-violet) 16%, transparent)
+  );
+
+  /* ---- Fonts ----------------------------------------------------------- */
+  /* --font-display / --font-body are provided by next/font in layout.tsx */
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+
+  /* ---- Radius (slightly organic) --------------------------------------- */
+  --radius: 0.9rem;
+
+  /* ---- Spacing / sizing rhythm ----------------------------------------- */
+  --container-max: 80rem; /* 1280px */
+  --container-pad: clamp(1.25rem, 5vw, 2.5rem);
+  --section-y: clamp(4.5rem, 10vw, 9rem); /* vertical rhythm between sections */
+  --header-h: 4.5rem;
+
+  /* ---- Fluid type scale ------------------------------------------------ */
+  --text-display: clamp(2.75rem, 6.5vw, 5.5rem);
+  --text-h1: clamp(2.25rem, 5vw, 3.75rem);
+  --text-h2: clamp(1.75rem, 3.5vw, 2.75rem);
+  --text-h3: clamp(1.35rem, 2.2vw, 1.75rem);
+  --text-lead: clamp(1.1rem, 1.6vw, 1.375rem);
+
+  /* ---- Motion ---------------------------------------------------------- */
+  --dur-fast: 150ms;
+  --dur: 300ms;
+  --dur-slow: 600ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- Shadows / glows ------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(20, 18, 26, 0.06);
+  --shadow-card: 0 10px 30px -12px rgba(20, 18, 26, 0.18);
+  --shadow-lift: 0 24px 60px -24px rgba(20, 18, 26, 0.28);
+  --shadow-glow: 0 0 60px -12px color-mix(in oklab, var(--brand-violet) 55%, transparent);
+
+  /* ================= SEMANTIC — LIGHT (warm, editorial) ================= */
+  --background: #fbfaf8; /* warm off-white, not clinical */
+  --foreground: #14121a;
+  --card: #ffffff;
+  --card-foreground: #14121a;
+  --popover: #ffffff;
+  --popover-foreground: #14121a;
+
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f1ec; /* warm neutral */
+  --secondary-foreground: #14121a;
+  --muted: #f3f1ec;
+  --muted-foreground: #5b5766;
+  --accent: #ede9fe; /* violet-50 hover tint */
+  --accent-foreground: #4c1d95;
+
+  --destructive: #dc2626;
+
+  --border: #e7e3db; /* warm border */
+  --input: #e7e3db;
+  --ring: #7c3aed;
+
+  /* charts (brand-tinted) */
+  --chart-1: var(--brand-blue);
+  --chart-2: var(--brand-violet);
+  --chart-3: var(--brand-cyan);
+  --chart-4: var(--brand-magenta);
+  --chart-5: var(--brand-coral);
+
+  /* sidebar (kept for shadcn components) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14121a;
+  --sidebar-primary: #7c3aed;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f1ec;
+  --sidebar-accent-foreground: #14121a;
+  --sidebar-border: #e7e3db;
+  --sidebar-ring: #7c3aed;
+}
+
+/* ===================== SEMANTIC — DARK (warm navy) ====================== */
+.dark {
+  --background: #0a0e1a; /* deep, slightly warm navy */
+  --foreground: #eceaf3;
+  --card: #0f1630;
+  --card-foreground: #eceaf3;
+  --popover: #0f1630;
+  --popover-foreground: #eceaf3;
+
+  --primary: #8b5cf6; /* lifted violet for navy */
+  --primary-foreground: #ffffff;
+  --secondary: #131a32;
+  --secondary-foreground: #eceaf3;
+  --muted: #131a32;
+  --muted-foreground: #9aa3bd;
+  --accent: #1a2344;
+  --accent-foreground: #eceaf3;
+
+  --destructive: #f26d6d;
+
+  --border: #1e2a4a;
+  --input: #232e52;
+  --ring: #8b5cf6;
+
+  --shadow-card: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 24px 60px -24px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 80px -10px color-mix(in oklab, var(--brand-violet) 60%, transparent);
+
+  --sidebar: #0f1630;
+  --sidebar-foreground: #eceaf3;
+  --sidebar-primary: #8b5cf6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #131a32;
+  --sidebar-accent-foreground: #eceaf3;
+  --sidebar-border: #1e2a4a;
+  --sidebar-ring: #8b5cf6;
+}
