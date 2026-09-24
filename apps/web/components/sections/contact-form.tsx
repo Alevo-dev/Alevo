@@ -5,7 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { submitDemoRequest, type ContactState } from "@/app/contact/actions";
+import { submitDemoRequest, type ContactState } from "@/app/(site)/contact/actions";
 
 const initial: ContactState = { ok: false };
 

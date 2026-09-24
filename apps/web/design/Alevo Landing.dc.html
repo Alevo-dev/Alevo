@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+html{scroll-behavior:smooth}
+:root,html[data-theme="dark"]{--bg:#0b1224;--bgrgb:11,18,36;--panel:#0e1730;--panel2:#111b36;--cardhi:#15214a;--bubble:#1b2645;--text:#eef1f8;--text2:#d5dbe8;--text3:#b7c0d4;--muted:#9ba5bf;--dim:#838ea9;--dim2:#6f7a96;--ink:255,255,255;--blue-t:#7cccff;--violet-t:#c4a6ff;--green-t:#7ee8b8;--shadow:rgba(2,6,20,.6);color-scheme:dark}
+html[data-theme="light"]{--bg:#f6f7fb;--bgrgb:246,247,251;--panel:#ffffff;--panel2:#ffffff;--cardhi:#ffffff;--bubble:#eef1f7;--text:#0f172a;--text2:#26304a;--text3:#3a4560;--muted:#4f5a72;--dim:#626d85;--dim2:#78829a;--ink:15,23,42;--blue-t:#0a6fb8;--violet-t:#6a3bd4;--green-t:#0d7d4f;--shadow:rgba(30,40,80,.14);color-scheme:light}
+body{transition:background .35s,color .35s}
+
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Geist',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--text);text-decoration:none}
+a:hover{color:#38b6ff}
+*{box-sizing:border-box}
+::selection{background:rgba(56,182,255,.3)}
+@keyframes rise{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes wave{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+@keyframes feedUp{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+@keyframes slideX{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,220,151,.55)}100%{box-shadow:0 0 0 10px rgba(61,220,151,0)}}
+@keyframes ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.2);opacity:0}}
+@keyframes blink{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+@keyframes flow{from{left:0%;opacity:0}15%{opacity:1}85%{opacity:1}to{left:100%;opacity:0}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+html.rv [data-reveal]{opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+html.rv [data-reveal].in{opacity:1;transform:none}
+@media print{html.rv [data-reveal]{opacity:1;transform:none}}
+@media (max-width:860px){[data-navlinks]{display:none !important}}
+</style>
+</helmet>
+
+<header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);background:rgba(var(--bgrgb),.72);border-bottom:1px solid rgba(var(--ink),.06)">
+  <div style="max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:32px">
+    <a href="#top" style="display:flex;align-items:center;gap:10px">
+      <img src="uploads/logo1.png" alt="Alevo" style="width:30px;height:30px;object-fit:contain">
+      <span style="font-weight:600;font-size:18px;letter-spacing:-.02em">Alevo</span>
+    </a>
+    <nav data-navlinks="" style="display:flex;gap:28px;font-size:14px;color:var(--muted)">
+      <a href="#inbound" style="color:var(--muted)" style-hover="color:var(--text)">Inbound</a>
+      <a href="#outbound" style="color:var(--muted)" style-hover="color:var(--text)">Outbound</a>
+      <a href="#integrations" style="color:var(--muted)" style-hover="color:var(--text)">Integrations</a>
+      <a href="#pricing" style="color:var(--muted)" style-hover="color:var(--text)">Pricing</a>
+      <a href="#faq" style="color:var(--muted)" style-hover="color:var(--text)">FAQ</a>
+    </nav>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+      <div role="group" aria-label="Theme" style="display:flex;gap:2px;padding:3px;border-radius:999px;border:1px solid rgba(var(--ink),.1);background:rgba(var(--ink),.03)">
+        <button onClick="{{ pickLight }}" aria-label="Light" title="Light" style="width:30px;height:28px;border:0;border-radius:999px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .25s,color .25s;background:{{ bgLight }};color:{{ fgLight }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg></button>
+        <button onClick="{{ pickDark }}" aria-label="Dark" title="Dark" style="width:30px;height:28px;border:0;border-radius:999px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .25s,color .25s;background:{{ bgDark }};color:{{ fgDark }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></button>
+        <button onClick="{{ pickSystem }}" aria-label="System" title="System" style="width:30px;height:28px;border:0;border-radius:999px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .25s,color .25s;background:{{ bgSystem }};color:{{ fgSystem }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg></button>
+      </div>
+      <a href="#" data-navlinks="" style="font-size:14px;padding:9px 14px;color:var(--text)">Sign in</a>
+      <a href="#cta" style="font-size:14px;font-weight:600;padding:10px 16px;border-radius:999px;color:#06070b;background:linear-gradient(120deg,#38b6ff,#a06bff);transition:transform .2s,box-shadow .2s" style-hover="transform:translateY(-1px);box-shadow:0 8px 30px rgba(120,140,255,.35);color:#06070b">Book a demo</a>
+    </div>
+  </div>
+</header>
+
+<section id="top" style="position:relative;overflow:hidden">
+  <div style="position:absolute;inset:0;background-image:radial-gradient(rgba(var(--ink),.07) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 70% 60% at 50% 30%,#000 30%,transparent 75%);pointer-events:none"></div>
+  <div style="position:absolute;width:520px;height:520px;left:-120px;top:-160px;border-radius:50%;background:#38b6ff;opacity:.13;filter:blur(120px);pointer-events:none"></div>
+  <div style="position:absolute;width:560px;height:560px;right:-160px;top:60px;border-radius:50%;background:#a06bff;opacity:.14;filter:blur(130px);pointer-events:none"></div>
+  <div style="position:relative;max-width:1200px;margin:0 auto;padding:96px 24px 110px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:64px;align-items:center">
+    <div data-reveal="">
+      <div style="display:inline-flex;align-items:center;gap:10px;padding:6px 12px 6px 8px;border-radius:999px;border:1px solid rgba(var(--ink),.1);background:rgba(var(--ink),.03);font-size:13px;color:var(--text3)">
+        <span style="width:8px;height:8px;border-radius:50%;background:#3ddc97;animation:pulse 1.6s infinite"></span>
+        AI SDR for inbound and outbound
+      </div>
+      <h1 style="font-size:clamp(44px,6.2vw,76px);line-height:1.02;letter-spacing:-.045em;font-weight:600;margin:24px 0 0;text-wrap:balance">Every lead answered. Every follow-up sent. <span style="background:linear-gradient(120deg,#38b6ff 10%,#a06bff 80%);-webkit-background-clip:text;background-clip:text;color:transparent">On autopilot.</span></h1>
+      <p style="font-size:19px;line-height:1.55;color:var(--muted);max-width:540px;margin:24px 0 0;text-wrap:pretty">Alevo replies to chats, captures form leads and picks up inbound calls in seconds. Then it works your pipeline with personalized emails and cold calls, and books meetings straight into your calendar and CRM.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:36px">
+        <a href="#cta" style="display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;padding:15px 22px;border-radius:999px;color:#06070b;background:linear-gradient(120deg,#38b6ff,#a06bff);transition:transform .2s,box-shadow .2s" style-hover="transform:translateY(-2px);box-shadow:0 14px 40px rgba(120,140,255,.4);color:#06070b">Book a demo
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+        </a>
+        <a href="#pricing" style="display:inline-flex;align-items:center;font-weight:500;font-size:16px;padding:15px 22px;border-radius:999px;border:1px solid rgba(var(--ink),.14);color:var(--text);transition:background .2s,border-color .2s" style-hover="background:rgba(var(--ink),.05);border-color:rgba(var(--ink),.28);color:var(--text)">Start 90-day free trial</a>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:28px;margin-top:44px;font-size:14px;color:var(--dim)">
+        <div style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3ddc97" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Live in under a day</div>
+        <div style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3ddc97" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Works with your CRM</div>
+        <div style="display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3ddc97" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>90-day free trial</div>
+      </div>
+    </div>
+
+    <div data-reveal="" style="position:relative">
+      <div style="position:absolute;inset:-1px;border-radius:24px;background:linear-gradient(140deg,rgba(56,182,255,.55),rgba(var(--ink),.04) 40%,rgba(160,107,255,.55));pointer-events:none"></div>
+      <div style="position:relative;border-radius:23px;background:var(--panel2);margin:1px;overflow:hidden;box-shadow:0 40px 120px var(--shadow)">
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(var(--ink),.06)">
+          <img src="uploads/logo1.png" alt="" style="width:22px;height:22px;object-fit:contain">
+          <span style="font-size:14px;font-weight:600">Alevo agent</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.08em;color:#3ddc97"><span style="width:7px;height:7px;border-radius:50%;background:#3ddc97;animation:pulse 1.6s infinite"></span>LIVE</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid rgba(var(--ink),.06)">
+          <div style="padding:18px 20px;border-right:1px solid rgba(var(--ink),.06)">
+            <div style="font-size:12px;color:var(--dim)">Conversations today</div>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums">{{ convos }}</div>
+          </div>
+          <div style="padding:18px 20px;border-right:1px solid rgba(var(--ink),.06)">
+            <div style="font-size:12px;color:var(--dim)">Meetings booked</div>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums">{{ meetings }}</div>
+          </div>
+          <div style="padding:18px 20px">
+            <div style="font-size:12px;color:var(--dim)">Avg. first reply</div>
+            <div style="font-size:26px;font-weight:600;letter-spacing:-.03em;margin-top:6px">0.8s</div>
+          </div>
+        </div>
+        <div style="height:340px;overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 12%,#000 82%,transparent);mask-image:linear-gradient(transparent,#000 12%,#000 82%,transparent)">
+          <div style="animation:feedUp 30s linear infinite;animation-play-state:{{ playState }}">
+            <sc-for list="{{ feed }}" as="e" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid rgba(var(--ink),.04)">
+                <sc-if value="{{ e.inb }}" hint-placeholder-val="{{ true }}">
+                  <span style="flex:none;width:74px;text-align:center;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.08em;padding:5px 0;border-radius:6px;color:var(--blue-t);background:rgba(56,182,255,.1);border:1px solid rgba(56,182,255,.22)">{{ e.ch }}</span>
+                </sc-if>
+                <sc-if value="{{ e.outb }}">
+                  <span style="flex:none;width:74px;text-align:center;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.08em;padding:5px 0;border-radius:6px;color:var(--violet-t);background:rgba(160,107,255,.1);border:1px solid rgba(160,107,255,.24)">{{ e.ch }}</span>
+                </sc-if>
+                <sc-if value="{{ e.sync }}">
+                  <span style="flex:none;width:74px;text-align:center;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.08em;padding:5px 0;border-radius:6px;color:var(--green-t);background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.24)">{{ e.ch }}</span>
+                </sc-if>
+                <span style="font-size:14px;color:var(--text2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.text }}</span>
+                <span style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--dim2);flex:none">{{ e.time }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="inbound" style="max-width:1200px;margin:0 auto;padding:100px 24px 60px">
+  <div data-reveal="" style="max-width:720px">
+    <div style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.14em;color:#38b6ff">01 · INBOUND</div>
+    <h2 style="font-size:clamp(34px,4.4vw,54px);line-height:1.05;letter-spacing:-.04em;font-weight:600;margin:16px 0 0;text-wrap:balance">Answers in seconds, on every channel your buyers use.</h2>
+    <p style="font-size:18px;line-height:1.6;color:var(--muted);margin:18px 0 0;text-wrap:pretty">Website chat, form fills and phone calls all land with the same agent. It qualifies, answers questions from your playbook, and books the meeting before the lead goes cold.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;margin-top:56px">
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:10px;display:flex;flex-direction:column;transition:border-color .3s,transform .3s" style-hover="border-color:rgba(56,182,255,.35);transform:translateY(-4px)">
+      <div style="height:360px;border-radius:14px;background:var(--panel);border:1px solid rgba(var(--ink),.05);padding:16px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(var(--ink),.06);font-size:12px;color:var(--dim)">
+          <img src="uploads/logo1.png" alt="" style="width:18px;height:18px;object-fit:contain">Chat · yoursite.com
+        </div>
+        <sc-for list="{{ chat }}" as="m" hint-placeholder-count="0">
+          <sc-if value="{{ m.show }}">
+            <sc-if value="{{ m.isU }}">
+              <div style="align-self:flex-end;max-width:80%;padding:9px 13px;border-radius:14px 14px 4px 14px;background:var(--bubble);font-size:13.5px;line-height:1.45;color:var(--text);animation:rise .45s cubic-bezier(.2,.7,.2,1) both">{{ m.text }}</div>
+            </sc-if>
+            <sc-if value="{{ m.isA }}">
+              <div style="align-self:flex-start;max-width:84%;padding:9px 13px;border-radius:14px 14px 14px 4px;background:linear-gradient(120deg,rgba(56,182,255,.2),rgba(160,107,255,.2));border:1px solid rgba(140,150,255,.22);font-size:13.5px;line-height:1.45;color:var(--text);animation:rise .45s cubic-bezier(.2,.7,.2,1) both">{{ m.text }}</div>
+            </sc-if>
+            <sc-if value="{{ m.isS }}">
+              <div style="align-self:center;display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.25);font-size:12px;color:var(--green-t);animation:rise .45s cubic-bezier(.2,.7,.2,1) both">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>{{ m.text }}
+              </div>
+            </sc-if>
+          </sc-if>
+        </sc-for>
+        <sc-if value="{{ chatTyping }}">
+          <div style="align-self:flex-start;display:flex;gap:4px;padding:12px 14px;border-radius:14px 14px 14px 4px;background:rgba(160,107,255,.12);animation:rise .3s both">
+            <span style="width:6px;height:6px;border-radius:50%;background:#b9a0ff;animation:blink 1s infinite"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:#b9a0ff;animation:blink 1s .15s infinite"></span>
+            <span style="width:6px;height:6px;border-radius:50%;background:#b9a0ff;animation:blink 1s .3s infinite"></span>
+          </div>
+        </sc-if>
+      </div>
+      <div style="padding:22px 14px 14px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.02em">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38b6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>Chatbot messaging
+        </div>
+        <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Replies to website visitors instantly, answers product and pricing questions, qualifies intent and books the call inside the chat window.</p>
+      </div>
+    </div>
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:10px;display:flex;flex-direction:column;transition:border-color .3s,transform .3s" style-hover="border-color:rgba(56,182,255,.35);transform:translateY(-4px)">
+      <div style="height:360px;border-radius:14px;background:var(--panel);border:1px solid rgba(var(--ink),.05);padding:16px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(var(--ink),.06);font-size:12px;color:var(--dim)">Request a quote · web form</div>
+        <sc-for list="{{ formFields }}" as="f" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <span style="font-size:11px;color:var(--dim)">{{ f.label }}</span>
+            <div style="height:34px;border-radius:8px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.02);padding:0 11px;display:flex;align-items:center;font-size:13px;color:var(--text);overflow:hidden;white-space:nowrap">
+              <sc-if value="{{ f.filled }}"><span style="animation:rise .4s both">{{ f.value }}</span></sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ formDone }}">
+          <div style="margin-top:4px;border-radius:10px;padding:11px 12px;background:rgba(61,220,151,.08);border:1px solid rgba(61,220,151,.22);display:flex;flex-direction:column;gap:6px;animation:rise .45s both">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--green-t);font-weight:500"><span>Lead captured and qualified</span><span style="font-family:'Geist Mono',monospace">SCORE 92</span></div>
+            <sc-if value="{{ formFollow }}"><div style="font-size:12px;color:var(--text3);animation:rise .4s both">Enriched · created in CRM · follow-up email sent in 14s</div></sc-if>
+          </div>
+        </sc-if>
+      </div>
+      <div style="padding:22px 14px 14px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.02em">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38b6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>Form lead capture
+        </div>
+        <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Every form submission is enriched, scored and logged to your CRM, then followed up by email or call while the buyer is still on your site.</p>
+      </div>
+    </div>
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:10px;display:flex;flex-direction:column;transition:border-color .3s,transform .3s" style-hover="border-color:rgba(56,182,255,.35);transform:translateY(-4px)">
+      <div style="height:360px;border-radius:14px;background:var(--panel);border:1px solid rgba(var(--ink),.05);padding:16px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(var(--ink),.06)">
+          <span style="position:relative;width:30px;height:30px;border-radius:50%;background:rgba(61,220,151,.15);display:flex;align-items:center;justify-content:center">
+            <span style="position:absolute;inset:0;border-radius:50%;border:1px solid #3ddc97;animation:ring 1.8s infinite"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3ddc97" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          </span>
+          <div style="display:flex;flex-direction:column">
+            <span style="font-size:13px;font-weight:500">Inbound call · (415) 555-0142</span>
+            <span style="font-size:11px;color:var(--dim)">Answered on first ring</span>
+          </div>
+          <span style="margin-left:auto;font-family:'Geist Mono',monospace;font-size:12px;color:#3ddc97;font-variant-numeric:tabular-nums">{{ callTime }}</span>
+        </div>
+        <div style="padding:4px 0">{{ wave }}</div>
+        <sc-for list="{{ callLines }}" as="l" hint-placeholder-count="0">
+          <sc-if value="{{ l.show }}">
+            <div style="display:flex;gap:10px;font-size:12.5px;line-height:1.45;animation:rise .45s both">
+              <span style="flex:none;width:48px;font-family:'Geist Mono',monospace;font-size:10.5px;padding-top:2px;color:var(--dim)">{{ l.who }}</span>
+              <span style="color:var(--text2)">{{ l.text }}</span>
+            </div>
+          </sc-if>
+        </sc-for>
+      </div>
+      <div style="padding:22px 14px 14px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.02em">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38b6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>Answers inbound calls
+        </div>
+        <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">A natural-sounding voice agent picks up 24/7, handles questions, qualifies the caller and books time or transfers live to your team.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="outbound" style="max-width:1200px;margin:0 auto;padding:80px 24px 60px">
+  <div data-reveal="" style="max-width:720px">
+    <div style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.14em;color:#a06bff">02 · OUTBOUND</div>
+    <h2 style="font-size:clamp(34px,4.4vw,54px);line-height:1.05;letter-spacing:-.04em;font-weight:600;margin:16px 0 0;text-wrap:balance">Pipeline that builds itself while your team sleeps.</h2>
+    <p style="font-size:18px;line-height:1.6;color:var(--muted);margin:18px 0 0;text-wrap:pretty">Alevo writes and sends personalized emails to new prospects and existing customers, and makes cold calls from your lists. Replies and outcomes flow straight back into your CRM.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:20px;margin-top:56px">
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:10px;transition:border-color .3s,transform .3s" style-hover="border-color:rgba(160,107,255,.4);transform:translateY(-4px)">
+      <div style="border-radius:14px;background:var(--panel);border:1px solid rgba(var(--ink),.05);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(var(--ink),.06);font-size:12px;color:var(--dim)">
+          <span>Email sequences · today</span><span style="font-family:'Geist Mono',monospace">4 of 312</span>
+        </div>
+        <sc-for list="{{ emails }}" as="m" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid rgba(var(--ink),.04)">
+            <span style="flex:none;width:34px;height:34px;border-radius:50%;background:var(--bubble);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text3)">{{ m.initials }}</span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500">{{ m.name }}<span style="font-size:11px;font-weight:400;color:var(--dim)">{{ m.seg }}</span></div>
+              <div style="font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">{{ m.subject }}</div>
+            </div>
+            <sc-if value="{{ m.replied }}">
+              <span style="flex:none;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.06em;padding:5px 9px;border-radius:6px;color:var(--green-t);background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.25);animation:rise .35s both">REPLIED</span>
+            </sc-if>
+            <sc-if value="{{ m.pending }}">
+              <span style="flex:none;font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.06em;padding:5px 9px;border-radius:6px;color:var(--violet-t);background:rgba(160,107,255,.08);border:1px solid rgba(160,107,255,.2)">{{ m.status }}</span>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:22px 14px 14px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.02em">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a06bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>Emails to new and existing customers
+        </div>
+        <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Cold sequences for new prospects, plus renewals, upsells and check-ins for current customers. Each message is written from CRM history and stops automatically on reply.</p>
+      </div>
+    </div>
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:10px;transition:border-color .3s,transform .3s" style-hover="border-color:rgba(160,107,255,.4);transform:translateY(-4px)">
+      <div style="border-radius:14px;background:var(--panel);border:1px solid rgba(var(--ink),.05);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(var(--ink),.06);font-size:12px;color:var(--dim)">
+          <span>Call list · Q4 logistics accounts</span><span style="font-family:'Geist Mono',monospace">AUTO-DIALER</span>
+        </div>
+        <sc-for list="{{ calls }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-bottom:1px solid rgba(var(--ink),.04);transition:background .4s;background:{{ c.bg }}">
+            <span style="position:relative;flex:none;width:34px;height:34px;border-radius:50%;background:var(--bubble);display:flex;align-items:center;justify-content:center">
+              <sc-if value="{{ c.dialing }}"><span style="position:absolute;inset:0;border-radius:50%;border:1px solid #a06bff;animation:ring 1.2s infinite"></span></sc-if>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--violet-t)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            </span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13.5px;font-weight:500">{{ c.name }}</div>
+              <div style="font-size:13px;color:var(--muted);margin-top:2px">{{ c.co }}</div>
+            </div>
+            <sc-if value="{{ c.queued }}"><span style="flex:none;font-size:12px;color:var(--dim2)">Queued</span></sc-if>
+            <sc-if value="{{ c.dialing }}"><span style="flex:none;font-size:12px;color:var(--violet-t)">Dialing…</span></sc-if>
+            <sc-if value="{{ c.won }}"><span style="flex:none;font-size:12px;color:var(--green-t);animation:rise .35s both">{{ c.outcome }}</span></sc-if>
+            <sc-if value="{{ c.other }}"><span style="flex:none;font-size:12px;color:var(--text3);animation:rise .35s both">{{ c.outcome }}</span></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:22px 14px 14px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:19px;font-weight:600;letter-spacing:-.02em">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a06bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>AI cold calling
+        </div>
+        <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Works through your call lists, handles objections, leaves voicemails and books meetings. Every call is recorded, transcribed and summarized on the contact record.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="integrations" style="max-width:1200px;margin:0 auto;padding:80px 24px">
+  <div data-reveal="" style="border-radius:28px;border:1px solid rgba(var(--ink),.08);background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(110,140,255,.1),transparent 70%),rgba(var(--ink),.02);padding:clamp(28px,5vw,64px);overflow:hidden">
+    <div style="max-width:680px">
+      <div style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.14em;color:#3ddc97">03 · INTEGRATIONS</div>
+      <h2 style="font-size:clamp(34px,4.4vw,54px);line-height:1.05;letter-spacing:-.04em;font-weight:600;margin:16px 0 0;text-wrap:balance">Plugs into the CRM and calendar you already run.</h2>
+      <p style="font-size:18px;line-height:1.6;color:var(--muted);margin:18px 0 0;text-wrap:pretty">Two-way sync keeps contacts, deal stages, notes and bookings current. Alevo checks real availability before it offers a time, and reschedules or cancels when buyers ask.</p>
+    </div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-top:56px;justify-content:space-between">
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:180px">
+        <span style="font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--dim);margin-bottom:4px">CRM</span>
+        <sc-for list="{{ crms }}" as="n" hint-placeholder-count="5">
+          <div style="padding:11px 16px;border-radius:12px;border:1px solid rgba(var(--ink),.08);background:var(--panel2);font-size:14px;font-weight:500;transition:border-color .2s" style-hover="border-color:rgba(56,182,255,.45)">{{ n }}</div>
+        </sc-for>
+      </div>
+      <div style="flex:1;min-width:60px;height:1px;background:linear-gradient(90deg,rgba(56,182,255,.1),rgba(56,182,255,.6));position:relative;margin:0 12px">
+        <span style="position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:#38b6ff;box-shadow:0 0 12px #38b6ff;animation:flow 2.4s linear infinite"></span>
+        <span style="position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:#38b6ff;box-shadow:0 0 12px #38b6ff;animation:flow 2.4s 1.2s linear infinite"></span>
+      </div>
+      <div style="position:relative;width:150px;height:150px;flex:none;display:flex;align-items:center;justify-content:center">
+        <span style="position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(var(--ink),.14);animation:spin 30s linear infinite"></span>
+        <span style="position:absolute;inset:18px;border-radius:50%;background:radial-gradient(circle,rgba(110,140,255,.25),transparent 70%)"></span>
+        <span style="position:relative;width:88px;height:88px;border-radius:26px;background:var(--panel2);border:1px solid rgba(var(--ink),.12);display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(90,120,255,.3);animation:float 5s ease-in-out infinite">
+          <img src="uploads/logo1.png" alt="Alevo" style="width:52px;height:52px;object-fit:contain">
+        </span>
+      </div>
+      <div style="flex:1;min-width:60px;height:1px;background:linear-gradient(90deg,rgba(160,107,255,.6),rgba(160,107,255,.1));position:relative;margin:0 12px">
+        <span style="position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:#a06bff;box-shadow:0 0 12px #a06bff;animation:flow 2.4s .6s linear infinite"></span>
+        <span style="position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:#a06bff;box-shadow:0 0 12px #a06bff;animation:flow 2.4s 1.8s linear infinite"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:180px">
+        <span style="font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--dim);margin-bottom:4px">BOOKING</span>
+        <sc-for list="{{ bookings }}" as="n" hint-placeholder-count="5">
+          <div style="padding:11px 16px;border-radius:12px;border:1px solid rgba(var(--ink),.08);background:var(--panel2);font-size:14px;font-weight:500;transition:border-color .2s" style-hover="border-color:rgba(160,107,255,.5)">{{ n }}</div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="margin-top:48px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)">
+      <div style="display:flex;gap:12px;width:max-content;animation:slideX 45s linear infinite;animation-play-state:{{ playState }}">
+        <sc-for list="{{ syncLog }}" as="s" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;border:1px solid rgba(var(--ink),.07);background:rgba(var(--ink),.02);font-size:13px;color:var(--text3);white-space:nowrap">
+            <span style="width:6px;height:6px;border-radius:50%;background:#3ddc97"></span>{{ s }}
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="max-width:1200px;margin:0 auto;padding:60px 24px 80px">
+  <div data-reveal="" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));border-top:1px solid rgba(var(--ink),.08)">
+    <div style="padding:32px 28px 0 0">
+      <div style="font-family:'Geist Mono',monospace;font-size:13px;color:#38b6ff">STEP 1</div>
+      <div style="font-size:24px;font-weight:600;letter-spacing:-.03em;margin-top:14px">Connect</div>
+      <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Link your CRM, calendar, phone number and website in a few clicks. No engineering work needed.</p>
+    </div>
+    <div style="padding:32px 28px 0 0">
+      <div style="font-family:'Geist Mono',monospace;font-size:13px;color:#7b91ff">STEP 2</div>
+      <div style="font-size:24px;font-weight:600;letter-spacing:-.03em;margin-top:14px">Train</div>
+      <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Upload your playbook, pricing and FAQs. Set the tone, qualification rules and when to hand off to a rep.</p>
+    </div>
+    <div style="padding:32px 28px 0 0">
+      <div style="font-family:'Geist Mono',monospace;font-size:13px;color:#a06bff">STEP 3</div>
+      <div style="font-size:24px;font-weight:600;letter-spacing:-.03em;margin-top:14px">Launch</div>
+      <p style="font-size:15px;line-height:1.6;color:var(--muted);margin:10px 0 0">Alevo starts working every channel at once. Your team gets booked meetings and full context on each lead.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" style="max-width:1200px;margin:0 auto;padding:80px 24px">
+  <div data-reveal="" style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px">
+    <div style="max-width:620px">
+      <div style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.14em;color:#38b6ff">PRICING</div>
+      <h2 style="font-size:clamp(34px,4.4vw,54px);line-height:1.05;letter-spacing:-.04em;font-weight:600;margin:16px 0 0">Plans that scale with your pipeline.</h2>
+    </div>
+    <div style="position:relative;display:flex;padding:4px;border-radius:999px;border:1px solid rgba(var(--ink),.1);background:rgba(var(--ink),.03)">
+      <span style="position:absolute;top:4px;bottom:4px;width:calc(50% - 4px);border-radius:999px;background:var(--text);transition:left .35s cubic-bezier(.3,.8,.3,1);left:{{ pillLeft }}"></span>
+      <button onClick="{{ setMonthly }}" style="position:relative;border:0;background:transparent;cursor:pointer;padding:9px 18px;min-width:130px;font:inherit;font-size:14px;font-weight:500;border-radius:999px;transition:color .3s;color:{{ monthlyColor }}">Monthly</button>
+      <button onClick="{{ setAnnual }}" style="position:relative;border:0;background:transparent;cursor:pointer;padding:9px 18px;min-width:130px;font:inherit;font-size:14px;font-weight:500;border-radius:999px;transition:color .3s;color:{{ annualColor }}">Annual −20%</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;margin-top:48px;align-items:stretch">
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:32px;display:flex;flex-direction:column">
+      <div style="font-size:20px;font-weight:600;letter-spacing:-.02em">Starter</div>
+      <p style="font-size:14px;line-height:1.55;color:var(--muted);margin:8px 0 0;min-height:44px">For small teams that want every inbound lead answered.</p>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-top:24px"><span style="font-size:52px;font-weight:600;letter-spacing:-.05em;font-variant-numeric:tabular-nums">{{ starterPrice }}</span><span style="font-size:14px;color:var(--dim)">/ month</span></div>
+      <div style="font-size:13px;color:var(--dim);margin-top:4px">{{ billNote }}</div>
+      <a href="#cta" style="margin-top:28px;display:flex;justify-content:center;padding:13px;border-radius:999px;border:1px solid rgba(var(--ink),.16);font-weight:500;font-size:15px;transition:background .2s" style-hover="background:rgba(var(--ink),.06);color:var(--text)">Start 90-day free trial</a>
+      <div style="height:1px;background:rgba(var(--ink),.07);margin:28px 0 22px"></div>
+      <sc-for list="{{ starterFeatures }}" as="f" hint-placeholder-count="6">
+        <div style="display:flex;gap:12px;font-size:14.5px;line-height:1.45;color:var(--text2);padding:6px 0"><svg style="flex:none;margin-top:2px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38b6ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>{{ f }}</div>
+      </sc-for>
+    </div>
+
+    <div data-reveal="" style="position:relative;border-radius:22px;padding:1px;background:linear-gradient(150deg,#38b6ff,rgba(var(--ink),.06) 45%,#a06bff);box-shadow:0 30px 90px rgba(100,110,255,.18)">
+      <div style="height:100%;border-radius:21px;background:linear-gradient(180deg,var(--cardhi),var(--panel));padding:31px;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:20px;font-weight:600;letter-spacing:-.02em">Growth</span>
+          <span style="font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.1em;padding:5px 10px;border-radius:999px;color:#06070b;background:linear-gradient(120deg,#38b6ff,#a06bff)">MOST POPULAR</span>
+        </div>
+        <p style="font-size:14px;line-height:1.55;color:var(--muted);margin:8px 0 0;min-height:44px">Inbound and outbound together, with calling and sequences.</p>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:24px"><span style="font-size:52px;font-weight:600;letter-spacing:-.05em;font-variant-numeric:tabular-nums">{{ growthPrice }}</span><span style="font-size:14px;color:var(--dim)">/ month</span></div>
+        <div style="font-size:13px;color:var(--dim);margin-top:4px">{{ billNote }}</div>
+        <a href="#cta" style="margin-top:28px;display:flex;justify-content:center;padding:13px;border-radius:999px;font-weight:600;font-size:15px;color:#06070b;background:linear-gradient(120deg,#38b6ff,#a06bff);transition:box-shadow .2s,transform .2s" style-hover="box-shadow:0 12px 36px rgba(120,140,255,.4);transform:translateY(-1px);color:#06070b">Start 90-day free trial</a>
+        <div style="height:1px;background:rgba(var(--ink),.07);margin:28px 0 22px"></div>
+        <sc-for list="{{ growthFeatures }}" as="f" hint-placeholder-count="7">
+          <div style="display:flex;gap:12px;font-size:14.5px;line-height:1.45;color:var(--text2);padding:6px 0"><svg style="flex:none;margin-top:2px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8f8cff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>{{ f }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div data-reveal="" style="border-radius:22px;border:1px solid rgba(var(--ink),.08);background:rgba(var(--ink),.025);padding:32px;display:flex;flex-direction:column">
+      <div style="font-size:20px;font-weight:600;letter-spacing:-.02em">Enterprise</div>
+      <p style="font-size:14px;line-height:1.55;color:var(--muted);margin:8px 0 0;min-height:44px">For revenue teams with high volume, compliance and custom needs.</p>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-top:24px"><span style="font-size:52px;font-weight:600;letter-spacing:-.05em">Custom</span></div>
+      <div style="font-size:13px;color:var(--dim);margin-top:4px">Volume-based pricing</div>
+      <a href="#cta" style="margin-top:28px;display:flex;justify-content:center;padding:13px;border-radius:999px;border:1px solid rgba(var(--ink),.16);font-weight:500;font-size:15px;transition:background .2s" style-hover="background:rgba(var(--ink),.06);color:var(--text)">Talk to sales</a>
+      <div style="height:1px;background:rgba(var(--ink),.07);margin:28px 0 22px"></div>
+      <sc-for list="{{ entFeatures }}" as="f" hint-placeholder-count="7">
+        <div style="display:flex;gap:12px;font-size:14.5px;line-height:1.45;color:var(--text2);padding:6px 0"><svg style="flex:none;margin-top:2px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a06bff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>{{ f }}</div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="max-width:1200px;margin:0 auto;padding:80px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:48px">
+  <div data-reveal="">
+    <div style="font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:.14em;color:#a06bff">FAQ</div>
+    <h2 style="font-size:clamp(34px,4.4vw,54px);line-height:1.05;letter-spacing:-.04em;font-weight:600;margin:16px 0 0">Questions, answered.</h2>
+  </div>
+  <div data-reveal="" style="border-top:1px solid rgba(var(--ink),.08)">
+    <sc-for list="{{ faqs }}" as="q" hint-placeholder-count="5">
+      <div style="border-bottom:1px solid rgba(var(--ink),.08)">
+        <button onClick="{{ q.toggle }}" style="width:100%;display:flex;align-items:center;gap:16px;justify-content:space-between;text-align:left;background:none;border:0;color:var(--text);font:inherit;font-size:18px;font-weight:500;letter-spacing:-.01em;padding:22px 0;cursor:pointer">
+          {{ q.q }}
+          <span style="flex:none;width:28px;height:28px;border-radius:50%;border:1px solid rgba(var(--ink),.14);display:flex;align-items:center;justify-content:center;transition:transform .3s;transform:{{ q.rot }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          </span>
+        </button>
+        <sc-if value="{{ q.open }}">
+          <p style="margin:0;padding:0 48px 24px 0;font-size:15.5px;line-height:1.65;color:var(--muted);animation:rise .35s both">{{ q.a }}</p>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<section id="cta" style="max-width:1200px;margin:0 auto;padding:60px 24px 100px">
+  <div data-reveal="" style="position:relative;overflow:hidden;border-radius:32px;padding:clamp(40px,7vw,96px);background:linear-gradient(125deg,#1583d6,#5a63e8 50%,#8a4fe6)">
+    <img src="uploads/logo1.png" alt="" style="position:absolute;right:-60px;bottom:-80px;width:420px;opacity:.16;pointer-events:none;animation:float 7s ease-in-out infinite">
+    <h2 style="position:relative;font-size:clamp(36px,5.2vw,68px);line-height:1.02;letter-spacing:-.045em;font-weight:600;margin:0;max-width:760px;color:#ffffff;text-wrap:balance">Give every lead a reply in under a second.</h2>
+    <p style="position:relative;font-size:19px;line-height:1.55;color:#ffffff;margin:22px 0 0;max-width:520px">See Alevo handle your real inbound and outbound flows in a 20-minute demo.</p>
+    <div style="position:relative;display:flex;flex-wrap:wrap;gap:12px;margin-top:36px">
+      <a href="#" style="display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:16px;padding:15px 24px;border-radius:999px;background:#0b1224;color:#ffffff;transition:transform .2s" style-hover="transform:translateY(-2px);color:#ffffff">Book a demo
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+      </a>
+      <a href="#pricing" style="display:inline-flex;align-items:center;font-weight:500;font-size:16px;padding:15px 24px;border-radius:999px;border:1px solid rgba(255,255,255,.55);color:#ffffff;transition:background .2s" style-hover="background:rgba(255,255,255,.12);color:#ffffff">Start 90-day free trial</a>
+    </div>
+  </div>
+</section>
+
+<footer style="border-top:1px solid rgba(var(--ink),.06)">
+  <div style="max-width:1200px;margin:0 auto;padding:32px 24px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between;font-size:13px;color:var(--dim)">
+    <div style="display:flex;align-items:center;gap:10px"><img src="uploads/logo1.png" alt="" style="width:22px;height:22px;object-fit:contain"><span style="color:var(--text);font-weight:600">Alevo</span><span>© 2026</span></div>
+    <div style="display:flex;gap:24px">
+      <a href="#" style="color:var(--dim)" style-hover="color:var(--text)">Privacy</a>
+      <a href="#" style="color:var(--dim)" style-hover="color:var(--text)">Terms</a>
+      <a href="#" style="color:var(--dim)" style-hover="color:var(--text)">Security</a>
+      <a href="#" style="color:var(--dim)" style-hover="color:var(--text)">Contact</a>
+    </div>
+  </div>
+</footer>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;system&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;system&quot;,&quot;tsType&quot;:&quot;'system' | 'light' | 'dark'&quot;},&quot;motion&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;billingDefault&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;monthly&quot;,&quot;annual&quot;],&quot;default&quot;:&quot;monthly&quot;,&quot;tsType&quot;:&quot;'monthly' | 'annual'&quot;}}">
+class Component extends DCLogic {
+  state = { t: 0, annual: null, faq: 0, theme: (typeof localStorage !== 'undefined' && localStorage.getItem('alevo-theme')) || null };
+  applyTheme = () => {
+    const th = this.state.theme || this.props.theme || 'system';
+    const dark = th === 'system' ? !(this.mq && !this.mq.matches) : th === 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  };
+  setTheme = v => { try { localStorage.setItem('alevo-theme', v); } catch (e) {} this.setState({ theme: v }); };
+  componentDidMount() {
+    document.documentElement.classList.add('rv');
+    this.mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this.mq.addEventListener('change', this.applyTheme);
+    this.applyTheme();
+    this.scan = () => {
+      const h = window.innerHeight || 800;
+      document.querySelectorAll('[data-reveal]:not(.in)').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < h * 0.92 && r.bottom > 0) el.classList.add('in');
+      });
+    };
+    this.onScroll = () => requestAnimationFrame(this.scan);
+    window.addEventListener('scroll', this.onScroll, { passive: true, capture: true });
+    window.addEventListener('resize', this.onScroll);
+    this.scan(); requestAnimationFrame(this.scan);
+    this.scanT = setTimeout(this.scan, 400);
+    this.safeT = setTimeout(() => {
+      document.querySelectorAll('[data-reveal]:not(.in)').forEach(el => {
+        if (el.getBoundingClientRect().top < (window.innerHeight || 800)) el.classList.add('in');
+      });
+    }, 1500);
+    this.timer = setInterval(() => { if (this.props.motion !== false) this.setState(s => ({ t: s.t + 1 })); }, 1150);
+  }
+  componentDidUpdate() { this.applyTheme(); this.scan && this.scan(); }
+  componentWillUnmount() {
+    clearInterval(this.timer); this.mq && this.mq.removeEventListener('change', this.applyTheme); clearTimeout(this.scanT); clearTimeout(this.safeT);
+    window.removeEventListener('scroll', this.onScroll, { capture: true });
+    window.removeEventListener('resize', this.onScroll);
+  }
+  renderVals() {
+    const motion = this.props.motion !== false;
+    const t = this.state.t;
+    const cyc = n => motion ? t % n : n - 1;
+
+    const events = [
+      ['CHAT', 'in', 'Answered pricing question for a visitor from Austin', 'now'],
+      ['CALL', 'in', 'Picked up (415) 555-0142 · qualified, booked demo', '12s'],
+      ['EMAIL', 'out', 'Renewal offer sent to Luis Ortega at Brightline', '31s'],
+      ['CRM', 'sync', 'Deal moved to Meeting Set in HubSpot', '44s'],
+      ['FORM', 'in', 'New quote request from Northpeak Logistics · score 92', '1m'],
+      ['COLD CALL', 'out', 'Booked Thu 2:30pm with ops lead at Crestway', '2m'],
+      ['BOOKING', 'sync', 'Calendly event created, invite sent', '2m'],
+      ['EMAIL', 'out', 'Step 2 of sequence sent to 48 new prospects', '3m'],
+      ['CHAT', 'in', 'Handed hot lead to Sam with full transcript', '4m'],
+      ['COLD CALL', 'out', 'Voicemail left for Priya Nair · follow-up queued', '5m'],
+    ].map(([ch, k, text, time]) => ({ ch, text, time, inb: k === 'in', outb: k === 'out', sync: k === 'sync' }));
+
+    const cs = cyc(9);
+    const chat = [
+      ['u', 1, 'Hi! Do you offer same-week installs?'],
+      ['a', 3, 'We do. Thursday and Friday are open this week. What zip code is the install for?'],
+      ['u', 4, '94107'],
+      ['a', 6, "You're in our service area. Want me to hold Thursday at 10:00am?"],
+      ['s', 7, 'Booked Thu 10:00am · synced to HubSpot'],
+    ].map(([k, at, text]) => ({ text, show: cs >= at, isU: k === 'u', isA: k === 'a', isS: k === 's' }));
+
+    const fs = cyc(8);
+    const formFields = [
+      ['Full name', 'Dana Whitfield'], ['Work email', 'dana@northpeak.co'],
+      ['Company', 'Northpeak Logistics'], ['What do you need?', 'Fleet tracking for 40 vans'],
+    ].map(([label, value], i) => ({ label, value, filled: fs >= i + 1 }));
+
+    const ks = cyc(9);
+    const secs = 3 + ks * 5;
+    const callLines = [
+      ['CALLER', 1, "Hi, I'm calling about pricing for the Growth plan."],
+      ['ALEVO', 3, 'Happy to help. How many locations would you use it for?'],
+      ['CALLER', 5, 'Three, and we get about 200 calls a week.'],
+      ['ALEVO', 7, 'Growth fits well. I can book a walkthrough with Sam tomorrow at 11. Does that work?'],
+    ].map(([who, at, text]) => ({ who, text, show: ks >= at }));
+
+    if (!this._wave) {
+      this._wave = {};
+    }
+    const wkey = motion ? 'on' : 'off';
+    if (!this._wave[wkey]) {
+      this._wave[wkey] = React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 3, height: 44 } },
+        Array.from({ length: 40 }, (_, i) => React.createElement('span', { key: i, style: {
+          flex: 1, borderRadius: 2, height: `${40 + ((i * 37) % 60)}%`,
+          background: i % 2 ? '#38b6ff' : '#a06bff', transform: 'scaleY(.3)',
+          animation: `wave ${0.8 + (i % 5) * 0.14}s ease-in-out ${-(i * 0.09).toFixed(2)}s infinite`,
+          animationPlayState: motion ? 'running' : 'paused' } })));
+    }
+
+    const es = cyc(8);
+    const statuses = ['DRAFTING', 'SENT', 'OPENED', 'REPLIED'];
+    const emails = [
+      ['MC', 'Maya Chen', 'New lead', 'Your quote for 40 vehicles, plus two install dates'],
+      ['LO', 'Luis Ortega', 'Customer', 'Your renewal and a loyalty upgrade'],
+      ['PN', 'Priya Nair', 'Prospect', "An idea for Crestway's dispatch team"],
+      ['TB', 'Tom Becker', 'Customer', 'Checking in 30 days after onboarding'],
+    ].map(([initials, name, seg, subject], i) => {
+      const st = Math.max(0, Math.min(3, es - i));
+      return { initials, name, seg, subject, status: statuses[st], replied: st === 3 && i !== 2, pending: !(st === 3 && i !== 2) };
+    });
+    emails[2].status = es - 2 >= 3 ? 'OPENED' : emails[2].status;
+
+    const ls = cyc(10), cur = Math.floor(ls / 2);
+    const calls = [
+      ['Jordan Ellis', 'VP Operations · Crestway Freight', 'Meeting booked · Thu 2:30pm', true],
+      ['Priya Nair', 'Dispatch Manager · Halcyon Haul', 'Voicemail left', false],
+      ['Marcus Webb', 'COO · Ridgeline Movers', 'Interested · deck sent', true],
+      ['Elena Park', 'Fleet Director · Summit Cargo', 'Call back Tue 9am', false],
+    ].map(([name, co, outcome, good], i) => {
+      const done = i < cur, dialing = i === cur;
+      return { name, co, outcome, queued: i > cur, dialing, won: done && good, other: done && !good,
+        bg: dialing ? 'rgba(160,107,255,.07)' : 'transparent' };
+    });
+
+    const syncBase = [
+      'Contact created in Salesforce', 'Meeting booked in Google Calendar', 'Deal stage updated in HubSpot',
+      'Call notes logged to Pipedrive', 'Rescheduled via Cal.com', 'Lead owner assigned in Zoho CRM',
+      'Outlook invite sent', 'Renewal date updated in Close', 'Acuity appointment confirmed',
+    ];
+
+    const annual = this.state.annual ?? (this.props.billingDefault === 'annual');
+    const faqDefs = [
+      ['Does it sound like a robot on the phone?', 'No. Alevo uses a natural voice with realistic pacing and can be interrupted mid-sentence. You choose the voice, name and tone, and it always discloses it is an AI assistant where required.'],
+      ['Which CRMs and booking tools do you support?', 'Salesforce, HubSpot, Pipedrive, Zoho CRM and Close, plus Calendly, Cal.com, Google Calendar, Outlook and Acuity. Enterprise plans include custom integrations through our API and webhooks.'],
+      ['Can it email existing customers, not only new leads?', 'Yes. Alevo reads account history from your CRM to send renewals, upsell offers, onboarding check-ins and win-back messages, and it pauses automatically when a customer replies.'],
+      ['How long does setup take?', 'Most teams go live in under a day. Connect your tools, upload your playbook and FAQs, and review a few test conversations before switching it on.'],
+      ['What happens when a lead needs a human?', 'You set the handoff rules. Alevo can live-transfer calls, notify a rep in Slack or email, or book time on their calendar with the full transcript attached.'],
+    ];
+    const faqs = faqDefs.map(([q, a], i) => ({ q, a, open: this.state.faq === i, rot: this.state.faq === i ? 'rotate(45deg)' : 'rotate(0deg)',
+      toggle: () => this.setState(s => ({ faq: s.faq === i ? -1 : i })) }));
+
+    const th = this.state.theme || this.props.theme || 'system';
+    const tv = {};
+    ['Light', 'Dark', 'System'].forEach(k => {
+      const on = th === k.toLowerCase();
+      tv['pick' + k] = () => this.setTheme(k.toLowerCase());
+      tv['bg' + k] = on ? 'var(--text)' : 'transparent';
+      tv['fg' + k] = on ? 'var(--bg)' : 'var(--muted)';
+    });
+    return {
+      ...tv,
+      playState: motion ? 'running' : 'paused',
+      convos: (1284 + t * 3).toLocaleString('en-US'),
+      meetings: 47 + Math.floor(t / 4),
+      feed: [...events, ...events],
+      chat, chatTyping: cs === 2 || cs === 5,
+      formFields, formDone: fs >= 5, formFollow: fs >= 6,
+      callTime: `00:${String(secs).padStart(2, '0')}`,
+      wave: this._wave[wkey], callLines,
+      emails, calls,
+      crms: ['Salesforce', 'HubSpot', 'Pipedrive', 'Zoho CRM', 'Close'],
+      bookings: ['Calendly', 'Cal.com', 'Google Calendar', 'Outlook', 'Acuity'],
+      syncLog: [...syncBase, ...syncBase],
+      pillLeft: annual ? '50%' : '4px',
+      monthlyColor: annual ? 'var(--muted)' : 'var(--bg)',
+      annualColor: annual ? 'var(--bg)' : 'var(--muted)',
+      setMonthly: () => this.setState({ annual: false }),
+      setAnnual: () => this.setState({ annual: true }),
+      starterPrice: annual ? '$1,200' : '$1,500',
+      growthPrice: annual ? '$2,000' : '$2,500',
+      billNote: annual ? 'Billed annually' : 'Billed monthly',
+      starterFeatures: ['AI chatbot on your website', 'Form lead capture and scoring', 'Inbound call answering, 1 number', '500 AI conversations / month', '1,000 emails / month', '1 CRM and 1 calendar integration', 'Email support'],
+      growthFeatures: ['Everything in Starter', '2,500 AI conversations / month', 'AI cold calling, 1,000 minutes', '10,000 emails with sequences for new and existing customers', 'Unlimited CRM and booking integrations', 'Custom voice, persona and playbooks', 'Live transfer and rep handoff rules', 'Analytics and call recordings'],
+      entFeatures: ['Everything in Growth', 'Unlimited conversations and custom call volume', 'Dedicated phone numbers and local presence', 'Custom integrations, API and webhooks', 'SSO / SAML and role-based access', 'SOC 2 report and data residency options', 'Dedicated success manager and SLA'],
+      faqs,
+    };
+  }
+}
+</script>
+</body>
+</html>

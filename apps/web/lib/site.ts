@@ -12,10 +12,10 @@ export const siteConfig = {
   url: "https://getalevo.com",
   /** Product app — all Login / Get started / Dashboard CTAs point here. */
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://app.getalevo.com",
-  tagline: "The AI SDR that sounds like your best rep.",
+  tagline: "AI SDR for inbound and outbound",
   description:
-    "Alevo is an AI sales development rep that books meetings for you across email, forms, calls, and chat — warm, on-brand, and always on.",
-  ogImageAlt: "Alevo — your AI SDR across every channel",
+    "Alevo is an AI SDR that answers chats, forms and inbound calls in seconds, runs personalized email and cold-call outbound, and books meetings into your CRM.",
+  ogImageAlt: "Alevo — AI SDR for inbound and outbound",
   social: {
     twitter: "https://x.com/getalevo",
     linkedin: "https://www.linkedin.com/company/getalevo",

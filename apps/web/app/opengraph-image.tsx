@@ -1,11 +1,16 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { siteConfig } from "@/lib/site";
 
 export const alt = siteConfig.ogImageAlt;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpengraphImage() {
+export default async function OpengraphImage() {
+  const logo = await readFile(join(process.cwd(), "public/uploads/logo1.png"));
+  const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -15,46 +20,32 @@ export default function OpengraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: "80px",
+          padding: "72px",
           background:
-            "radial-gradient(1000px 500px at 20% 0%, #1a1f45 0%, #0a0e1a 55%)",
-          color: "#eceaf3",
+            "radial-gradient(1100px 560px at 12% -10%, #16224a 0%, #0b1224 55%)",
+          color: "#eef1f8",
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: "linear-gradient(120deg, #3b9eff, #7c3aed 55%, #d946ef)",
-            }}
-          />
-          <div style={{ fontSize: 40, fontWeight: 600 }}>Alevo</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoSrc} width={60} height={60} alt="" style={{ objectFit: "contain" }} />
+          <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: -1 }}>Alevo</div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <div
-            style={{
-              fontSize: 76,
-              fontWeight: 700,
-              lineHeight: 1.05,
-              maxWidth: 900,
-              letterSpacing: -2,
-              backgroundImage:
-                "linear-gradient(120deg, #eceaf3 40%, #a78bfa 70%, #d946ef)",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            The AI SDR that sounds human.
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", fontSize: 68, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2, maxWidth: 980 }}>
+            Every lead answered. Every follow-up sent.
           </div>
-          <div style={{ fontSize: 30, color: "#9aa3bd", maxWidth: 820 }}>
-            Books meetings across email, forms, calls, and chat — warm,
-            on-brand, and always on.
+          <div style={{ display: "flex", fontSize: 60, fontWeight: 700, letterSpacing: -2, backgroundImage: "linear-gradient(120deg,#38b6ff,#a06bff)", backgroundClip: "text", color: "transparent" }}>
+            On autopilot.
+          </div>
+          <div style={{ display: "flex", fontSize: 27, color: "#9ba5bf", maxWidth: 900, marginTop: 8 }}>
+            AI SDR for inbound and outbound — chat, forms, calls and email. Books meetings straight into your CRM.
           </div>
         </div>
+
+        <div style={{ display: "flex", alignItems: "center", fontSize: 24, color: "#7cccff" }}>getalevo.com</div>
       </div>
     ),
     size,
