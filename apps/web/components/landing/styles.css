@@ -150,3 +150,27 @@
   .alevo * { animation: none !important; }
   .alevo.rv [data-reveal] { opacity: 1 !important; transform: none !important; }
 }
+
+/* Header actions (desktop) + mobile hamburger + slide-in menu */
+.alevo .desk-actions { display: flex; gap: 10px; align-items: center; }
+.alevo .burger { display: none; align-items: center; justify-content: center; background: none; border: 0; color: var(--text); cursor: pointer; padding: 6px; }
+.alevo .menu-wrap { display: none; }
+
+@media (max-width: 860px) {
+  .alevo .desk-actions { display: none; }
+  .alevo .burger { display: inline-flex; }
+  .alevo .menu-wrap { display: block; position: fixed; inset: 0; z-index: 200; overflow: hidden; pointer-events: none; }
+  .alevo .menu-wrap[data-open="true"] { pointer-events: auto; }
+  .alevo .mobile-menu {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .alevo .menu-wrap[data-open="true"] .mobile-menu { transform: translateX(0); }
+}

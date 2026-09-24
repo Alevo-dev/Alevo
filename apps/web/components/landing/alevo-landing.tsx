@@ -26,6 +26,19 @@ const Check = ({ size = 16, color = "#3ddc97", w = 2.4 }: { size?: number; color
 const Phone = ({ color = "#38b6ff", size = 20 }: { color?: string; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
 );
+const Burger = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+);
+const XIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+);
+const NAV: [string, string][] = [
+  ["Inbound", "inbound"],
+  ["Outbound", "outbound"],
+  ["Integrations", "integrations"],
+  ["Pricing", "pricing"],
+  ["FAQ", "faq"],
+];
 
 // Integration brand marks — real logos where available (simple-icons), else a
 // brand-colored monogram. Rendered on a white badge so they read in both themes.
@@ -68,6 +81,27 @@ export function AlevoLanding() {
   }, []);
   const [annual, setAnnual] = useState(false);
   const [faq, setFaq] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeId, setActiveId] = useState("");
+
+  // Scroll-spy — highlight the section currently in view (used by the nav).
+  useEffect(() => {
+    const els = NAV.map(([, id]) => document.getElementById(id)).filter(
+      Boolean,
+    ) as HTMLElement[];
+    const io = new IntersectionObserver(
+      (entries) => {
+        const vis = entries.filter((e) => e.isIntersecting);
+        if (vis.length) {
+          vis.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          setActiveId(vis[0].target.id);
+        }
+      },
+      { rootMargin: "-45% 0px -50% 0px", threshold: 0 },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   const cyc = (n: number) => (motion ? t % n : n - 1);
   const play = motion ? "running" : "paused";
@@ -201,24 +235,67 @@ export function AlevoLanding() {
             <span style={{ fontWeight: 600, fontSize: 18, letterSpacing: "-.02em" }}>Alevo</span>
           </a>
           <nav data-navlinks="" style={{ display: "flex", gap: 28, fontSize: 14 }}>
-            {[["Inbound", "#inbound"], ["Outbound", "#outbound"], ["Integrations", "#integrations"], ["Pricing", "#pricing"], ["FAQ", "#faq"]].map(([l, h]) => (
-              <a key={h} href={h} className="lk-muted">{l}</a>
-            ))}
+            {NAV.map(([l, id]) =>
+              activeId === id ? (
+                <a key={id} href={`#${id}`} style={{ color: "#38b6ff", fontWeight: 500 }}>{l}</a>
+              ) : (
+                <a key={id} href={`#${id}`} className="lk-muted">{l}</a>
+              ),
+            )}
           </nav>
           <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
-            <div role="group" aria-label="Theme" style={{ display: "flex", gap: 2, padding: 3, borderRadius: 999, border: "1px solid rgba(var(--ink),.1)", background: "rgba(var(--ink),.03)" }}>
-              {themeBtns.map((b) => {
-                const on = cur_theme === b.key;
-                return (
-                  <button key={b.key} onClick={() => setTheme(b.key)} aria-label={b.label} title={b.label} style={{ width: 30, height: 28, border: 0, borderRadius: 999, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .25s,color .25s", background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--muted)" }}>{b.icon}</button>
-                );
-              })}
+            <div className="desk-actions">
+              <div role="group" aria-label="Theme" style={{ display: "flex", gap: 2, padding: 3, borderRadius: 999, border: "1px solid rgba(var(--ink),.1)", background: "rgba(var(--ink),.03)" }}>
+                {themeBtns.map((b) => {
+                  const on = cur_theme === b.key;
+                  return (
+                    <button key={b.key} onClick={() => setTheme(b.key)} aria-label={b.label} title={b.label} style={{ width: 30, height: 28, border: 0, borderRadius: 999, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .25s,color .25s", background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--muted)" }}>{b.icon}</button>
+                  );
+                })}
+              </div>
+              <a href="#" style={{ fontSize: 14, padding: "9px 14px" }}>Sign in</a>
+              <a href="#cta" className="btn-grad-sm" style={{ fontSize: 14, fontWeight: 600, padding: "10px 16px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo</a>
             </div>
-            <a href="#" data-navlinks="" style={{ fontSize: 14, padding: "9px 14px" }}>Sign in</a>
-            <a href="#cta" className="btn-grad-sm" style={{ fontSize: 14, fontWeight: 600, padding: "10px 16px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo</a>
+            <button className="burger" aria-label="Open menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
+              <Burger />
+            </button>
           </div>
         </div>
       </header>
+
+      {/* MOBILE MENU — slides in full-screen from the right */}
+      <div className="menu-wrap" data-open={menuOpen}>
+        <div className="mobile-menu">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
+            <a href="#top" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src={LOGO} alt="Alevo" style={{ width: 30, height: 30, objectFit: "contain" }} />
+              <span style={{ fontWeight: 600, fontSize: 18, letterSpacing: "-.02em" }}>Alevo</span>
+            </a>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div role="group" aria-label="Theme" style={{ display: "flex", gap: 2, padding: 3, borderRadius: 999, border: "1px solid rgba(var(--ink),.1)", background: "rgba(var(--ink),.03)" }}>
+                {themeBtns.map((b) => {
+                  const on = cur_theme === b.key;
+                  return (
+                    <button key={b.key} onClick={() => setTheme(b.key)} aria-label={b.label} title={b.label} style={{ width: 32, height: 28, border: 0, borderRadius: 999, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .25s,color .25s", background: on ? "var(--text)" : "transparent", color: on ? "var(--bg)" : "var(--muted)" }}>{b.icon}</button>
+                  );
+                })}
+              </div>
+              <button aria-label="Close menu" onClick={() => setMenuOpen(false)} style={{ display: "flex", background: "none", border: 0, color: "var(--text)", cursor: "pointer", padding: 6 }}>
+                <XIcon />
+              </button>
+            </div>
+          </div>
+          <nav style={{ display: "flex", flexDirection: "column", padding: "10px 24px" }}>
+            {NAV.map(([l, id]) => (
+              <a key={id} href={`#${id}`} onClick={() => setMenuOpen(false)} style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-.02em", padding: "16px 0", color: activeId === id ? "#38b6ff" : "var(--text)" }}>{l}</a>
+            ))}
+          </nav>
+          <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 16, padding: 24 }}>
+            <a href="#cta" onClick={() => setMenuOpen(false)} className="btn-grad" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "16px 22px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo <ArrowRight /></a>
+            <a href="#" onClick={() => setMenuOpen(false)} style={{ textAlign: "center", fontSize: 15, color: "var(--muted)" }}>Sign in</a>
+          </div>
+        </div>
+      </div>
 
       {/* HERO */}
       <section id="top" style={{ position: "relative", overflow: "hidden" }}>
