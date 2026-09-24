@@ -1,0 +1,10 @@
+{
+  "name": "@alevo/tokens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Alevo shared design tokens (colors, fonts, spacing, radius, motion).",
+  "exports": {
+    "./tokens.css": "./tokens.css"
+  },
+  "files": ["tokens.css"]
+}
