@@ -10,10 +10,11 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#0b1224",
     theme_color: "#0b1224",
+    // Single source of truth — swap public/uploads/logo1.png and everything
+    // (favicon, apple icon, share image, in-page logo, this manifest) follows.
     icons: [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/uploads/logo1.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/uploads/logo1.png", sizes: "512x512", type: "image/png", purpose: "any" },
     ],
   };
 }
