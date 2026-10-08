@@ -12,6 +12,8 @@ export const siteConfig = {
   url: "https://getalevo.com",
   /** Product app — all Login / Get started / Dashboard CTAs point here. */
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://app.getalevo.com",
+  /** Google Calendar appointment-schedule URL (embedded on /contact). */
+  bookingUrl: process.env.NEXT_PUBLIC_BOOKING_URL ?? "",
   tagline: "AI SDR for inbound and outbound",
   description:
     "Alevo is an AI SDR that answers chats, forms and inbound calls in seconds, runs personalized email and cold-call outbound, and books meetings into your CRM.",

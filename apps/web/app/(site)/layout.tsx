@@ -1,18 +1,9 @@
-import { Navbar } from "@/components/sections/navbar";
-import { Footer } from "@/components/sections/footer";
+import { AlevoShell } from "@/components/landing/chrome";
 
 export default function SiteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <Navbar />
-      <main id="main" className="flex-1">
-        {children}
-      </main>
-      <Footer />
-    </>
-  );
+  return <AlevoShell>{children}</AlevoShell>;
 }

@@ -151,6 +151,15 @@
   .alevo.rv [data-reveal] { opacity: 1 !important; transform: none !important; }
 }
 
+/* Long-form legal / prose pages */
+.alevo .prose h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin: 34px 0 10px; }
+.alevo .prose h2:first-child { margin-top: 0; }
+.alevo .prose p { margin: 0 0 14px; }
+.alevo .prose ul { margin: 0 0 14px; padding-left: 20px; }
+.alevo .prose li { margin: 5px 0; }
+.alevo .prose a { color: #38b6ff; }
+.alevo .prose strong { color: var(--text); font-weight: 600; }
+
 /* Header actions (desktop) + mobile hamburger + slide-in menu */
 .alevo .desk-actions { display: flex; gap: 10px; align-items: center; }
 .alevo .burger { display: none; align-items: center; justify-content: center; background: none; border: 0; color: var(--text); cursor: pointer; padding: 6px; }

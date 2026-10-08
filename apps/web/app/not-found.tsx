@@ -1,25 +1,15 @@
 import Link from "next/link";
-import { notFound } from "@/content/copy";
+import "@/components/landing/styles.css";
 
 export default function NotFound() {
   return (
-    <section className="relative grid min-h-[70vh] place-items-center overflow-hidden">
-      <div className="brand-aura absolute inset-0 opacity-60" aria-hidden />
-      <div className="container-page relative flex flex-col items-center gap-6 text-center">
-        <span className="font-display text-7xl font-semibold text-gradient">
-          404
-        </span>
-        <h1 className="max-w-[18ch] font-display text-2xl font-semibold text-balance sm:text-3xl">
-          {notFound.title}
-        </h1>
-        <p className="text-muted-foreground">{notFound.subtitle}</p>
-        <Link
-          href={notFound.cta.href}
-          className="inline-flex h-11 items-center rounded-full px-6 text-sm font-medium text-white [background-image:var(--brand-gradient)] transition-transform hover:-translate-y-0.5"
-        >
-          {notFound.cta.label}
-        </Link>
+    <div className="alevo" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24 }}>
+      <div style={{ textAlign: "center", maxWidth: 520 }}>
+        <div style={{ fontSize: "clamp(72px,14vw,128px)", fontWeight: 600, letterSpacing: "-.05em", lineHeight: 1, backgroundImage: "linear-gradient(120deg,#38b6ff,#a06bff)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>404</div>
+        <h1 style={{ fontSize: "clamp(24px,4vw,34px)", fontWeight: 600, letterSpacing: "-.03em", margin: "14px 0 0" }}>This page wandered off.</h1>
+        <p style={{ color: "var(--muted)", fontSize: 16, margin: "12px 0 0" }}>The link may be broken, or the page may have moved.</p>
+        <Link href="/" style={{ display: "inline-flex", marginTop: 28, padding: "14px 24px", borderRadius: 999, fontWeight: 600, color: "#06070b", background: "linear-gradient(120deg,#38b6ff,#a06bff)" }}>Back home</Link>
       </div>
-    </section>
+    </div>
   );
 }

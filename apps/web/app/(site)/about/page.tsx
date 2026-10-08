@@ -1,95 +1,55 @@
 import type { Metadata } from "next";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
-import { PageHeader } from "@/components/marketing/page-header";
-import { SectionHeading } from "@/components/marketing/section-heading";
-import {
-  FadeIn,
-  Stagger,
-  StaggerItem,
-} from "@/components/motion/motion-primitives";
-import { FinalCta } from "@/components/sections/final-cta";
-import { aboutPage } from "@/content/copy";
+import { PageHead, Section, Container, CtaBand } from "@/components/landing/page-kit";
 
 export const metadata: Metadata = {
   title: "About",
-  description: aboutPage.lead,
+  description:
+    "Why we built Alevo — an AI SDR that answers every lead and works your pipeline across inbound and outbound, so your team spends its time on conversations that count.",
 };
+
+const values = [
+  ["Answer everyone", "Speed to lead wins deals. Every chat, form and call gets a real, useful reply in seconds — not hours."],
+  ["Human when it matters", "Alevo qualifies and books, then hands off to a rep with full context the moment a person should take over."],
+  ["Show the work", "Every message, call and decision is logged, transcribed and synced to your CRM. No black box."],
+];
 
 export default function AboutPage() {
   return (
     <>
-      <PageHeader
-        eyebrow={aboutPage.eyebrow}
-        title={aboutPage.title}
-        subtitle={aboutPage.lead}
+      <PageHead
+        eyebrow="About"
+        title="Selling is human. The busywork isn’t."
+        subtitle="We built Alevo so revenue teams stop losing leads to slow replies and manual follow-up — and spend their time on the conversations that actually move deals."
       />
 
-      {/* Story */}
-      <section className="section-y">
-        <div className="container-page mx-auto max-w-3xl">
-          <FadeIn className="flex flex-col gap-6">
-            {aboutPage.body.map((p, i) => (
-              <p
-                key={i}
-                className="text-foreground/90"
-                style={{ fontSize: "var(--text-lead)", lineHeight: 1.6 }}
-              >
-                {p}
-              </p>
-            ))}
-          </FadeIn>
-        </div>
-      </section>
+      <Section>
+        <Container style={{ padding: 0, maxWidth: 760 }}>
+          <p style={{ fontSize: 19, lineHeight: 1.7, color: "var(--text2)" }}>
+            Most pipelines leak in the same places: a chat that goes unanswered, a form that sits in an inbox, a
+            callback that never happens, a follow-up that slips. The fix isn’t another dashboard — it’s a rep that
+            never sleeps and never drops the thread.
+          </p>
+          <p style={{ fontSize: 19, lineHeight: 1.7, color: "var(--text2)", marginTop: 20 }}>
+            Alevo answers inbound in seconds across chat, forms and calls, and works outbound with personalized email
+            and cold calling — then books meetings straight into your calendar and CRM. It’s the teammate we always
+            wanted: fast, consistent, and honest about when a human should step in.
+          </p>
+        </Container>
+      </Section>
 
-      {/* Values */}
-      <section className="section-y bg-muted/30">
-        <div className="container-page flex flex-col gap-14">
-          <SectionHeading title="What we hold to." />
-          <Stagger className="grid gap-5 md:grid-cols-3">
-            {aboutPage.values.map((v) => (
-              <StaggerItem key={v.title}>
-                <article className="h-full rounded-3xl border border-border bg-card p-7">
-                  <h3 className="font-display text-lg font-semibold">
-                    {v.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{v.body}</p>
-                </article>
-              </StaggerItem>
-            ))}
-          </Stagger>
+      <Section muted>
+        <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#a06bff" }}>WHAT WE HOLD TO</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))", gap: 20, marginTop: 32 }}>
+          {values.map(([t, d]) => (
+            <div key={t} style={{ borderRadius: 22, border: "1px solid rgba(var(--ink),.08)", background: "var(--panel2)", padding: 28 }}>
+              <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-.02em" }}>{t}</div>
+              <p style={{ fontSize: 15, lineHeight: 1.6, color: "var(--muted)", margin: "10px 0 0" }}>{d}</p>
+            </div>
+          ))}
         </div>
-      </section>
+      </Section>
 
-      {/* Team */}
-      <section className="section-y">
-        <div className="container-page flex flex-col gap-14">
-          <SectionHeading eyebrow="The team" title="People, building for people." />
-          <Stagger className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-            {aboutPage.team.map((m) => (
-              <StaggerItem key={m.name}>
-                <article className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-8 text-center">
-                  <Avatar className="size-20">
-                    <AvatarImage src={m.avatar} alt={m.name} />
-                    <AvatarFallback>{m.initials}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-display text-lg font-semibold">
-                      {m.name}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{m.role}</div>
-                  </div>
-                </article>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        </div>
-      </section>
-
-      <FinalCta />
+      <CtaBand title="Put Alevo to work." subtitle="See it handle your real inbound and outbound flows in a 20-minute demo." />
     </>
   );
 }

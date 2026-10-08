@@ -11,6 +11,7 @@ import {
   siGooglecalendar,
 } from "simple-icons";
 import { useTick, useReveal } from "./hooks";
+import { appLinks } from "@/lib/site";
 import "./styles.css";
 
 const GRAD = "linear-gradient(120deg,#38b6ff,#a06bff)";
@@ -253,8 +254,8 @@ export function AlevoLanding() {
                   );
                 })}
               </div>
-              <a href="#" style={{ fontSize: 14, padding: "9px 14px" }}>Sign in</a>
-              <a href="#cta" className="btn-grad-sm" style={{ fontSize: 14, fontWeight: 600, padding: "10px 16px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo</a>
+              <a href={appLinks.login} style={{ fontSize: 14, padding: "9px 14px" }}>Sign in</a>
+              <a href="/contact" className="btn-grad-sm" style={{ fontSize: 14, fontWeight: 600, padding: "10px 16px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo</a>
             </div>
             <button className="burger" aria-label="Open menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
               <Burger />
@@ -291,8 +292,8 @@ export function AlevoLanding() {
             ))}
           </nav>
           <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 16, padding: 24 }}>
-            <a href="#cta" onClick={() => setMenuOpen(false)} className="btn-grad" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "16px 22px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo <ArrowRight /></a>
-            <a href="#" onClick={() => setMenuOpen(false)} style={{ textAlign: "center", fontSize: 15, color: "var(--muted)" }}>Sign in</a>
+            <a href="/contact" onClick={() => setMenuOpen(false)} className="btn-grad" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "16px 22px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo <ArrowRight /></a>
+            <a href={appLinks.login} onClick={() => setMenuOpen(false)} style={{ textAlign: "center", fontSize: 15, color: "var(--muted)" }}>Sign in</a>
           </div>
         </div>
       </div>
@@ -313,8 +314,8 @@ export function AlevoLanding() {
             </h1>
             <p style={{ fontSize: 19, lineHeight: 1.55, color: "var(--muted)", maxWidth: 540, margin: "24px 0 0", textWrap: "pretty" }}>Alevo replies to chats, captures form leads and picks up inbound calls in seconds. Then it works your pipeline with personalized emails and cold calls, and books meetings straight into your calendar and CRM.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 36 }}>
-              <a href="#cta" className="btn-grad" style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "15px 22px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo <ArrowRight /></a>
-              <a href="#pricing" className="btn-ghost" style={{ display: "inline-flex", alignItems: "center", fontWeight: 500, fontSize: 16, padding: "15px 22px", borderRadius: 999, border: "1px solid rgba(var(--ink),.14)", color: "var(--text)" }}>Start 90-day free trial</a>
+              <a href="/contact" className="btn-grad" style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "15px 22px", borderRadius: 999, color: "#06070b", background: GRAD }}>Book a demo <ArrowRight /></a>
+              <a href={appLinks.signup} className="btn-ghost" style={{ display: "inline-flex", alignItems: "center", fontWeight: 500, fontSize: 16, padding: "15px 22px", borderRadius: 999, border: "1px solid rgba(var(--ink),.14)", color: "var(--text)" }}>Start 90-day free trial</a>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 28, marginTop: 44, fontSize: 14, color: "var(--dim)" }}>
               {["Live in under a day", "Works with your CRM", "90-day free trial"].map((x) => (
@@ -612,7 +613,7 @@ export function AlevoLanding() {
             <p style={{ fontSize: 14, lineHeight: 1.55, color: "var(--muted)", margin: "8px 0 0", minHeight: 44 }}>For small teams that want every inbound lead answered.</p>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 24 }}><span style={{ fontSize: 52, fontWeight: 600, letterSpacing: "-.05em", fontVariantNumeric: "tabular-nums" }}>{annual ? "$1,200" : "$1,500"}</span><span style={{ fontSize: 14, color: "var(--dim)" }}>/ month</span></div>
             <div style={{ fontSize: 13, color: "var(--dim)", marginTop: 4 }}>{annual ? "Billed annually" : "Billed monthly"}</div>
-            <a href="#cta" className="btn-outline" style={{ marginTop: 28, display: "flex", justifyContent: "center", padding: 13, borderRadius: 999, border: "1px solid rgba(var(--ink),.16)", fontWeight: 500, fontSize: 15 }}>Start 90-day free trial</a>
+            <a href={appLinks.signup} className="btn-outline" style={{ marginTop: 28, display: "flex", justifyContent: "center", padding: 13, borderRadius: 999, border: "1px solid rgba(var(--ink),.16)", fontWeight: 500, fontSize: 15 }}>Start 90-day free trial</a>
             <div style={{ height: 1, background: "rgba(var(--ink),.07)", margin: "28px 0 22px" }} />
             {["AI chatbot on your website", "Form lead capture and scoring", "Inbound call answering, 1 number", "500 AI conversations / month", "1,000 emails / month", "1 CRM and 1 calendar integration", "Email support"].map((f) => (
               <div key={f} style={{ display: "flex", gap: 12, fontSize: 14.5, lineHeight: 1.45, color: "var(--text2)", padding: "6px 0" }}><span style={{ flex: "none", marginTop: 2 }}><Check color="#38b6ff" /></span>{f}</div>
@@ -629,7 +630,7 @@ export function AlevoLanding() {
               <p style={{ fontSize: 14, lineHeight: 1.55, color: "var(--muted)", margin: "8px 0 0", minHeight: 44 }}>Inbound and outbound together, with calling and sequences.</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 24 }}><span style={{ fontSize: 52, fontWeight: 600, letterSpacing: "-.05em", fontVariantNumeric: "tabular-nums" }}>{annual ? "$2,000" : "$2,500"}</span><span style={{ fontSize: 14, color: "var(--dim)" }}>/ month</span></div>
               <div style={{ fontSize: 13, color: "var(--dim)", marginTop: 4 }}>{annual ? "Billed annually" : "Billed monthly"}</div>
-              <a href="#cta" className="btn-grad-sm" style={{ marginTop: 28, display: "flex", justifyContent: "center", padding: 13, borderRadius: 999, fontWeight: 600, fontSize: 15, color: "#06070b", background: GRAD }}>Start 90-day free trial</a>
+              <a href={appLinks.signup} className="btn-grad-sm" style={{ marginTop: 28, display: "flex", justifyContent: "center", padding: 13, borderRadius: 999, fontWeight: 600, fontSize: 15, color: "#06070b", background: GRAD }}>Start 90-day free trial</a>
               <div style={{ height: 1, background: "rgba(var(--ink),.07)", margin: "28px 0 22px" }} />
               {["Everything in Starter", "2,500 AI conversations / month", "AI cold calling, 1,000 minutes", "10,000 emails with sequences for new and existing customers", "Unlimited CRM and booking integrations", "Custom voice, persona and playbooks", "Live transfer and rep handoff rules", "Analytics and call recordings"].map((f) => (
                 <div key={f} style={{ display: "flex", gap: 12, fontSize: 14.5, lineHeight: 1.45, color: "var(--text2)", padding: "6px 0" }}><span style={{ flex: "none", marginTop: 2 }}><Check color="#8f8cff" /></span>{f}</div>
@@ -643,7 +644,7 @@ export function AlevoLanding() {
             <p style={{ fontSize: 14, lineHeight: 1.55, color: "var(--muted)", margin: "8px 0 0", minHeight: 44 }}>For revenue teams with high volume, compliance and custom needs.</p>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 24 }}><span style={{ fontSize: 52, fontWeight: 600, letterSpacing: "-.05em" }}>Custom</span></div>
             <div style={{ fontSize: 13, color: "var(--dim)", marginTop: 4 }}>Volume-based pricing</div>
-            <a href="#cta" className="btn-outline" style={{ marginTop: 28, display: "flex", justifyContent: "center", padding: 13, borderRadius: 999, border: "1px solid rgba(var(--ink),.16)", fontWeight: 500, fontSize: 15 }}>Talk to sales</a>
+            <a href="/contact" className="btn-outline" style={{ marginTop: 28, display: "flex", justifyContent: "center", padding: 13, borderRadius: 999, border: "1px solid rgba(var(--ink),.16)", fontWeight: 500, fontSize: 15 }}>Talk to sales</a>
             <div style={{ height: 1, background: "rgba(var(--ink),.07)", margin: "28px 0 22px" }} />
             {["Everything in Growth", "Unlimited conversations and custom call volume", "Dedicated phone numbers and local presence", "Custom integrations, API and webhooks", "SSO / SAML and role-based access", "SOC 2 report and data residency options", "Dedicated success manager and SLA"].map((f) => (
               <div key={f} style={{ display: "flex", gap: 12, fontSize: 14.5, lineHeight: 1.45, color: "var(--text2)", padding: "6px 0" }}><span style={{ flex: "none", marginTop: 2 }}><Check color="#a06bff" /></span>{f}</div>
@@ -680,8 +681,8 @@ export function AlevoLanding() {
           <h2 style={{ position: "relative", fontSize: "clamp(36px,5.2vw,68px)", lineHeight: 1.02, letterSpacing: "-.045em", fontWeight: 600, margin: 0, maxWidth: 760, color: "#ffffff", textWrap: "balance" }}>Give every lead a reply in under a second.</h2>
           <p style={{ position: "relative", fontSize: 19, lineHeight: 1.55, color: "#ffffff", margin: "22px 0 0", maxWidth: 520 }}>See Alevo handle your real inbound and outbound flows in a 20-minute demo.</p>
           <div style={{ position: "relative", display: "flex", flexWrap: "wrap", gap: 12, marginTop: 36 }}>
-            <a href="#" className="btn-dark" style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "15px 24px", borderRadius: 999, background: "#0b1224", color: "#ffffff" }}>Book a demo <ArrowRight /></a>
-            <a href="#pricing" className="btn-glass" style={{ display: "inline-flex", alignItems: "center", fontWeight: 500, fontSize: 16, padding: "15px 24px", borderRadius: 999, border: "1px solid rgba(255,255,255,.55)", color: "#ffffff" }}>Start 90-day free trial</a>
+            <a href="/contact" className="btn-dark" style={{ display: "inline-flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 16, padding: "15px 24px", borderRadius: 999, background: "#0b1224", color: "#ffffff" }}>Book a demo <ArrowRight /></a>
+            <a href={appLinks.signup} className="btn-glass" style={{ display: "inline-flex", alignItems: "center", fontWeight: 500, fontSize: 16, padding: "15px 24px", borderRadius: 999, border: "1px solid rgba(255,255,255,.55)", color: "#ffffff" }}>Start 90-day free trial</a>
           </div>
         </div>
       </section>
@@ -691,7 +692,7 @@ export function AlevoLanding() {
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px", display: "flex", flexWrap: "wrap", gap: 24, alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "var(--dim)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}><img src={LOGO} alt="" style={{ width: 22, height: 22, objectFit: "contain" }} /><span style={{ color: "var(--text)", fontWeight: 600 }}>Alevo</span><span>© 2026</span></div>
           <div style={{ display: "flex", gap: 24 }}>
-            {["Privacy", "Terms", "Security", "Contact"].map((l) => <a key={l} href="#" className="lk-dim">{l}</a>)}
+            {[["Privacy", "/privacy"], ["Terms", "/terms"], ["Security", "/security"], ["Contact", "/contact"]].map(([l, h]) => <a key={l} href={h} className="lk-dim">{l}</a>)}
           </div>
         </div>
       </footer>
