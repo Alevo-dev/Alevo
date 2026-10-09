@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # Dummy values so `next build` doesn't fail on missing env. The publishable
+      # key must be a valid FORMAT (base64 of "clerk.example.com$") for Clerk's
+      # prerender-time validation. Pages that hit the DB are force-dynamic.
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+      CLERK_SECRET_KEY: sk_test_ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Provision Supabase roles + apply migrations
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "do \$\$ begin
+            if not exists (select from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
+            if not exists (select from pg_roles where rolname='anon') then create role anon nologin; end if;
+          end \$\$;"
+          for f in supabase/migrations/*.sql; do
+            echo "Applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - run: pnpm turbo run typecheck lint build
+
+      - name: Cross-tenant isolation test
+        run: pnpm --filter @alevo/app test

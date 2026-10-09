@@ -1,0 +1,18 @@
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Production build
+/build
+
+# Env
+.env*
+!.env.example
+
+# Vercel / Sentry
+.vercel
+.sentryclirc
+
+# Misc
+*.tsbuildinfo

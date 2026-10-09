@@ -1,0 +1,28 @@
+{
+  "name": "@alevo/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Alevo auth module — the ONLY place that imports Clerk (plan.md rule 3).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@alevo/db": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "server-only": "^0.0.1"
+  },
+  "peerDependencies": {
+    "@clerk/nextjs": "^6",
+    "next": "^16",
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@alevo/tsconfig": "workspace:*",
+    "@clerk/nextjs": "^6",
+    "typescript": "^5"
+  }
+}

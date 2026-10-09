@@ -6,11 +6,20 @@ Monorepo for **Alevo** — an AI SDR for growth and lead generation across email
 
 ```
 apps/
-  web/          Marketing site — getalevo.com (Next.js 16, Tailwind v4)
-                (app.getalevo.com — the product app — will live in apps/app)
+  web/            Marketing site — getalevo.com (Next.js 16, Tailwind v4)
+  app/            Product app — app.getalevo.com (Next.js 16, Clerk, Supabase/RLS)
 packages/
-  tokens/       Shared design tokens (colors, fonts, spacing, radius, motion)
+  tokens/         Shared design tokens (colors, fonts, spacing, radius, motion)
+  tsconfig/       Shared TypeScript configs
+  eslint-config/  Shared ESLint flat config
+  db/             Drizzle client + tenant RLS seam (withTenant/withService) + schema
+  auth/           Auth module — the only importer of Clerk (withOrg, requireRole, ...)
+supabase/         Postgres migrations (single source of truth for schema + RLS)
 ```
+
+The product app's architecture rules and local-dev setup live in
+[`apps/app/CLAUDE.md`](apps/app/CLAUDE.md). The full product plan is
+[`plan.md`](plan.md).
 
 ## Getting started
 

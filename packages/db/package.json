@@ -1,0 +1,25 @@
+{
+  "name": "@alevo/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Alevo data layer — Drizzle client, tenant claim-injection seam, schema.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:pull": "drizzle-kit pull"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.38.3",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@alevo/tsconfig": "workspace:*",
+    "@types/node": "^20",
+    "drizzle-kit": "^0.30.2",
+    "typescript": "^5"
+  }
+}
