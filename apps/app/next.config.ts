@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Shared workspace packages ship as raw TS (no build step); Next transpiles
   // them. @alevo/tokens ships CSS only and needs no transpile.
   transpilePackages: ["@alevo/db", "@alevo/auth"],
+  allowedDevOrigins: ['magical-midge-partly.ngrok-free.app'],
   images: {
     remotePatterns: [
       // Clerk-hosted avatars + Cloudflare R2 object storage.
