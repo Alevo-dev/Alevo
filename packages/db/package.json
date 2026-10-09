@@ -6,7 +6,7 @@
   "description": "Alevo data layer — Drizzle client, tenant claim-injection seam, schema.",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

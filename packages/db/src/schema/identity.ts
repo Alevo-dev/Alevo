@@ -1,10 +1,6 @@
 /**
- * Drizzle schema — the typed mirror of the SQL in `supabase/migrations/`.
- *
- * The SQL migrations are the single source of truth (they also hold RLS
- * policies, the `app.*` helper functions, and grants that Drizzle can't
- * express). Keep this file in sync by hand, or regenerate with
- * `pnpm --filter @alevo/db db:pull` after a migration lands.
+ * Identity + tenancy tables. Typed mirror of migration 0001. The SQL migrations
+ * remain the single source of truth (RLS, functions, grants).
  */
 import {
   boolean,
@@ -20,7 +16,8 @@ import {
 /** App roles live in OUR database (plan.md rule 4), not in Clerk. */
 export const appRole = pgEnum("app_role", ["viewer", "rep", "admin", "owner"]);
 
-const timestamps = {
+/** Shared created/updated columns. */
+export const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
@@ -84,5 +81,4 @@ export const webhookEvents = pgTable(
   (t) => [unique("webhook_events_provider_event_unique").on(t.provider, t.eventId)],
 );
 
-export const schema = { organizations, users, memberships, webhookEvents, appRole };
 export type AppRole = (typeof appRole.enumValues)[number];

@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import {
   memberships,
+  orgSubscriptions,
   organizations,
+  plans,
   users,
   withService,
   withTenant,
@@ -61,6 +63,18 @@ beforeAll(async () => {
       { orgId: orgAId, userId: userIds[USER_A]!, role: "owner" },
       { orgId: orgBId, userId: userIds[USER_B]!, role: "owner" },
     ]);
+
+    // Give each org a subscription to the seeded Starter plan (for the
+    // billing-isolation assertions below).
+    const [starter] = await tx
+      .select({ id: plans.id })
+      .from(plans)
+      .where(eq(plans.key, "starter"));
+    if (!starter) throw new Error("Starter plan not seeded — run migration 0002");
+    await tx.insert(orgSubscriptions).values([
+      { orgId: orgAId, planId: starter.id },
+      { orgId: orgBId, planId: starter.id },
+    ]);
   });
 });
 
@@ -115,6 +129,52 @@ describe("cross-tenant isolation", () => {
       return r[0]?.role ?? null;
     });
     expect(role).toBe("owner");
+  });
+
+  it("plans reference data is readable by any tenant", async () => {
+    const rows = await withTenant(claimsA, (tx) =>
+      tx.select({ key: plans.key }).from(plans),
+    );
+    const keys = rows.map((r) => r.key).sort();
+    expect(keys).toEqual(["growth", "scale", "starter"]);
+  });
+
+  it("org A sees only its own subscription", async () => {
+    const rows = await withTenant(claimsA, (tx) =>
+      tx.select({ orgId: orgSubscriptions.orgId }).from(orgSubscriptions),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.orgId).toBe(orgAId);
+  });
+
+  it("a platform admin reads all orgs, but current-org scoping stays correct", async () => {
+    // Regression: getCurrentOrg must filter on app.current_org_id() explicitly.
+    // A platform admin can read every org, so an unfiltered read returns many.
+    await withService((tx) =>
+      tx.update(users).set({ isPlatformAdmin: true }).where(eq(users.clerkId, USER_A)),
+    );
+    try {
+      const all = await withTenant(claimsA, (tx) =>
+        tx
+          .select({ clerkId: organizations.clerkId })
+          .from(organizations)
+          .where(inArray(organizations.clerkId, [ORG_A, ORG_B])),
+      );
+      expect(all).toHaveLength(2); // admin sees both orgs
+
+      const scoped = await withTenant(claimsA, (tx) =>
+        tx
+          .select({ clerkId: organizations.clerkId })
+          .from(organizations)
+          .where(sql`${organizations.id} = (select app.current_org_id())`),
+      );
+      expect(scoped).toHaveLength(1); // explicit scoping still resolves one
+      expect(scoped[0]!.clerkId).toBe(ORG_A);
+    } finally {
+      await withService((tx) =>
+        tx.update(users).set({ isPlatformAdmin: false }).where(eq(users.clerkId, USER_A)),
+      );
+    }
   });
 
   it("the service path (RLS bypass) sees every tenant", async () => {
