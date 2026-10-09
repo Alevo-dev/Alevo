@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   changeMemberRole,
   inviteMember,
@@ -8,6 +9,16 @@ import {
   revokeInvite,
   type ActionState,
 } from "./actions";
+
+/** Re-fetch the server-rendered list after a successful mutation so the UI
+ *  reflects the change immediately (no manual reload). `state` is a fresh object
+ *  per dispatch, so this fires on every success. */
+function useRefreshOnSuccess(state: ActionState) {
+  const router = useRouter();
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
+}
 
 const ROLES = ["viewer", "rep", "admin", "owner"] as const;
 type Role = (typeof ROLES)[number];
@@ -47,6 +58,7 @@ function RoleOptions() {
 
 export function InviteForm() {
   const [state, action, pending] = useActionState(inviteMember, INITIAL);
+  useRefreshOnSuccess(state);
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       <input
@@ -71,6 +83,8 @@ export function InviteForm() {
 export function MemberRow({ member }: { member: MemberView }) {
   const [roleState, roleAction, rolePending] = useActionState(changeMemberRole, INITIAL);
   const [rmState, rmAction, rmPending] = useActionState(removeMember, INITIAL);
+  useRefreshOnSuccess(roleState);
+  useRefreshOnSuccess(rmState);
   const error = roleState.error ?? rmState.error;
 
   return (
@@ -118,6 +132,7 @@ export function MemberRow({ member }: { member: MemberView }) {
 
 export function PendingInviteRow({ invite }: { invite: InviteView }) {
   const [state, action, pending] = useActionState(revokeInvite, INITIAL);
+  useRefreshOnSuccess(state);
   return (
     <>
       <tr className="border-b border-border">
