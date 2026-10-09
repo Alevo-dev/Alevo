@@ -41,8 +41,15 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
 - **`@alevo/auth`** — `withOrg(fn)` wraps `withTenant` with the verified Clerk
   session. Use it for all tenant reads/writes in server components/actions.
 - SQL migrations in `/supabase/migrations/` are the **single source of truth**
-  (schema + RLS + `app.*` functions + grants). `packages/db/src/schema.ts`
-  mirrors them for types; regenerate with `pnpm --filter @alevo/db db:pull`.
+  (schema + RLS + `app.*` functions + grants). `packages/db/src/schema/*` mirrors
+  them for types; regenerate with `pnpm --filter @alevo/db db:pull`.
+
+> **Footgun — platform admins bypass RLS.** Every tenant RLS policy allows
+> `app.is_platform_admin()`, so a platform admin reads across ALL orgs. Any query
+> that should return the **current org only** MUST filter explicitly
+> (`where org_id = (select app.current_org_id())` / resolve via `getCurrentOrg`).
+> Never rely on RLS to scope a "current org" read — it's the security backstop,
+> not the selector. (Bit us in `getCurrentOrg` and the Members page.)
 
 ## Current schema (migration 0001)
 

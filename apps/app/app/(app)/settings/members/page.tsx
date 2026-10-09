@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { memberships, orgInvitations, users } from "@alevo/db";
 import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
 import {
@@ -25,7 +25,11 @@ export default async function MembersPage() {
     throw error;
   }
 
-  // RLS scopes both reads to the active org.
+  // Scope BOTH reads explicitly to the active org. RLS is the backstop, not the
+  // selector: a platform admin bypasses RLS and would otherwise see every org.
+  const inActiveOrg = (col: typeof memberships.orgId | typeof orgInvitations.orgId) =>
+    sql`${col} = (select app.current_org_id())`;
+
   const [rows, invites] = await Promise.all([
     withOrg((tx) =>
       tx
@@ -38,7 +42,8 @@ export default async function MembersPage() {
           role: memberships.role,
         })
         .from(memberships)
-        .innerJoin(users, eq(users.id, memberships.userId)),
+        .innerJoin(users, eq(users.id, memberships.userId))
+        .where(inActiveOrg(memberships.orgId)),
     ),
     withOrg((tx) =>
       tx
@@ -49,7 +54,7 @@ export default async function MembersPage() {
           clerkInvitationId: orgInvitations.clerkInvitationId,
         })
         .from(orgInvitations)
-        .where(eq(orgInvitations.status, "pending")),
+        .where(and(eq(orgInvitations.status, "pending"), inActiveOrg(orgInvitations.orgId))),
     ),
   ]);
 

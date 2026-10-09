@@ -170,6 +170,22 @@ describe("cross-tenant isolation", () => {
       );
       expect(scoped).toHaveLength(1); // explicit scoping still resolves one
       expect(scoped[0]!.clerkId).toBe(ORG_A);
+
+      // Same footgun on memberships (the Members page query): unfiltered leaks
+      // across orgs for an admin; explicit org scoping returns only the active org.
+      const allMemberships = await withTenant(claimsA, (tx) =>
+        tx.select({ orgId: memberships.orgId }).from(memberships),
+      );
+      expect(allMemberships.length).toBeGreaterThanOrEqual(2);
+
+      const scopedMemberships = await withTenant(claimsA, (tx) =>
+        tx
+          .select({ orgId: memberships.orgId })
+          .from(memberships)
+          .where(sql`${memberships.orgId} = (select app.current_org_id())`),
+      );
+      expect(scopedMemberships).toHaveLength(1);
+      expect(scopedMemberships[0]!.orgId).toBe(orgAId);
     } finally {
       await withService((tx) =>
         tx.update(users).set({ isPlatformAdmin: false }).where(eq(users.clerkId, USER_A)),
