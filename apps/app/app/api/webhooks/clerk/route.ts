@@ -3,10 +3,13 @@ import * as Sentry from "@sentry/nextjs";
 import { webhookEvents, withService } from "@alevo/db";
 import { verifyClerkWebhook } from "@/lib/webhooks/verify";
 import {
+  mirrorInvitation,
   mirrorMembership,
   mirrorOrg,
   mirrorUser,
   removeMembership,
+  setInvitationStatus,
+  type ClerkInvitationData,
   type ClerkMembershipData,
   type ClerkOrgData,
   type ClerkUserData,
@@ -49,6 +52,21 @@ export async function POST(req: Request) {
         break;
       case "organizationMembership.deleted":
         await removeMembership(event.data as unknown as { id: string });
+        break;
+      case "organizationInvitation.created":
+        await mirrorInvitation(event.data as unknown as ClerkInvitationData);
+        break;
+      case "organizationInvitation.accepted":
+        await setInvitationStatus(
+          (event.data as unknown as ClerkInvitationData).id,
+          "accepted",
+        );
+        break;
+      case "organizationInvitation.revoked":
+        await setInvitationStatus(
+          (event.data as unknown as ClerkInvitationData).id,
+          "revoked",
+        );
         break;
       default:
         break; // unhandled event types are acknowledged, not errored

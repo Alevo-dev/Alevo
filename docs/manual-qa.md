@@ -59,4 +59,32 @@ _(With no DSN set, the route still 500s but nothing is sent — Sentry is a no-o
 
 ---
 
+## Members screen (`/settings/members`)
+
+_Prereqs: `npx supabase db push` to apply migration 0003; in Clerk → Webhooks,
+add the events `organizationInvitation.created`, `organizationInvitation.accepted`,
+`organizationInvitation.revoked` to your endpoint (membership events already cover
+the rest). Restart the dev server._
+
+### Access
+- [ ] As owner/admin, header shows a **Members** link → opens `/settings/members`; you're listed as **owner**.
+- [ ] As a **rep/viewer** (change your own role in SQL to test), the page shows "You need an admin role to manage members."
+
+### Invite + role-on-invite
+- [ ] Invite a teammate (email + role, e.g. **admin**) → "Invitation sent"; they appear under **Pending invitations** with that role.
+- [ ] (DB) `org_invitations` has a `pending` row with the chosen role.
+- [ ] Accept the invite from another account (incognito) → they join; in **Members** they show the **invited role** (e.g. admin, not the default rep), and the pending invite disappears.
+- [ ] (DB) that `org_invitations` row is now `accepted`.
+
+### Manage
+- [ ] Change a member's role → **Save** → persists after reload; (Clerk → the member's org role also flips admin/member).
+- [ ] **Remove** a member → they disappear from the list and lose access to the org.
+- [ ] **Revoke** a pending invitation → it disappears; the invite is revoked in Clerk (they can no longer accept).
+
+### Guards
+- [ ] Try to demote or remove the **last owner** → blocked with an error message.
+- [ ] A non-owner admin cannot grant/modify the **owner** role (blocked).
+
+---
+
 _Next phase appends its own section here._
