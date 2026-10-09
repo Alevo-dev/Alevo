@@ -25,12 +25,17 @@ async function activeContext() {
 export async function inviteToActiveOrg(params: { email: string; role: AppRole }) {
   const { userId, orgId } = await activeContext();
   const client = await clerkClient();
+  // Where Clerk sends the invitee after they accept. Must be publicly reachable
+  // (the ngrok URL in dev — the invite is often opened on another device, so
+  // localhost won't work). The <SignUp>/<SignIn> pages handle the __clerk_ticket.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   const invitation = await client.organizations.createOrganizationInvitation({
     organizationId: orgId,
     emailAddress: params.email,
     role: toClerkRole(params.role),
     inviterUserId: userId,
     publicMetadata: { alevoRole: params.role },
+    ...(appUrl ? { redirectUrl: `${appUrl}/sign-up` } : {}),
   });
   return { clerkInvitationId: invitation.id };
 }
