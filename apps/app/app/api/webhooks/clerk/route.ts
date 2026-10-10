@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { webhookEvents, withService } from "@alevo/db";
+import { inngest } from "@/lib/inngest/client";
 import { verifyClerkWebhook } from "@/lib/webhooks/verify";
 import {
   mirrorInvitation,
@@ -42,7 +43,17 @@ export async function POST(req: Request) {
       case "user.updated":
         await mirrorUser(event.data as unknown as ClerkUserData);
         break;
-      case "organization.created":
+      case "organization.created": {
+        const org = await mirrorOrg(event.data as unknown as ClerkOrgData);
+        try {
+          await inngest.send({ name: "org/provisioned", data: { orgId: org.id } });
+        } catch (sendError) {
+          // Non-fatal: the org is already mirrored; don't fail (and retry) the
+          // whole webhook just because the event bus is unreachable.
+          Sentry.captureException(sendError);
+        }
+        break;
+      }
       case "organization.updated":
         await mirrorOrg(event.data as unknown as ClerkOrgData);
         break;

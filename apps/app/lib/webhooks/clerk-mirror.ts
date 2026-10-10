@@ -99,15 +99,18 @@ export async function mirrorUser(data: ClerkUserData) {
 
 export async function mirrorOrg(data: ClerkOrgData) {
   const values = { clerkId: data.id, name: data.name, slug: data.slug ?? null };
-  await withService((tx) =>
+  const [org] = await withService((tx) =>
     tx
       .insert(organizations)
       .values(values)
       .onConflictDoUpdate({
         target: organizations.clerkId,
         set: { name: values.name, slug: values.slug, updatedAt: new Date() },
-      }),
+      })
+      .returning({ id: organizations.id }),
   );
+  if (!org) throw new Error("Failed to mirror organization");
+  return org;
 }
 
 /**

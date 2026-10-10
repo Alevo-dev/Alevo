@@ -87,4 +87,18 @@ the rest). Restart the dev server._
 
 ---
 
+## Inngest baseline (durable workflows)
+
+_Prereq: in a separate terminal run `npx inngest-cli dev` (it auto-discovers
+`http://localhost:3000/api/inngest`). Open the Inngest dev dashboard at
+`http://localhost:8288`. The app dev server must also be running._
+
+- [ ] The Inngest dev dashboard shows the app synced and the **`org-provisioned`** function registered.
+- [ ] **Create a new organization** in the app → in the dashboard, an **`org/provisioned`** event appears and the `org-provisioned` function runs to **completion** (the `mark-provisioned` step succeeds).
+- [ ] (Alternative trigger) From the dashboard you can "Send event" `org/provisioned` with `{ "data": { "orgId": "test" } }` and watch a run.
+- [ ] Deleting/creating orgs for the same tenant does not run them in parallel (concurrency key = `orgId`, limit 1) — visible as serialized runs under load.
+- [ ] Webhook resilience: if the Inngest dev server is **not** running, creating an org still succeeds (the event send is non-fatal) — the org still appears in Supabase.
+
+---
+
 _Next phase appends its own section here._

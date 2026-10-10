@@ -51,11 +51,30 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
 > Never rely on RLS to scope a "current org" read — it's the security backstop,
 > not the selector. (Bit us in `getCurrentOrg` and the Members page.)
 
-## Current schema (migration 0001)
+## Current schema
 
-`organizations`, `users`, `memberships` (role `app_role`), `webhook_events`
-(idempotency ledger). Coming next: `audit_log`, `plans`, `org_subscriptions`,
-`usage_counters`, `org_secrets`, `files`, then the Sprint 2 conversation tables.
+- **0001** identity + tenancy: `organizations`, `users`, `memberships` (role
+  `app_role`), `webhook_events` (idempotency ledger) + the `app.*` RLS helpers.
+- **0002** billing: `plans` (3 seeded tiers, readable by any tenant),
+  `org_subscriptions`, `usage_counters` (tenant-isolated reads).
+- **0003** `org_invitations` (mirrors Clerk invites, carries the app role).
+
+Coming next: `audit_log`, `org_secrets`, `files`, then the Sprint 2 conversation
+tables.
+
+## Durable workflows (Inngest)
+
+- Client in `lib/inngest/client.ts`; functions in `lib/inngest/functions.ts`
+  (all registered in the `functions` array); served at `/api/inngest`.
+- **Conventions (rule 10):** every function sets a per-tenant concurrency key
+  `{ key: "event.data.orgId", … }`; only make something a `step` if it calls a
+  vendor or needs independent retry (group pure DB writes); `throttle`
+  vendor-calling functions to the vendor's rate limit; heavy AI work runs as
+  steps here, never in Supabase Edge Functions.
+- Event payloads carry `orgId` (our uuid). Sending an event from a webhook is a
+  side-effect — wrap it so a send failure never fails the webhook.
+- Local: `npx inngest-cli dev` (auto-discovers `/api/inngest`). Prod: the Vercel
+  integration sets `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`.
 
 ## Platform-admin bootstrap
 
