@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-12
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -16,7 +16,7 @@ Three layers, built in this order, after a shared multi-tenant platform:
 | Layer | What it does | When |
 |---|---|---|
 | **0. Platform** | Tenancy, auth, roles, super admin, secrets, webhooks, storage, usage metering | First |
-| **1. Inbound + email prospecting** | Capture → qualify → book → write back. Forms, chat widget, SMS, email, inbound voice, plus cold email prospecting (Apollo-sourced or CSV lists) that hands replies to the Qualifier. Enrichment later | MVP |
+| **1. Inbound + email prospecting** | Capture → qualify → book → write back. Forms, chat widget, SMS, email, inbound voice, plus cold email prospecting (Apollo-sourced or CSV lists) that hands replies to the Qualifier. Enrichment later. *Proposed (timing TBD, §9): LinkedIn as a second outreach channel, and buying-signal–triggered prioritization.* | MVP |
 | **2. Outbound voice** | Consent-gated AI phone outreach to a US ICP, reusing the Layer 1 Qualifier to qualify and book | After inbound has a real consent pool |
 | **3. Coaching** | AI call analysis for sales reps, with an analyzer persona | Last |
 
@@ -44,6 +44,8 @@ Priced at $1,500–5,000/mo, Alevo competes with **hiring a human SDR** (typical
 | Email (conversational) | Resend | Replies to people who contacted the MSP; never cold email |
 | Lead sourcing | Apollo API | Search by the tenant's ICP, import verified contacts for prospecting; enrichment post-MVP |
 | Email (cold prospecting) | Instantly or Smartlead via API (decision pending) | Per-tenant sending domains + mailboxes, warmup, sequences; replies webhooked into the Qualifier |
+| LinkedIn outreach | Unipile API | Each tenant connects their own LinkedIn account; Alevo sends connection requests + DMs as sequence steps and reads replies via one API. Strict per-account daily caps. Timing TBD (§9) |
+| Buying signals / intent | Apollo Signals first (job changes, funding, hiring, web intent), extensible to trigger-event / web-visit providers | Detects in-market companies/contacts; prioritizes sequences and feeds Qualifier context. Distinct from Apollo contact enrichment. Timing TBD (§9) |
 | Voice agent | Vapi (ElevenLabs voices via Vapi) | Inbound first; outbound later. Qualifier runs in Alevo as a custom LLM endpoint; Vapi sits behind the voice adapter. Own pipeline (Pipecat/LiveKit) only at scale, when vendor discounts run out |
 | Booking | Cal.com API (default; MSPs without a tool are set up on it), Google/M365 basic direct, Calendly link mode | Direct adapters book during live calls. Alevo never rebuilds scheduling features; advanced needs → Cal.com |
 | PSA | ConnectWise Manage first | Design partner's PSA. Adapter interface; HaloPSA/HubSpot as second implementations |
@@ -99,6 +101,8 @@ Clerk stays on its two free default roles, used only for "can manage org members
 ### Core data model (MVP)
 
 `organizations`, `users`, `memberships`, `plans`, `org_subscriptions`, `usage_counters`, `org_secrets`, `contacts`, `conversations`, `messages`, `consents`, `meetings`, `calls`, `kb_documents`, `kb_chunks` (pgvector), `files` (R2 keys), `audit_log`.
+
+*If LinkedIn outreach / signals land in the MVP (§9): add a `linkedin` channel value on `conversations`/`messages`, a `linkedin_accounts` table (Unipile account id + connection status, per rep/org), and a `signals` table (entity ref, signal type, source, payload, weight, `detected_at`, `acted_on`). Connected-account tokens live in `org_secrets`.*
 
 ---
 
@@ -251,6 +255,23 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [ ] Daily send caps per mailbox; prospecting emails metered in `usage_counters`
 - [ ] Dashboard: sent, replies, interested, meetings booked from prospecting
 
+**LinkedIn outreach channel — PROPOSED, timing TBD (§9) (~20–30h)**
+- [ ] Unipile adapter behind the channel interface (rule 6): connect a tenant's LinkedIn account, send connection request, send DM, fetch replies
+- [ ] Onboarding step: tenant connects their own LinkedIn account (hosted Unipile auth); status + health shown in dashboard
+- [ ] Multi-channel sequences: sequence steps can be email or LinkedIn (invite → wait for accept → DM); reuses the existing sequencer and Inngest cadence engine
+- [ ] Reply webhook → classify → interested replies open a conversation the Qualifier takes over (same path as email prospecting)
+- [ ] Per-account safety: conservative daily caps (invites ~20–25/day, messages capped), human-like pacing/throttle (rule 10), warmup on new accounts, auto-pause on LinkedIn restriction signals
+- [ ] `linkedin` channel on `conversations`/`messages`; LinkedIn touches metered in `usage_counters`
+- [ ] Dashboard: invites sent/accepted, messages, replies, meetings booked via LinkedIn
+
+**Buying-signal engine — PROPOSED, timing TBD (§9) (~20–30h)**
+- [ ] Signals adapter (Apollo Signals first): poll/webhook for trigger events on tracked companies/contacts — job changes, hiring, funding, leadership change, tech-stack change, web intent
+- [ ] `signals` table + Inngest flow: ingest → score/weight → raise signal (idempotent per provider event id, rule 7)
+- [ ] Prioritization: fresh signals bump matching prospects to the front of sequences / trigger enrollment of ICP-matching contacts
+- [ ] Signal context passed to the Qualifier (why-now) and surfaced on the conversation/lead view
+- [ ] Signal volume metered in `usage_counters`; respect tier allowance
+- [ ] Dashboard: active signals, signal → sequence → meeting attribution
+
 ### Hardening + first tenant (30–35h)
 - [ ] Usage caps per §6: alert at 80%; inbound continues as overage, outbound stops at 100%
 - [ ] Retries and error handling on every vendor call
@@ -264,11 +285,15 @@ Outbound voice is in every tier commercially but ships in Layer 2. Until then, e
 
 ---
 
-## 5. Post-MVP (~245h; ~470–520h total)
+## 5. Post-MVP (~285–305h; ~510–580h total)
+
+If the owner keeps LinkedIn outreach and the buying-signal engine post-MVP, they live here. If either is pulled into the MVP (§9), it moves to its Sprint 7 sub-block instead.
 
 | Item | Est. | Notes |
 |---|---|---|
-| Enrichment (Apollo / LinkedIn) | ~10h | Company data, tech stack, intent signals into Qualifier context for inbound leads and existing contacts (lead sourcing is already in the MVP) |
+| Enrichment (Apollo / LinkedIn data) | ~10h | Company data, tech stack into Qualifier context for inbound leads and existing contacts (lead sourcing is already in the MVP) |
+| LinkedIn outreach channel (Unipile) | ~20–30h | Second outbound channel: connection requests + DMs as multi-channel sequence steps; replies → Qualifier. Per-account daily caps + restriction auto-pause. Owner may pull into the MVP (§9) |
+| Buying-signal / intent engine | ~20–30h | Apollo Signals + trigger events; prioritizes sequences and feeds Qualifier "why-now." Distinct from enrichment. Owner may pull into the MVP (§9) |
 | Second PSA/CRM (HaloPSA or HubSpot) | ~35h | Second adapter implementation |
 | Outbound AI voice | ~70h | Consent-gated dispatcher; dial only on valid consent; spoken "stop" revokes across channels; checks dial allowance before every call |
 | Stripe billing | ~15h | Tiers, overage line items from `usage_counters` |
@@ -292,6 +317,9 @@ Outbound voice is in every tier commercially but ships in Layer 2. Until then, e
 | Outbound dials | 1,000 | 3,000 | 7,500 |
 | Sourced leads (Apollo) | 600 | 1,800 | 4,500 |
 | Prospecting emails | 2,000 | 6,000 | 15,000 |
+| LinkedIn connected accounts (proposed) | 1 | 2 | 3 |
+| LinkedIn touches — invites + messages (proposed) | 400 | 1,200 | 3,000 |
+| Buying-signal credits / tracked companies (proposed) | 200 | 600 | 1,500 |
 | Sending domains / mailboxes | 2 / 4 | 4 / 10 | 8 / 20 |
 | Phone numbers | 1 | 3 | 5 |
 | Seats | Unlimited | Unlimited | Unlimited |
@@ -311,6 +339,7 @@ Outbound voice is in every tier commercially but ships in Layer 2. Until then, e
 | Voice minutes (inbound) | Alert | Keep answering; bill overage |
 | Voice minutes (outbound) / outbound dials | Alert | **Pause outbound**; owner can approve overage or upgrade |
 | Prospecting emails | Alert | **Pause sequences**; capacity is bound by mailboxes, so the fix is an upgrade, not overage |
+| LinkedIn touches (if shipped) | Alert | **Pause LinkedIn steps**; capacity is bound by account safety limits, so the fix is more accounts / an upgrade, not overage |
 
 Proposed overage: $1.50 per conversation, $0.40 per voice minute, $0.25 per dial.
 
@@ -375,6 +404,8 @@ MVP ~6 weeks, first tenant ~8 weeks, full build ~11 weeks. At this pace vendors 
 8. **CASL.** Cold email to Canadian recipients generally needs consent or an exemption, with stiff penalties. *Mitigation:* block Canadian recipients unless a basis is recorded; US-only by default.
 9. **Silent latency under load.** Concurrency limits queue work rather than fail it, so slow replies go unnoticed. *Mitigation:* rule 10 + the speed-to-lead metric.
 10. **Outbound voice cost.** The one variable that can erode margin. *Mitigation:* metered before dispatch, hard pause at limit.
+11. **LinkedIn ToS / account restriction.** LinkedIn has no official outreach API; Unipile drives the tenant's real account, which LinkedIn can restrict or ban for aggressive automation. It is the *tenant's own* account, so a ban hurts the customer directly. *Mitigation:* conservative per-account daily caps, human-like pacing, warmup, auto-pause on restriction signals, explicit disclosure that the tenant accepts LinkedIn-ToS risk on their account.
+12. **Intent-data accuracy, cost, and privacy.** Buying signals are noisy and priced per signal/contact; web-visit de-anonymization raises GDPR/PIPEDA/CASL concerns, especially for Canadian MSPs. *Mitigation:* start with Apollo Signals (already contracted), score/threshold before acting, exclude Canadian contacts from signal-triggered cold outreach unless a CASL basis exists (consistent with the email prospecting CASL rule and risk #8).
 
 ---
 
@@ -388,6 +419,10 @@ MVP ~6 weeks, first tenant ~8 weeks, full build ~11 weeks. At this pace vendors 
 - [ ] Apollo account model: one Alevo account (credits resold in the tiers) vs each MSP connecting its own Apollo key
 - [ ] Design-partner terms: discount or free period while outbound isn't live
 - [ ] Confirmed weekly hours (sets every date above)
+- [ ] **LinkedIn outreach: MVP (Sprint 7 multi-channel) or Post-MVP?** Mechanism decided = Unipile (tenant connects own account). Pending owner.
+- [ ] **Buying-signal engine: MVP (signal-triggered sequencing) or Post-MVP?** Pending owner.
+- [ ] Buying-signal source beyond Apollo Signals (dedicated intent provider / web-visit de-anon) — defer until the engine proves out
+- [ ] Who owns LinkedIn-ToS risk on the connected account (confirm it's the tenant, documented in the contract)
 
 ### Decided
 - [x] Backend, workflows, auth, storage — see decision record
@@ -398,6 +433,7 @@ MVP ~6 weeks, first tenant ~8 weeks, full build ~11 weeks. At this pace vendors 
 - [x] First PSA: ConnectWise (design partner's); HaloPSA post-MVP, 2026-10-08
 - [x] SMS: one Twilio subaccount per MSP, 2026-10-08
 - [x] Apollo lead sourcing moved into the MVP (Sprint 7); enrichment stays post-MVP, 2026-10-06
+- [x] LinkedIn outreach mechanism: Unipile unified API (tenant connects own LinkedIn account), 2026-10-12
 - [x] Voice: Vapi over ElevenLabs Agents for telephony controls and flexibility, 2026-10-05
 
 ## 10. Brand (reference)
