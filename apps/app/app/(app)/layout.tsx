@@ -15,6 +15,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/settings/members" className="hover:text-foreground">
               Members
             </Link>
+            <Link href="/settings/secrets" className="hover:text-foreground">
+              Integrations
+            </Link>
           </nav>
           <OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/dashboard" />
         </div>

@@ -104,4 +104,25 @@ _Prereq: in a separate terminal run `npx inngest-cli dev` (it auto-discovers
 
 ---
 
+## Encrypted org secrets (`/settings/secrets` → "Integrations")
+
+_Prereq: `npx supabase db push` to apply migration 0004; `SECRETS_MASTER_KEY` set
+in `.env.local` (already added); restart the dev server._
+
+### Access
+- [ ] Header shows **Integrations**; as admin/owner it opens `/settings/secrets` with the secret registry (Slack webhook, Cal.com key).
+- [ ] As a **rep/viewer**, the page shows "You need an admin role to manage integrations."
+
+### Set / replace / clear
+- [ ] Enter a value for **Slack webhook URL** → Save → status flips to **Set**; the value is never displayed back.
+- [ ] **Replace** it with a new value → still **Set** (no error).
+- [ ] **Clear** it → status returns to **Not set**.
+
+### Encryption at rest (the whole point)
+- [ ] In Supabase → **`org_secrets`**: after saving, the row's **`ciphertext`** column is gibberish base64 — the plaintext (e.g. the Slack URL) appears **nowhere**. `iv` and `auth_tag` are populated.
+- [ ] Saving the **same** value twice (clear, then set again) produces a **different** ciphertext/iv (random per-encryption nonce).
+- [ ] The table is service-only: it has no client read path (RLS on, no policy/grant) — only server code decrypts, never the browser.
+
+---
+
 _Next phase appends its own section here._

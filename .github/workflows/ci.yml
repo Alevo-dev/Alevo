@@ -31,6 +31,8 @@ jobs:
       # prerender-time validation. Pages that hit the DB are force-dynamic.
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
       CLERK_SECRET_KEY: sk_test_ci
+      # Dummy 32-byte base64 key so the secret seal/open round-trip test runs.
+      SECRETS_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 
     steps:
       - uses: actions/checkout@v4
