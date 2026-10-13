@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { deleteOrgSecret, setOrgSecret } from "@alevo/db";
 import { getCurrentOrg, requireRole } from "@alevo/auth";
-import { isSecretKey } from "@/lib/secrets-registry";
+import { getSecretSpec, isSecretKey } from "@/lib/secrets-registry";
 
 export type ActionState = { ok?: boolean; error?: string };
 
@@ -28,6 +28,8 @@ export async function saveSecret(
     const value = String(formData.get("value") ?? "").trim();
     if (!isSecretKey(key)) return { error: "Unknown secret" };
     if (!value) return { error: "Value is required" };
+    const formatError = getSecretSpec(key).validate?.(value);
+    if (formatError) return { error: formatError };
     await setOrgSecret(org.id, key, value);
     revalidatePath("/settings/secrets");
     return { ok: true };

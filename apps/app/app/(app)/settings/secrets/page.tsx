@@ -37,6 +37,7 @@ export default async function SecretsPage() {
             label={s.label}
             help={s.help}
             placeholder={s.placeholder}
+            inputType={s.inputType}
             isSet={setKeys.has(s.key)}
           />
         ))}

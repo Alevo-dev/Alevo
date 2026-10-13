@@ -22,10 +22,18 @@ export type SecretRowProps = {
   label: string;
   help: string;
   placeholder: string;
+  inputType: "url" | "password";
   isSet: boolean;
 };
 
-export function SecretRow({ secretKey, label, help, placeholder, isSet }: SecretRowProps) {
+export function SecretRow({
+  secretKey,
+  label,
+  help,
+  placeholder,
+  inputType,
+  isSet,
+}: SecretRowProps) {
   const [saveState, saveAction, savePending] = useActionState(saveSecret, INITIAL);
   const [clearState, clearAction, clearPending] = useActionState(clearSecret, INITIAL);
   useRefreshOnSuccess(saveState);
@@ -55,7 +63,7 @@ export function SecretRow({ secretKey, label, help, placeholder, isSet }: Secret
           <input type="hidden" name="key" value={secretKey} />
           <input
             name="value"
-            type="password"
+            type={inputType}
             autoComplete="off"
             required
             placeholder={isSet ? "Enter a new value to replace" : placeholder}

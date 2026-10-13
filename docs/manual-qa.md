@@ -113,6 +113,9 @@ in `.env.local` (already added); restart the dev server._
 - [ ] Header shows **Integrations**; as admin/owner it opens `/settings/secrets` with the secret registry (Slack webhook, Cal.com key).
 - [ ] As a **rep/viewer**, the page shows "You need an admin role to manage integrations."
 
+### Validation
+- [ ] **Slack webhook URL** rejects bad input: `not-a-url` → "Enter a valid URL."; an `http://` URL → "must start with https://"; a non-Slack host (e.g. `https://example.com`) → "Must be a Slack webhook URL (hooks.slack.com)." A real `https://hooks.slack.com/services/…` saves.
+
 ### Set / replace / clear
 - [ ] Enter a value for **Slack webhook URL** → Save → status flips to **Set**; the value is never displayed back.
 - [ ] **Replace** it with a new value → still **Set** (no error).
