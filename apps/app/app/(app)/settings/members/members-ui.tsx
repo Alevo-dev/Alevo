@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   changeMemberRole,
@@ -58,24 +58,38 @@ function RoleOptions() {
 
 export function InviteForm() {
   const [state, action, pending] = useActionState(inviteMember, INITIAL);
+  const [dirty, setDirty] = useState(false);
   useRefreshOnSuccess(state);
+  const error = dirty ? undefined : state.error;
+  const sent = !dirty && state.ok;
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
+    <form
+      action={action}
+      onSubmit={() => setDirty(false)}
+      className="flex flex-wrap items-center gap-2"
+    >
       <input
         name="email"
         type="email"
         required
+        onChange={() => setDirty(true)}
         placeholder="teammate@company.com"
         className="min-w-64 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
       />
-      <select name="role" defaultValue="rep" className={selectClass} aria-label="Role">
+      <select
+        name="role"
+        defaultValue="rep"
+        onChange={() => setDirty(true)}
+        className={selectClass}
+        aria-label="Role"
+      >
         <RoleOptions />
       </select>
       <button type="submit" disabled={pending} className={btnClass}>
         {pending ? "Inviting…" : "Invite"}
       </button>
-      {state.error && <p className="w-full text-sm text-destructive">{state.error}</p>}
-      {state.ok && <p className="w-full text-sm text-muted-foreground">Invitation sent.</p>}
+      {error && <p className="w-full text-sm text-destructive">{error}</p>}
+      {sent && <p className="w-full text-sm text-muted-foreground">Invitation sent.</p>}
     </form>
   );
 }
@@ -83,9 +97,10 @@ export function InviteForm() {
 export function MemberRow({ member }: { member: MemberView }) {
   const [roleState, roleAction, rolePending] = useActionState(changeMemberRole, INITIAL);
   const [rmState, rmAction, rmPending] = useActionState(removeMember, INITIAL);
+  const [dirty, setDirty] = useState(false);
   useRefreshOnSuccess(roleState);
   useRefreshOnSuccess(rmState);
-  const error = roleState.error ?? rmState.error;
+  const error = dirty ? undefined : (roleState.error ?? rmState.error);
 
   return (
     <>
@@ -93,12 +108,17 @@ export function MemberRow({ member }: { member: MemberView }) {
         <td className="py-2 pr-4">{member.name ?? "—"}</td>
         <td className="py-2 pr-4 text-muted-foreground">{member.email ?? "—"}</td>
         <td className="py-2 pr-4">
-          <form action={roleAction} className="flex items-center gap-2">
+          <form
+            action={roleAction}
+            onSubmit={() => setDirty(false)}
+            className="flex items-center gap-2"
+          >
             <input type="hidden" name="userId" value={member.userId} />
             <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
             <select
               name="role"
               defaultValue={member.role}
+              onChange={() => setDirty(true)}
               className={selectClass}
               aria-label={`Role for ${member.email ?? member.userId}`}
             >
@@ -110,7 +130,7 @@ export function MemberRow({ member }: { member: MemberView }) {
           </form>
         </td>
         <td className="py-2">
-          <form action={rmAction}>
+          <form action={rmAction} onSubmit={() => setDirty(false)}>
             <input type="hidden" name="userId" value={member.userId} />
             <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
             <button type="submit" disabled={rmPending} className={btnClass}>
