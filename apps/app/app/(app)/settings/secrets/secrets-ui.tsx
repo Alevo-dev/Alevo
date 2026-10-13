@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearSecret, saveSecret, type ActionState } from "./actions";
 
@@ -36,9 +36,13 @@ export function SecretRow({
 }: SecretRowProps) {
   const [saveState, saveAction, savePending] = useActionState(saveSecret, INITIAL);
   const [clearState, clearAction, clearPending] = useActionState(clearSecret, INITIAL);
+  // Hide the last result once the user starts editing again; a new submit
+  // result clears `dirty` so the fresh message shows.
+  const [dirty, setDirty] = useState(false);
   useRefreshOnSuccess(saveState);
   useRefreshOnSuccess(clearState);
-  const error = saveState.error ?? clearState.error;
+  const error = dirty ? undefined : (saveState.error ?? clearState.error);
+  const saved = !dirty && !error && (saveState.ok || clearState.ok);
 
   return (
     <div className="rounded-lg border border-border p-4">
@@ -59,13 +63,18 @@ export function SecretRow({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <form action={saveAction} className="flex flex-1 flex-wrap items-center gap-2">
+        <form
+          action={saveAction}
+          onSubmit={() => setDirty(false)}
+          className="flex flex-1 flex-wrap items-center gap-2"
+        >
           <input type="hidden" name="key" value={secretKey} />
           <input
             name="value"
             type={inputType}
             autoComplete="off"
             required
+            onChange={() => setDirty(true)}
             placeholder={isSet ? "Enter a new value to replace" : placeholder}
             className={inputClass}
           />
@@ -74,7 +83,7 @@ export function SecretRow({
           </button>
         </form>
         {isSet && (
-          <form action={clearAction}>
+          <form action={clearAction} onSubmit={() => setDirty(false)}>
             <input type="hidden" name="key" value={secretKey} />
             <button type="submit" disabled={clearPending} className={btnClass}>
               Clear
@@ -84,9 +93,7 @@ export function SecretRow({
       </div>
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-      {(saveState.ok || clearState.ok) && !error && (
-        <p className="mt-2 text-sm text-muted-foreground">Saved.</p>
-      )}
+      {saved && <p className="mt-2 text-sm text-muted-foreground">Saved.</p>}
     </div>
   );
 }
