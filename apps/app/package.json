@@ -16,6 +16,7 @@
     "@alevo/tokens": "workspace:*",
     "@clerk/nextjs": "^6",
     "@sentry/nextjs": "^11",
+    "aws4fetch": "^1",
     "drizzle-orm": "^0.38.3",
     "inngest": "^4",
     "next": "16.3.6",

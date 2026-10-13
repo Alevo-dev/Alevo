@@ -7,4 +7,5 @@ export {
   deleteOrgSecret,
   listOrgSecretKeys,
 } from "./secrets";
+export { recordAudit, type AuditEntry } from "./audit";
 export * from "./schema";

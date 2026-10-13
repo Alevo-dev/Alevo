@@ -58,9 +58,12 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
 - **0002** billing: `plans` (3 seeded tiers, readable by any tenant),
   `org_subscriptions`, `usage_counters` (tenant-isolated reads).
 - **0003** `org_invitations` (mirrors Clerk invites, carries the app role).
+- **0004** `org_secrets` (AES-256-GCM, service-path only — rule 12).
+- **0005** `audit_log` (append-only; `recordAudit`; tenant-scoped reads).
+- **0006** `files` (R2 object key + metadata; tenant-scoped reads).
 
-Coming next: `audit_log`, `org_secrets`, `files`, then the Sprint 2 conversation
-tables.
+Coming next: the Sprint 2 conversation tables (`contacts`, `conversations`,
+`messages`, `consents`, `kb_documents`, `kb_chunks`).
 
 ## Durable workflows (Inngest)
 

@@ -7,7 +7,8 @@ Monorepo for **Alevo** — an AI SDR for growth and lead generation across email
 ```
 apps/
   web/            Marketing site — getalevo.com (Next.js 16, Tailwind v4)
-  app/            Product app — app.getalevo.com (Next.js 16, Clerk, Supabase/RLS)
+  app/            Product app (tenants) — app.getalevo.com (Next 16, Clerk, Supabase/RLS)
+  admin/          Platform super-admin — admin.getalevo.com (Alevo-internal)
 packages/
   tokens/         Shared design tokens (colors, fonts, spacing, radius, motion)
   tsconfig/       Shared TypeScript configs
@@ -38,11 +39,10 @@ Create **one Vercel project per app**, both pointed at this repo:
 | Project | Root Directory | Domain |
 | --- | --- | --- |
 | alevo-web | `apps/web` | getalevo.com |
-| alevo-app | `apps/app` (later) | app.getalevo.com |
+| alevo-app | `apps/app` | app.getalevo.com |
+| alevo-admin | `apps/admin` | admin.getalevo.com |
 
-Vercel auto-detects Next.js + Turborepo. Env vars for `apps/web`:
-
-- `NEXT_PUBLIC_APP_URL` — product app origin (default `https://app.getalevo.com`)
-- `NEXT_PUBLIC_ASSETS_URL` — Cloudflare R2 / CDN image origin (optional)
-
-See `apps/web/.env.example`.
+Vercel auto-detects Next.js + Turborepo. Each app has its own `.env.example`.
+`apps/admin` reuses the same Supabase + Clerk as `apps/app` and is gated by
+`users.is_platform_admin`; `admin.getalevo.com` must be an allowed origin in
+Clerk. Locally it runs on port **3001** (`pnpm --filter @alevo/admin dev`).

@@ -128,4 +128,38 @@ in `.env.local` (already added); restart the dev server._
 
 ---
 
+## Slack notifications (per org)
+
+_Prereq: a Slack **incoming webhook** URL saved under Integrations (`slack_webhook_url`)._
+
+- [ ] On `/settings/secrets`, with the Slack webhook **set**, click **Send test** → your Slack channel receives "Test notification from Alevo — <org>", and the page shows "Sent".
+- [ ] With the webhook **not set**, the Send test button is disabled.
+- [ ] A wrong/revoked webhook → the page shows the Slack error (e.g. "Slack returned 404"), and nothing else breaks.
+
+## Super admin console (admin.getalevo.com — `apps/admin`)
+
+_Prereq: `npx supabase db push` (applies migration 0005). You must be a platform admin
+(`users.is_platform_admin = true`). Run the admin app: `pnpm --filter @alevo/admin dev`
+(http://localhost:3001). It reuses the same Clerk + Supabase._
+
+- [ ] As a platform admin, sign in at localhost:3001 → the console lists **all** organizations with member count, plan, status, created date.
+- [ ] As a signed-in **non-platform-admin**, the console shows "Not authorized."
+- [ ] Perform admin actions in the product app (invite/change role/remove, set/clear a secret) → they appear under **Recent activity** here with the right action + target + org.
+- [ ] (DB) `audit_log` has a row per action with `actor_user_id` = you.
+- [ ] The product app (`app.getalevo.com`) no longer has an Admin link or `/admin` route.
+
+## R2 file uploads
+
+_Prereq: `npx supabase db push` (applies migration 0006); R2 env vars set in `.env.local`
+(`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET`); the R2 bucket
+has a **CORS rule** allowing `PUT` from your app origin (ngrok/localhost). Restart dev._
+
+- [ ] On `/settings/files` (admin), choose a file → it uploads directly to R2; status goes "Requesting…" → "Uploading…" → "Uploaded", and the file appears in the list as **uploaded**.
+- [ ] (R2 dashboard) the object exists at key `org/<orgId>/<fileId>/<filename>`.
+- [ ] (DB) `files` has a matching row (`status = uploaded`, size, content type).
+- [ ] Without R2 env configured, the upload shows a clear "R2 is not configured" error (nothing crashes).
+- [ ] As a rep/viewer, `/settings/files` shows "You need an admin role to manage files."
+
+---
+
 _Next phase appends its own section here._

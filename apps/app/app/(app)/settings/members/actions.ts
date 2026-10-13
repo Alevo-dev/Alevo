@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { and, count, eq, ne } from "drizzle-orm";
-import { memberships, orgInvitations, withService, type AppRole } from "@alevo/db";
+import {
+  memberships,
+  orgInvitations,
+  recordAudit,
+  withService,
+  type AppRole,
+} from "@alevo/db";
 import {
   getCurrentOrg,
   getCurrentUser,
@@ -24,12 +30,12 @@ function parseRole(value: FormDataEntryValue | null): AppRole {
   throw new Error("Invalid role");
 }
 
-/** requireRole('admin') + resolve the active org's row (its uuid). */
-async function adminOrg() {
+/** requireRole('admin') + resolve the active org and the acting user's id. */
+async function adminContext() {
   await requireRole("admin");
-  const org = await getCurrentOrg();
+  const [org, me] = await Promise.all([getCurrentOrg(), getCurrentUser()]);
   if (!org) throw new Error("No active organization");
-  return org;
+  return { org, actorId: me?.id ?? null };
 }
 
 function fail(error: unknown): ActionState {
@@ -41,8 +47,7 @@ export async function inviteMember(
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    const org = await adminOrg();
-    const me = await getCurrentUser();
+    const { org, actorId } = await adminContext();
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     const role = parseRole(formData.get("role"));
     if (!email) return { error: "Email is required" };
@@ -58,13 +63,20 @@ export async function inviteMember(
           role,
           status: "pending",
           clerkInvitationId,
-          invitedBy: me?.id ?? null,
+          invitedBy: actorId,
         })
         .onConflictDoUpdate({
           target: orgInvitations.clerkInvitationId,
           set: { role, status: "pending", updatedAt: new Date() },
         }),
     );
+    await recordAudit({
+      orgId: org.id,
+      actorUserId: actorId,
+      action: "invite.created",
+      target: email,
+      metadata: { role },
+    });
     revalidatePath("/settings/members");
     return { ok: true };
   } catch (error) {
@@ -77,7 +89,7 @@ export async function changeMemberRole(
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    const org = await adminOrg();
+    const { org, actorId } = await adminContext();
     const userId = String(formData.get("userId") ?? "");
     const clerkUserId = String(formData.get("clerkUserId") ?? "");
     const newRole = parseRole(formData.get("role"));
@@ -118,6 +130,13 @@ export async function changeMemberRole(
         .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, userId))),
     );
     await setActiveOrgMemberRole(clerkUserId, newRole);
+    await recordAudit({
+      orgId: org.id,
+      actorUserId: actorId,
+      action: "member.role_changed",
+      target: userId,
+      metadata: { role: newRole },
+    });
     revalidatePath("/settings/members");
     return { ok: true };
   } catch (error) {
@@ -130,7 +149,7 @@ export async function removeMember(
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    const org = await adminOrg();
+    const { org, actorId } = await adminContext();
     const userId = String(formData.get("userId") ?? "");
     const clerkUserId = String(formData.get("clerkUserId") ?? "");
     if (!userId || !clerkUserId) return { error: "Missing member" };
@@ -162,6 +181,12 @@ export async function removeMember(
         .delete(memberships)
         .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, userId))),
     );
+    await recordAudit({
+      orgId: org.id,
+      actorUserId: actorId,
+      action: "member.removed",
+      target: userId,
+    });
     revalidatePath("/settings/members");
     return { ok: true };
   } catch (error) {
@@ -174,7 +199,7 @@ export async function revokeInvite(
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    await adminOrg();
+    const { org, actorId } = await adminContext();
     const clerkInvitationId = String(formData.get("clerkInvitationId") ?? "");
     if (!clerkInvitationId) return { error: "Missing invitation" };
 
@@ -185,6 +210,12 @@ export async function revokeInvite(
         .set({ status: "revoked", updatedAt: new Date() })
         .where(eq(orgInvitations.clerkInvitationId, clerkInvitationId)),
     );
+    await recordAudit({
+      orgId: org.id,
+      actorUserId: actorId,
+      action: "invite.revoked",
+      target: clerkInvitationId,
+    });
     revalidatePath("/settings/members");
     return { ok: true };
   } catch (error) {

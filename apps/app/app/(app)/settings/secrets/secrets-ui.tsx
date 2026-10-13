@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearSecret, saveSecret, type ActionState } from "./actions";
+import { clearSecret, saveSecret, sendTestSlack, type ActionState } from "./actions";
 
 const INITIAL: ActionState = {};
 const inputClass =
@@ -24,6 +24,8 @@ export type SecretRowProps = {
   placeholder: string;
   inputType: "url" | "password";
   isSet: boolean;
+  /** When set, shows a "Send test" button (Slack) once a value is saved. */
+  testable?: boolean;
 };
 
 export function SecretRow({
@@ -33,11 +35,12 @@ export function SecretRow({
   placeholder,
   inputType,
   isSet,
+  testable = false,
 }: SecretRowProps) {
   const [saveState, saveAction, savePending] = useActionState(saveSecret, INITIAL);
   const [clearState, clearAction, clearPending] = useActionState(clearSecret, INITIAL);
-  // Hide the last result once the user starts editing again; a new submit
-  // result clears `dirty` so the fresh message shows.
+  const [testState, testAction, testPending] = useActionState(sendTestSlack, INITIAL);
+  // Hide the last save/clear result once the user starts editing again.
   const [dirty, setDirty] = useState(false);
   useRefreshOnSuccess(saveState);
   useRefreshOnSuccess(clearState);
@@ -90,10 +93,21 @@ export function SecretRow({
             </button>
           </form>
         )}
+        {testable && isSet && (
+          <form action={testAction}>
+            <button type="submit" disabled={testPending} className={btnClass}>
+              {testPending ? "Sending…" : "Send test"}
+            </button>
+          </form>
+        )}
       </div>
 
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
       {saved && <p className="mt-2 text-sm text-muted-foreground">Saved.</p>}
+      {testState.error && <p className="mt-2 text-sm text-destructive">{testState.error}</p>}
+      {testState.ok && (
+        <p className="mt-2 text-sm text-muted-foreground">Sent — check your Slack channel.</p>
+      )}
     </div>
   );
 }
