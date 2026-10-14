@@ -12,6 +12,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
+  "/f/(.*)", // public hosted lead forms
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

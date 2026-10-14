@@ -79,6 +79,13 @@ These go into `CLAUDE.md` in Sprint 1 so every coding session starts from the ar
     - Only make a step a step if it calls a vendor or needs independent retry; group pure DB writes.
 11. **Usage is metered before it is spent.** Every billable action (conversation, voice minute, outbound dial) increments `usage_counters`; outbound checks remaining allowance before dispatch.
 12. **Per-org secrets are encrypted** and never returned to the client.
+13. **Errors are handled, never defaulted.** No native browser validation
+    (`required`, `type=` popups — forms use `noValidate`) and no
+    `alert()`/`confirm()` dialogs. Validation errors are shown **per field**: the
+    field gets a red border and the message appears **directly beneath it** (not
+    a single generic message). Form-level (non-field) errors render once near the
+    submit. Submitted values are echoed back so fields keep their input on error.
+    This applies to every form and action.
 
 ### Roles (Option B: app roles in our DB)
 

@@ -8,4 +8,5 @@ export {
   listOrgSecretKeys,
 } from "./secrets";
 export { recordAudit, type AuditEntry } from "./audit";
+export { recordUsage } from "./usage";
 export * from "./schema";

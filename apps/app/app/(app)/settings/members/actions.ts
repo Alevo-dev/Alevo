@@ -19,9 +19,16 @@ import {
   setActiveOrgMemberRole,
 } from "@alevo/auth";
 
-export type ActionState = { ok?: boolean; error?: string };
+export type ActionState = {
+  ok?: boolean;
+  error?: string; // form-level (non-field) error
+  errors?: { email?: string }; // per-field errors
+  /** Echoed back so the invite form keeps its values on error (rule 13). */
+  values?: { email?: string; role?: AppRole };
+};
 
 const ROLES: readonly AppRole[] = ["viewer", "rep", "admin", "owner"];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function parseRole(value: FormDataEntryValue | null): AppRole {
   if (typeof value === "string" && (ROLES as readonly string[]).includes(value)) {
@@ -46,11 +53,23 @@ export async function inviteMember(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const emailRaw = String(formData.get("email") ?? "").trim();
+  const roleStr = String(formData.get("role") ?? "");
+  const values = {
+    email: emailRaw,
+    role: (ROLES as readonly string[]).includes(roleStr) ? (roleStr as AppRole) : "rep",
+  };
+  const emailError = !emailRaw
+    ? "Email is required."
+    : !EMAIL_RE.test(emailRaw)
+      ? "Enter a valid email address."
+      : undefined;
+  if (emailError) return { errors: { email: emailError }, values };
+
   try {
     const { org, actorId } = await adminContext();
-    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const email = emailRaw.toLowerCase();
     const role = parseRole(formData.get("role"));
-    if (!email) return { error: "Email is required" };
     if (role === "owner") await requireRole("owner"); // only owners grant owner
 
     const { clerkInvitationId } = await inviteToActiveOrg({ email, role });
@@ -80,7 +99,7 @@ export async function inviteMember(
     revalidatePath("/settings/members");
     return { ok: true };
   } catch (error) {
-    return fail(error);
+    return { ...fail(error), values };
   }
 }
 

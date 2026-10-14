@@ -6,7 +6,13 @@ import { getCurrentOrg, getCurrentUser, requireRole } from "@alevo/auth";
 import { getSecretSpec, isSecretKey } from "@/lib/secrets-registry";
 import { notifySlack } from "@/lib/notifications/slack";
 
-export type ActionState = { ok?: boolean; error?: string };
+export type ActionState = {
+  ok?: boolean;
+  error?: string; // form-level (non-field) error
+  errors?: { value?: string }; // per-field error
+  /** Echoed back so the field keeps its value on error (rule 13). */
+  value?: string;
+};
 
 async function adminContext() {
   await requireRole("admin");
@@ -23,14 +29,14 @@ export async function saveSecret(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const value = String(formData.get("value") ?? "").trim();
   try {
     const { org, actorId } = await adminContext();
     const key = String(formData.get("key") ?? "");
-    const value = String(formData.get("value") ?? "").trim();
-    if (!isSecretKey(key)) return { error: "Unknown secret" };
-    if (!value) return { error: "Value is required" };
+    if (!isSecretKey(key)) return { error: "Unknown secret", value };
+    if (!value) return { errors: { value: "Value is required." }, value };
     const formatError = getSecretSpec(key).validate?.(value);
-    if (formatError) return { error: formatError };
+    if (formatError) return { errors: { value: formatError }, value };
     await setOrgSecret(org.id, key, value);
     await recordAudit({
       orgId: org.id,
@@ -41,7 +47,7 @@ export async function saveSecret(
     revalidatePath("/settings/secrets");
     return { ok: true };
   } catch (error) {
-    return fail(error);
+    return { ...fail(error), value };
   }
 }
 

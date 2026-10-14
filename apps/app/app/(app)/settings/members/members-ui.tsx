@@ -60,25 +60,33 @@ export function InviteForm() {
   const [state, action, pending] = useActionState(inviteMember, INITIAL);
   const [dirty, setDirty] = useState(false);
   useRefreshOnSuccess(state);
-  const error = dirty ? undefined : state.error;
+  const emailError = dirty ? undefined : state.errors?.email;
+  const formError = dirty ? undefined : state.error;
   const sent = !dirty && state.ok;
   return (
     <form
       action={action}
       onSubmit={() => setDirty(false)}
-      className="flex flex-wrap items-center gap-2"
+      noValidate
+      className="flex flex-wrap items-start gap-2"
     >
-      <input
-        name="email"
-        type="email"
-        required
-        onChange={() => setDirty(true)}
-        placeholder="teammate@company.com"
-        className="min-w-64 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-      />
+      <div className="min-w-64 flex-1">
+        <input
+          name="email"
+          type="email"
+          defaultValue={state.values?.email}
+          onChange={() => setDirty(true)}
+          aria-invalid={!!emailError}
+          placeholder="teammate@company.com"
+          className={`w-full rounded-md border bg-background px-3 py-1.5 text-sm ${
+            emailError ? "border-destructive" : "border-input"
+          }`}
+        />
+        {emailError && <p className="mt-1 text-xs text-destructive">{emailError}</p>}
+      </div>
       <select
         name="role"
-        defaultValue="rep"
+        defaultValue={state.values?.role ?? "rep"}
         onChange={() => setDirty(true)}
         className={selectClass}
         aria-label="Role"
@@ -88,7 +96,7 @@ export function InviteForm() {
       <button type="submit" disabled={pending} className={btnClass}>
         {pending ? "Inviting…" : "Invite"}
       </button>
-      {error && <p className="w-full text-sm text-destructive">{error}</p>}
+      {formError && <p className="w-full text-sm text-destructive">{formError}</p>}
       {sent && <p className="w-full text-sm text-muted-foreground">Invitation sent.</p>}
     </form>
   );
@@ -111,6 +119,7 @@ export function MemberRow({ member }: { member: MemberView }) {
           <form
             action={roleAction}
             onSubmit={() => setDirty(false)}
+            noValidate
             className="flex items-center gap-2"
           >
             <input type="hidden" name="userId" value={member.userId} />

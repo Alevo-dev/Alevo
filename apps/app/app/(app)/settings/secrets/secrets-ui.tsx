@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { clearSecret, saveSecret, sendTestSlack, type ActionState } from "./actions";
 
 const INITIAL: ActionState = {};
-const inputClass =
-  "min-w-72 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm";
+function inputClass(hasError: boolean) {
+  return `w-full rounded-md border bg-background px-3 py-1.5 text-sm ${
+    hasError ? "border-destructive" : "border-input"
+  }`;
+}
 const btnClass =
   "rounded-md border border-border px-3 py-1 text-sm hover:bg-accent disabled:opacity-50";
 
@@ -44,8 +47,9 @@ export function SecretRow({
   const [dirty, setDirty] = useState(false);
   useRefreshOnSuccess(saveState);
   useRefreshOnSuccess(clearState);
+  const valueError = dirty ? undefined : saveState.errors?.value;
   const error = dirty ? undefined : (saveState.error ?? clearState.error);
-  const saved = !dirty && !error && (saveState.ok || clearState.ok);
+  const saved = !dirty && !error && !valueError && (saveState.ok || clearState.ok);
 
   return (
     <div className="rounded-lg border border-border p-4">
@@ -65,22 +69,27 @@ export function SecretRow({
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-start gap-2">
         <form
           action={saveAction}
           onSubmit={() => setDirty(false)}
-          className="flex flex-1 flex-wrap items-center gap-2"
+          noValidate
+          className="flex flex-1 flex-wrap items-start gap-2"
         >
           <input type="hidden" name="key" value={secretKey} />
-          <input
-            name="value"
-            type={inputType}
-            autoComplete="off"
-            required
-            onChange={() => setDirty(true)}
-            placeholder={isSet ? "Enter a new value to replace" : placeholder}
-            className={inputClass}
-          />
+          <div className="min-w-72 flex-1">
+            <input
+              name="value"
+              type={inputType}
+              autoComplete="off"
+              defaultValue={saveState.value ?? ""}
+              onChange={() => setDirty(true)}
+              aria-invalid={!!valueError}
+              placeholder={isSet ? "Enter a new value to replace" : placeholder}
+              className={inputClass(!!valueError)}
+            />
+            {valueError && <p className="mt-1 text-xs text-destructive">{valueError}</p>}
+          </div>
           <button type="submit" disabled={savePending} className={btnClass}>
             {isSet ? "Replace" : "Save"}
           </button>

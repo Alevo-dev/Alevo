@@ -28,7 +28,14 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
 9. **Heavy AI work runs as Inngest steps** in Next.js functions (not Supabase
    Edge Functions). _(Inngest baseline lands in a later phase.)_
 12. **Per-org secrets are encrypted** and never returned to the client.
-    _(org_secrets lands in a later phase.)_
+13. **Errors handled, never defaulted.** Forms use `noValidate` — no native
+    browser validation (`required`/`type=` popups) and no `alert()`/`confirm()`.
+    Validate in the server action and return **per-field** errors
+    (`{ errors: { field } }`) plus a form-level `error` for non-field issues.
+    The field with an error gets a **red border** and the message **directly
+    beneath it**; form-level errors render once near the submit. Echo submitted
+    `values` back so fields keep their input on error. (`useActionState` pattern;
+    see the lead / members / secrets forms.)
 
 ## Data + auth seams
 
@@ -61,9 +68,13 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
 - **0004** `org_secrets` (AES-256-GCM, service-path only — rule 12).
 - **0005** `audit_log` (append-only; `recordAudit`; tenant-scoped reads).
 - **0006** `files` (R2 object key + metadata; tenant-scoped reads).
+- **0007** CRM core: `contacts`, `conversations`, `messages`, `consents` (+ the
+  `channel` / `conversation_status` / `message_direction` / `message_author`
+  enums). The hosted lead form writes via the service path; tenant users work
+  leads via RLS. `recordUsage()` meters inbound conversations (rule 11).
 
-Coming next: the Sprint 2 conversation tables (`contacts`, `conversations`,
-`messages`, `consents`, `kb_documents`, `kb_chunks`).
+Coming next (Sprint 2): the Qualifier (Claude agent), email/SMS channels,
+Inngest conversation cadences, and KB ingestion (`kb_documents`, `kb_chunks`).
 
 ## Durable workflows (Inngest)
 

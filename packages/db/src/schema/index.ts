@@ -4,6 +4,7 @@ export * from "./invitations";
 export * from "./secrets";
 export * from "./audit";
 export * from "./files";
+export * from "./conversations";
 
 import * as identity from "./identity";
 import * as billing from "./billing";
@@ -11,6 +12,7 @@ import * as invitations from "./invitations";
 import * as secrets from "./secrets";
 import * as audit from "./audit";
 import * as files from "./files";
+import * as conversations from "./conversations";
 
 /** Aggregate passed to drizzle() so `tx.query.*` is available for every table. */
 export const schema = {
@@ -20,4 +22,5 @@ export const schema = {
   ...secrets,
   ...audit,
   ...files,
+  ...conversations,
 };

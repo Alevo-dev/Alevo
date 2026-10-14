@@ -162,4 +162,27 @@ has a **CORS rule** allowing `PUT` from your app origin (ngrok/localhost). Resta
 
 ---
 
+# Sprint 2 — SDR engine
+
+## Slice 1: capture + conversation view
+
+_Prereq: `npx supabase db push` (applies migration 0007). Restart the app._
+
+### Hosted lead form (public)
+- [ ] In the app → **Conversations**, copy "Your lead form" link (`/f/<orgId>`), open it in an **incognito/logged-out** tab → the form loads with your org's name (no login required).
+- [ ] Submit with name + email + message + the consent checkbox → "Thanks — we'll be in touch."
+- [ ] Submitting **without** the consent box → error; without name/email → error.
+- [ ] A bad org id (`/f/not-a-real-id`) → "This form is not available."
+
+### Conversation shows up
+- [ ] Back in the app → **Conversations** → the new lead appears (contact name, channel `form`, status `new`). Click it → the thread shows the inbound message + contact details (email/phone/company).
+- [ ] (DB) `contacts`, `conversations`, `messages` (direction `inbound`, author `contact`), and `consents` (basis `form_submission`) rows all exist.
+- [ ] Submit the form again with the **same email** → the contact is reused (no duplicate contact), a **new conversation** is created.
+
+### Metering + isolation
+- [ ] (DB) `usage_counters` has an `inbound_conversations` row for your org + current month, incrementing by 1 per submission.
+- [ ] A different org's user cannot see these conversations (RLS) — the Conversations list is scoped to the active org only.
+
+---
+
 _Next phase appends its own section here._
