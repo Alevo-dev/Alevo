@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { contacts, conversations, messages } from "@alevo/db";
+import { contacts, conversations, messages, orgProfiles } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
+import { ReplyAsContact } from "./reply-ui";
+import { AutoRefresh } from "./auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +73,25 @@ export default async function ConversationThread({
       .orderBy(asc(messages.createdAt)),
   );
 
+  // Whether the Qualifier will actually reply (scoped to the active org).
+  const [profile] = await withOrg((tx) =>
+    tx
+      .select({ enabled: orgProfiles.enabled })
+      .from(orgProfiles)
+      .where(sql`${orgProfiles.orgId} = (select app.current_org_id())`)
+      .limit(1),
+  );
+  const qualifierEnabled = profile?.enabled ?? false;
+
   const name = [conv.firstName, conv.lastName].filter(Boolean).join(" ") || conv.email || "—";
+
+  // Poll for the Qualifier's async reply only when it's actually on, a contact
+  // message is the latest turn, and the conversation is still being worked.
+  const lastMsg = thread.at(-1);
+  const awaitingReply =
+    qualifierEnabled &&
+    lastMsg?.author === "contact" &&
+    !["booked", "closed", "disqualified", "handed_off"].includes(conv.status);
 
   return (
     <section className="mx-auto max-w-2xl space-y-6">
@@ -95,6 +115,12 @@ export default async function ConversationThread({
           <dt className="text-muted-foreground">Fit score</dt>
           <dd>{conv.fitScore ?? "—"}</dd>
         </dl>
+        {conv.scoreReasons && (
+          <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Why: </span>
+            {conv.scoreReasons}
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -115,6 +141,9 @@ export default async function ConversationThread({
           </div>
         ))}
       </div>
+
+      <ReplyAsContact conversationId={conv.id} qualifierEnabled={qualifierEnabled} />
+      <AutoRefresh key={lastMsg?.id} active={!!awaitingReply} />
     </section>
   );
 }

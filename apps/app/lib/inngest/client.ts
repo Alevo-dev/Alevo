@@ -18,3 +18,10 @@ export const inngest = new Inngest({
 
 /** Payload for the baseline provisioning event. */
 export type OrgProvisionedData = { orgId: string };
+
+/**
+ * Fired whenever a new inbound message lands on a conversation (hosted form, or
+ * the "reply as contact" tester today; email/SMS channels later). The Qualifier
+ * reacts to this. Carries `orgId` for the per-tenant concurrency key.
+ */
+export type ConversationMessageReceivedData = { orgId: string; conversationId: string };

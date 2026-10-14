@@ -114,3 +114,8 @@ export const consents = pgTable(
     index("consents_contact_id_idx").on(t.contactId),
   ],
 );
+
+export type Channel = (typeof channel.enumValues)[number];
+export type ConversationStatus = (typeof conversationStatus.enumValues)[number];
+export type MessageDirection = (typeof messageDirection.enumValues)[number];
+export type MessageAuthor = (typeof messageAuthor.enumValues)[number];

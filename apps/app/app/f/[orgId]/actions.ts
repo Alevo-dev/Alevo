@@ -10,6 +10,7 @@ import {
   recordUsage,
   withService,
 } from "@alevo/db";
+import { inngest } from "@/lib/inngest/client";
 
 export type LeadValues = {
   name: string;
@@ -69,7 +70,7 @@ export async function submitLead(
     const [firstName, ...restName] = name.split(/\s+/);
     const lastName = restName.length ? restName.join(" ") : null;
 
-    await withService(async (tx) => {
+    const conversationId = await withService(async (tx) => {
       const [existing] = await tx
         .select({ id: contacts.id })
         .from(contacts)
@@ -129,9 +130,22 @@ export async function submitLead(
         verbatim: CONSENT_TEXT,
         source: "hosted_form",
       });
+
+      return conversation.id;
     });
 
     await recordUsage(orgId, "inbound_conversations");
+
+    // Hand the new lead to the Qualifier. Emitting the event is a side effect —
+    // a send failure must never fail the submission the contact just made.
+    try {
+      await inngest.send({
+        name: "conversation/message.received",
+        data: { orgId, conversationId },
+      });
+    } catch {
+      // swallow — the lead is captured; qualification can be retried later
+    }
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Something went wrong", values };

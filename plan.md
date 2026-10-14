@@ -1,8 +1,17 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-12
+**Last updated:** 2026-10-14
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
+
+**Progress (2026-10-14):** Sprint 1 complete (platform foundation: identity/RLS,
+Members, billing tables, encrypted secrets, R2 files, Slack-per-org, Inngest
+baseline, separate super-admin app — all manually tested). Sprint 2 in progress:
+CRM core + hosted lead form + usage metering shipped (Slice 1); **the Qualifier**
+(Claude Sonnet 5 agent, MVP tool surface) shipped and testable end-to-end via the
+conversation thread's "reply as contact" box (Slice 2). Remaining Sprint 2:
+email (Resend) + SMS (Twilio) channels, the Inngest conversation cadence, KB
+ingestion, and the Qualifier's booking / PSA / consent tools.
 
 Alevo is a multi-tenant AI SDR platform for MSPs. Tagline: *More conversations. More leads.*
 Starting from zero: nothing in the owner's partner deck or master plan is treated as built.
@@ -156,30 +165,31 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 - [ ] App domain + DNS (e.g. `app.` subdomain on Alevo's domain)
 - [ ] Internal Slack channel for alerts
 
-### Sprint 1 — Platform foundation (22–27h)
-- [ ] Next.js app, Supabase ×2 (staging, prod) with pooled connections, Vercel, Inngest
-- [ ] Clerk: sign-up, sign-in, org creation, invites with role in `publicMetadata`
-- [ ] Clerk webhooks → mirror `users`, `organizations`, `memberships` (incl. app role reconciliation)
-- [ ] Auth module (`getCurrentUser`, `getCurrentOrg`, `requireRole`, `requirePlatformAdmin`)
-- [ ] RLS helper functions + RLS on every table, `withOrg()`, cross-tenant isolation test
-- [ ] Members screen: invite, change role, remove
-- [ ] `is_platform_admin` + super-admin org switcher / assist view
-- [ ] `plans`, `org_subscriptions`, `usage_counters` tables + seed the three tiers
-- [ ] Encrypted per-org secrets store
-- [ ] Webhook signature verification middleware
-- [ ] R2 bucket + presigned upload route + `files` table
-- [ ] Slack webhook per org
-- [ ] `CLAUDE.md` with schema, rules 1–12, adapter interfaces
+### Sprint 1 — Platform foundation (22–27h) — ✅ complete (tested)
+- [x] Next.js app, Supabase (cloud dev project; pooled Supavisor + direct), Vercel, Inngest
+- [x] Clerk: sign-up, sign-in, org creation, invites with role in `publicMetadata`
+- [x] Clerk webhooks → mirror `users`, `organizations`, `memberships` (incl. app role reconciliation)
+- [x] Auth module (`getCurrentUser`, `getCurrentOrg`, `requireRole`, `requirePlatformAdmin`)
+- [x] RLS helper functions + RLS on every table, `withOrg()`, cross-tenant isolation test
+- [x] Members screen: invite, change role, remove
+- [x] `is_platform_admin` + super-admin console (separate `apps/admin` on admin.*)
+- [x] `plans`, `org_subscriptions`, `usage_counters` tables + seed the three tiers
+- [x] Encrypted per-org secrets store (AES-256-GCM)
+- [x] Webhook signature verification (svix) + idempotency ledger
+- [x] R2 bucket + presigned upload route + `files` table
+- [x] Slack webhook per org
+- [x] `CLAUDE.md` with schema, rules 1–13, patterns + admin bootstrap
 
-### Sprint 2 — Capture, conversation, Qualifier (35–45h)
-- [ ] Tables: `contacts`, `conversations`, `messages`, `consents`, `kb_documents`, `kb_chunks`
-- [ ] Hosted form per org + embeddable snippet → creates contact + conversation
+### Sprint 2 — Capture, conversation, Qualifier (35–45h) — 🚧 in progress
+- [x] Tables: `contacts`, `conversations`, `messages`, `consents` (0007) + `org_profiles` (0008, the Qualifier's per-org ICP context)
+- [ ] Tables: `kb_documents`, `kb_chunks` (pgvector) — pending KB slice
+- [x] Hosted form per org → creates contact + conversation (`/f/[orgId]`); embeddable snippet pending
 - [ ] SMS (Twilio) and email (Resend): send, inbound webhook, STOP/unsubscribe, idempotent on `providerRef`
 - [ ] KB ingestion: PDF/text/URL → R2 → chunk → embed
-- [ ] **The Qualifier**: Claude agent with org ICP + KB context. Tools: `ask_question`, `check_availability`, `book_meeting`, `write_to_psa`, `escalate_to_human`, `record_consent`. Outputs 0–100 fit score + reasons. Ends in booked / disqualified / handed off
-- [ ] Inngest flow per conversation: send → wait for reply or timeout → next action; cancelled on reply; contact-timezone send windows; priority + debounce per rule 10
-- [ ] Conversation counted in `usage_counters`
-- [ ] Conversation view (thread, score, status)
+- [x] **The Qualifier**: Claude (Sonnet 5) agent with org ICP context, manual tool-use loop. Live tools: `reply_to_contact` (ask/answer), `record_fit_score` (0–100 + reasons), `set_status` (active/disqualified/handed_off), `escalate_to_human` (→ Slack). Runs via Inngest on each inbound message; Settings → Qualifier edits the profile. **Deferred tools:** `check_availability`, `book_meeting` (Sprint 3 booking), `write_to_psa` (Sprint 5), `record_consent`, and KB grounding. Not yet: `booked` end-state (needs booking)
+- [ ] Inngest flow per conversation: send → wait for reply or timeout → next action; cancelled on reply; contact-timezone send windows; priority + debounce per rule 10 _(today: react-on-inbound only, no cadence/timeouts)_
+- [x] Conversation counted in `usage_counters` (`recordUsage` on inbound capture)
+- [x] Conversation view (thread, score + reasons, status) + "reply as contact" tester
 
 ### Sprint 3 — Booking + consent (21–29h)
 

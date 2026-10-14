@@ -72,9 +72,38 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
   `channel` / `conversation_status` / `message_direction` / `message_author`
   enums). The hosted lead form writes via the service path; tenant users work
   leads via RLS. `recordUsage()` meters inbound conversations (rule 11).
+- **0008** `org_profiles` (one row/org): the Qualifier's per-org context (company
+  offering, ICP, qualifying criteria, disqualifiers, tone, signoff, `enabled`).
+  Edited by admins in Settings → Qualifier; read by the Qualifier via the
+  service path.
 
-Coming next (Sprint 2): the Qualifier (Claude agent), email/SMS channels,
-Inngest conversation cadences, and KB ingestion (`kb_documents`, `kb_chunks`).
+## The Qualifier (Claude agent)
+
+The AI SDR that works inbound leads. On each inbound message the hosted form /
+tester emits `conversation/message.received`; the Inngest function
+`qualify-conversation` (rule 9/10, per-org concurrency, `retries: 1`) loads the
+org profile + thread and runs the agent.
+
+- **Engine:** `lib/qualifier/` — `prompt.ts` (system prompt from the org
+  profile), `tools.ts` (tool defs + DB dispatch), `run.ts` (context loader + a
+  **manual** tool-use loop so every tool call is gated/recorded, not the SDK
+  auto-runner). Model **`claude-sonnet-5`**, adaptive thinking, effort `medium`.
+  Anthropic code lives only here — read the `claude-api` skill before touching it.
+- **Tools (MVP):** `reply_to_contact`, `record_fit_score`, `set_status`
+  (`active`/`disqualified`/`handed_off`), `escalate_to_human` (→ Slack). Booking
+  / PSA tools come with those integrations. All writes go through `withService`,
+  scoped to the org **in code** (Inngest has no session → no RLS).
+- **Testing before email/SMS exist:** the conversation thread has a "reply as
+  contact" box (`[id]/actions.ts` + `reply-ui.tsx`) that posts an inbound message
+  and fires the event, so the full loop is exercisable end-to-end.
+- **Retry caveat:** the agent writes replies mid-run, so it is intentionally NOT
+  wrapped in `step.run` (memoization would replay writes). `retries: 1` bounds
+  duplicate-reply risk until idempotency keys land; the Anthropic SDK retries
+  transient API errors in-process.
+
+Coming next (Sprint 2): email/SMS channels, Inngest conversation cadences, KB
+ingestion (`kb_documents`, `kb_chunks`) for retrieval-grounded replies, and
+booking/PSA tools for the Qualifier.
 
 ## Durable workflows (Inngest)
 
