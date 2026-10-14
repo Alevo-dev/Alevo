@@ -158,12 +158,12 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 
 **Project setup (no code)**
 - [x] GitHub repo connected to Vercel
-- [ ] Inngest Vercel integration
-- [ ] Supabase: create staging + prod projects; choose region (data residency for Canadian MSPs)
-- [ ] Clerk: create the application, enable Organizations
-- [ ] Cloudflare: R2 bucket per environment + scoped API token
-- [ ] App domain + DNS (e.g. `app.` subdomain on Alevo's domain)
-- [ ] Internal Slack channel for alerts
+- [x] Inngest Vercel integration (prod durable workflows; local uses the dev server)
+- [x] Supabase: create staging + prod projects; choose region (data residency for Canadian MSPs)
+- [x] Clerk: create the application, enable Organizations
+- [x] Cloudflare: R2 bucket per environment + scoped API token
+- [x] App domain + DNS (e.g. `app.` subdomain on Alevo's domain)
+- [x] Internal Slack channel for alerts
 
 ### Sprint 1 — Platform foundation (22–27h) — ✅ complete (tested)
 - [x] Next.js app, Supabase (cloud dev project; pooled Supavisor + direct), Vercel, Inngest
