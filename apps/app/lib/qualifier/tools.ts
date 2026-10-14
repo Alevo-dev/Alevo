@@ -92,6 +92,42 @@ function scoped(target: DispatchTarget) {
 }
 
 /**
+ * Tell the org a lead needs a human (handoff or escalation). Best-effort: with
+ * no Slack webhook configured `notifySlack` no-ops, and any failure is swallowed
+ * so the agent turn never fails. Carries the fit score + a link to the thread.
+ */
+async function notifyHandoff(
+  target: DispatchTarget,
+  opts: { urgent?: boolean; reason?: string } = {},
+): Promise<void> {
+  const [row] = await withService((tx) =>
+    tx
+      .select({ fitScore: conversations.fitScore, scoreReasons: conversations.scoreReasons })
+      .from(conversations)
+      .where(scoped(target))
+      .limit(1),
+  );
+  const who = target.contactEmail
+    ? `${target.contactName} (${target.contactEmail})`
+    : target.contactName;
+  const score = row?.fitScore != null ? `${row.fitScore}/100` : "not scored";
+  const detail = opts.reason
+    ? `\nReason: ${opts.reason}`
+    : row?.scoreReasons
+      ? `\nWhy: ${row.scoreReasons}`
+      : "";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "");
+  const link = appUrl ? `\n${appUrl}/conversations/${target.conversationId}` : "";
+  const header = opts.urgent
+    ? ":rotating_light: Lead escalated — needs a human now"
+    : ":inbox_tray: Lead handed off — ready for a human";
+  await notifySlack(
+    target.orgId,
+    `${header}\n${who}\nFit score: ${score}${detail}${link}`,
+  ).catch(() => undefined);
+}
+
+/**
  * Execute one Claude tool call against the DB and return the text result Claude
  * sees. All writes go through the service path, scoped to the org in code.
  */
@@ -198,22 +234,20 @@ export async function dispatchTool(
           .where(scoped(target)),
       );
       effects.status = status as SettableStatus;
+      // Alert the org the moment a lead is handed to a human (best-effort Slack).
+      if (status === "handed_off") await notifyHandoff(target);
       return `Conversation status set to ${status}.`;
     }
 
     case "escalate_to_human": {
-      const reason = String(input.reason ?? "").trim() || "No reason given.";
+      const reason = String(input.reason ?? "").trim() || undefined;
       await withService((tx) =>
         tx
           .update(conversations)
           .set({ status: "handed_off", updatedAt: new Date() })
           .where(scoped(target)),
       );
-      // Notifying Slack is best-effort — a webhook failure must not fail the turn.
-      await notifySlack(
-        target.orgId,
-        `:rotating_light: Qualifier escalated a lead (${target.contactName}): ${reason}`,
-      ).catch(() => undefined);
+      await notifyHandoff(target, { urgent: true, reason });
       effects.status = "handed_off";
       effects.escalated = true;
       return "Escalated to a human and notified the team.";
