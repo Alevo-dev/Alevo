@@ -4,7 +4,7 @@
  * One row per org (`org_id` unique → upsert-friendly). Edited by admins in
  * Settings → Qualifier; read by the Qualifier when it reasons over a lead.
  */
-import { boolean, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { organizations, timestamps } from "./identity";
 
 export const orgProfiles = pgTable(
@@ -23,6 +23,12 @@ export const orgProfiles = pgTable(
     tone: text("tone"),
     signoff: text("signoff"),
     enabled: boolean("enabled").notNull().default(false),
+    // Follow-up send window (plan.md rule — nudges respect a daytime window in
+    // the contact's timezone). `timezone` is the org default when a contact has
+    // none; hours are local, start inclusive / end exclusive.
+    timezone: text("timezone"),
+    sendWindowStartHour: integer("send_window_start_hour").notNull().default(8),
+    sendWindowEndHour: integer("send_window_end_hour").notNull().default(20),
     ...timestamps,
   },
   (t) => [index("org_profiles_org_id_idx").on(t.orgId)],

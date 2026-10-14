@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { orgProfiles, recordAudit } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
+import { isValidTimeZone } from "@/lib/cadence/send-window";
 
 export type ProfileValues = {
   companyName: string;
@@ -13,12 +14,17 @@ export type ProfileValues = {
   tone: string;
   signoff: string;
   enabled: boolean;
+  timezone: string;
+  sendWindowStartHour: number;
+  sendWindowEndHour: number;
 };
 /** Per-field errors — only enforced when the Qualifier is being enabled. */
 export type ProfileErrors = {
   companyName?: string;
   offering?: string;
   idealCustomer?: string;
+  timezone?: string;
+  sendWindow?: string;
 };
 export type ActionState = {
   ok?: boolean;
@@ -26,6 +32,15 @@ export type ActionState = {
   errors?: ProfileErrors;
   values?: ProfileValues;
 };
+
+/** Default send window (local hours): 8am–8pm. */
+const DEFAULT_START = 8;
+const DEFAULT_END = 20;
+
+function hour(formData: FormData, key: string, fallback: number): number {
+  const n = Number.parseInt(String(formData.get(key) ?? ""), 10);
+  return Number.isInteger(n) && n >= 0 && n <= 24 ? n : fallback;
+}
 
 function readValues(formData: FormData): ProfileValues {
   const s = (k: string) => String(formData.get(k) ?? "").trim();
@@ -38,6 +53,9 @@ function readValues(formData: FormData): ProfileValues {
     tone: s("tone"),
     signoff: s("signoff"),
     enabled: Boolean(formData.get("enabled")),
+    timezone: s("timezone"),
+    sendWindowStartHour: hour(formData, "sendWindowStartHour", DEFAULT_START),
+    sendWindowEndHour: hour(formData, "sendWindowEndHour", DEFAULT_END),
   };
 }
 
@@ -49,14 +67,21 @@ export async function saveProfile(
   try {
     await requireRole("admin");
 
+    // Send-window checks run always (they have defaults, but reject bad input).
+    const errors: ProfileErrors = {};
+    if (values.timezone && !isValidTimeZone(values.timezone)) {
+      errors.timezone = "Pick a valid timezone.";
+    }
+    if (values.sendWindowStartHour >= values.sendWindowEndHour) {
+      errors.sendWindow = "The start time must be before the end time.";
+    }
     // Enabling the Qualifier requires enough context to reason well.
     if (values.enabled) {
-      const errors: ProfileErrors = {};
       if (!values.companyName) errors.companyName = "Add your company name before enabling.";
       if (!values.offering) errors.offering = "Describe what you offer so replies are grounded.";
       if (!values.idealCustomer) errors.idealCustomer = "Define your ideal customer to score fit.";
-      if (Object.keys(errors).length > 0) return { errors, values };
     }
+    if (Object.keys(errors).length > 0) return { errors, values };
 
     const org = await getCurrentOrg();
     if (!org) return { error: "No active organization.", values };
@@ -77,6 +102,9 @@ export async function saveProfile(
           tone: nullable(values.tone),
           signoff: nullable(values.signoff),
           enabled: values.enabled,
+          timezone: nullable(values.timezone),
+          sendWindowStartHour: values.sendWindowStartHour,
+          sendWindowEndHour: values.sendWindowEndHour,
         })
         .onConflictDoUpdate({
           target: orgProfiles.orgId,
@@ -89,6 +117,9 @@ export async function saveProfile(
             tone: nullable(values.tone),
             signoff: nullable(values.signoff),
             enabled: values.enabled,
+            timezone: nullable(values.timezone),
+            sendWindowStartHour: values.sendWindowStartHour,
+            sendWindowEndHour: values.sendWindowEndHour,
             updatedAt: new Date(),
           },
         }),

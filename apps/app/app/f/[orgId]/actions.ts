@@ -11,6 +11,7 @@ import {
   withService,
 } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
+import { isValidTimeZone } from "@/lib/cadence/send-window";
 
 export type LeadValues = {
   name: string;
@@ -49,6 +50,8 @@ export async function submitLead(
   const company = String(formData.get("company") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const consented = Boolean(formData.get("consent"));
+  const tzRaw = String(formData.get("timezone") ?? "").trim();
+  const timezone = isValidTimeZone(tzRaw) ? tzRaw : null;
   // Echoed back so the form keeps its values on error (plan.md rule 13).
   const values: LeadValues = { name, email: emailRaw, phone, company, message, consent: consented };
 
@@ -86,6 +89,8 @@ export async function submitLead(
             firstName: firstName ?? null,
             lastName,
             company: company || null,
+            // Only set tz when we captured one — don't clobber a known value.
+            ...(timezone ? { timezone } : {}),
             updatedAt: new Date(),
           })
           .where(eq(contacts.id, existing.id));
@@ -100,6 +105,7 @@ export async function submitLead(
             firstName: firstName ?? null,
             lastName,
             company: company || null,
+            timezone,
             source: "form",
           })
           .returning({ id: contacts.id });

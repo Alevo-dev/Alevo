@@ -25,3 +25,10 @@ export type OrgProvisionedData = { orgId: string };
  * reacts to this. Carries `orgId` for the per-tenant concurrency key.
  */
 export type ConversationMessageReceivedData = { orgId: string; conversationId: string };
+
+/**
+ * Fired by the Qualifier after it replies and the lead is still being worked
+ * (awaiting the contact). Starts the follow-up cadence, which nudges on a
+ * schedule and is cancelled the moment a new inbound message arrives.
+ */
+export type ConversationAwaitingReplyData = { orgId: string; conversationId: string };

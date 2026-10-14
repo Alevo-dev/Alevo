@@ -38,6 +38,7 @@ export const contacts = pgTable(
     lastName: text("last_name"),
     company: text("company"),
     source: text("source"),
+    timezone: text("timezone"), // IANA; best-effort (lead-form browser tz). Picks nudge send windows.
     ...timestamps,
   },
   (t) => [index("contacts_org_id_idx").on(t.orgId)],

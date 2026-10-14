@@ -76,13 +76,18 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
   offering, ICP, qualifying criteria, disqualifiers, tone, signoff, `enabled`).
   Edited by admins in Settings → Qualifier; read by the Qualifier via the
   service path.
+- **0009** cadence send windows: `org_profiles.timezone` +
+  `send_window_start_hour`/`send_window_end_hour` (daily window for follow-up
+  nudges, CHECK-guarded) and `contacts.timezone` (best-effort, from the lead
+  form's browser tz; preferred over the org default). Additive — no RLS change.
 
 ## The Qualifier (Claude agent)
 
 The AI SDR that works inbound leads. On each inbound message the hosted form /
 tester emits `conversation/message.received`; the Inngest function
 `qualify-conversation` (rule 9/10, per-org concurrency, `retries: 1`) loads the
-org profile + thread and runs the agent.
+org profile + thread and runs the agent. After the agent replies and the lead is
+still active, it arms the follow-up cadence (see Durable workflows below).
 
 - **Engine:** `lib/qualifier/` — `prompt.ts` (system prompt from the org
   profile), `tools.ts` (tool defs + DB dispatch), `run.ts` (context loader + a
@@ -101,9 +106,45 @@ org profile + thread and runs the agent.
   duplicate-reply risk until idempotency keys land; the Anthropic SDK retries
   transient API errors in-process.
 
-Coming next (Sprint 2): email/SMS channels, Inngest conversation cadences, KB
-ingestion (`kb_documents`, `kb_chunks`) for retrieval-grounded replies, and
-booking/PSA tools for the Qualifier.
+## Email channel (Resend)
+
+The first real inbound/outbound channel. `lib/email/resend.ts` is the only
+importer of the `resend` SDK.
+
+- **Outbound:** the Qualifier's `reply_to_contact` emails the lead when the
+  contact has an email and email is configured (`isEmailConfigured()`), else it
+  records the reply in-app (dev fallback). Sent from one Alevo-verified address
+  (`EMAIL_FROM_ADDRESS`) with the org's name as the display name — per-tenant
+  sending domains come later. Delivery failure is logged (Sentry) but never
+  fails the agent turn; the message is still recorded.
+- **Inbound:** replies thread back via a per-conversation `Reply-To`
+  (`reply+<conversationId>@INBOUND_EMAIL_DOMAIN`). Resend's `email.received`
+  webhook → **`/api/webhooks/resend`** (svix-verified like Clerk; idempotent on
+  the received `email_id` via `webhook_events`). The webhook is metadata-only, so
+  the body is fetched by id (`emails.receiving.get`); we match the conversation
+  from the `reply+<id>` address, record an inbound `email` message (dedup on
+  `messages.provider_ref` = the RFC `Message-ID`), and fire
+  `conversation/message.received` — the same event the form and tester fire.
+- **Threading:** outbound sets `In-Reply-To`/`References` to the last inbound
+  `Message-ID` (stored as `provider_ref`). Our matching is by the `reply+<id>`
+  address, not headers.
+- **Setup (dashboard):** verify a sending domain; add a receiving domain
+  (MX → Resend) or use the `<id>.resend.app` subdomain; create a "received mail"
+  webhook pointing at `/api/webhooks/resend`; set `RESEND_API_KEY`,
+  `EMAIL_FROM_ADDRESS`, `INBOUND_EMAIL_DOMAIN`, `RESEND_WEBHOOK_SECRET`.
+- **Local testing:** outbound send works in dev directly (it's an outbound API
+  call). For inbound, either use the conversation thread's "reply as contact"
+  tester (no Resend needed — fires the same event), or add a **second** Resend
+  webhook endpoint pointing at your static ngrok URL `/api/webhooks/resend` with
+  **its own** signing secret in `.env.local` (prod's secret stays in Vercel).
+  Resend fans `email.received` out to every subscribed endpoint, so prod and dev
+  both receive each reply — the `reply+<conversationId>` id routes it: each env
+  only processes conversations in its own DB and 200-ignores the rest. Run
+  `npx inngest-cli dev` so the fired event is processed.
+
+Coming next (Sprint 2): SMS channel (Twilio), KB ingestion (`kb_documents`,
+`kb_chunks`) for retrieval-grounded replies, and booking/PSA tools for the
+Qualifier.
 
 ## Durable workflows (Inngest)
 
@@ -116,6 +157,24 @@ booking/PSA tools for the Qualifier.
   steps here, never in Supabase Edge Functions.
 - Event payloads carry `orgId` (our uuid). Sending an event from a webhook is a
   side-effect — wrap it so a send failure never fails the webhook.
+
+**Conversation cadence (`lib/cadence/`).** Two functions drive a conversation:
+- `qualify-conversation` reacts to `conversation/message.received` (debounced
+  per conversation; `priority` marks inbound as high). It runs the agent, and if
+  the agent replied and the lead is still active it fires
+  `conversation/awaiting-reply`. It is deliberately **stepless** (see the agent
+  retry caveat above).
+- `conversation-cadence` reacts to `conversation/awaiting-reply` and follows up a
+  quiet lead on a schedule (`schedule.ts`: +1d, +3d, +3d, then disqualify;
+  `CADENCE_FAST=1` shrinks the gaps to seconds for local testing). It
+  `cancelOn` a new inbound message (the reply re-arms a fresh cadence) and is a
+  `singleton` per conversation. Each nudge runs the Qualifier with a follow-up
+  **directive** (not a contact message) and is wrapped in `step.run` — unlike the
+  main qualify run — because this function has later `sleep` steps, so non-step
+  code would re-fire the nudge on every replay. Nudges are proactive outbound, so
+  each is gated to the org's **send window** in the contact's timezone
+  (`send-window.ts`, pure `Intl`, DST-correct) via a durable `sleepUntil`.
+  Immediate replies to a fresh inbound are never gated (speed-to-lead).
 - Local: `npx inngest-cli dev` (auto-discovers `/api/inngest`). Prod: the Vercel
   integration sets `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`.
 

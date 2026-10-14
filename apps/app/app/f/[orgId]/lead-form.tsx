@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { submitLead, type LeadState } from "./actions";
 
 const INITIAL: LeadState = {};
@@ -14,6 +14,17 @@ const errMsg = "mt-1 text-xs text-destructive";
 
 export function LeadForm({ orgId }: { orgId: string }) {
   const [state, action, pending] = useActionState(submitLead, INITIAL);
+
+  // Capture the visitor's timezone so follow-up nudges land in their daytime.
+  // Set after mount (not during SSR) to avoid a hydration mismatch.
+  const tzRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    try {
+      if (tzRef.current) tzRef.current.value = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+    } catch {
+      /* no Intl tz — the org default is used instead */
+    }
+  }, []);
 
   if (state.ok) {
     return (
@@ -32,6 +43,7 @@ export function LeadForm({ orgId }: { orgId: string }) {
   return (
     <form action={action} noValidate className="space-y-3">
       <input type="hidden" name="orgId" value={orgId} />
+      <input ref={tzRef} type="hidden" name="timezone" />
 
       <div>
         <input

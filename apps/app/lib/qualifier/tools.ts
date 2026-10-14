@@ -1,7 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { conversations, messages, withService, type Channel } from "@alevo/db";
 import { notifySlack } from "@/lib/notifications/slack";
+import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
 const SETTABLE_STATUS = ["active", "disqualified", "handed_off"] as const;
@@ -74,6 +76,8 @@ export type DispatchTarget = {
   conversationId: string;
   channel: Channel;
   contactName: string;
+  contactEmail: string | null;
+  orgName: string;
 };
 
 const clampScore = (n: unknown) =>
@@ -101,14 +105,58 @@ export async function dispatchTool(
     case "reply_to_contact": {
       const body = String(input.message ?? "").trim();
       if (!body) return "Error: message was empty; nothing was sent.";
+
+      // Deliver by email when we have an address and email is configured;
+      // otherwise just record the reply in-app (dev / no-email fallback).
+      let channel: Channel = target.channel;
+      let providerRef: string | null = null;
+      let note = "recorded in-app (no email configured)";
+
+      if (target.contactEmail && isEmailConfigured()) {
+        // Thread the reply into the lead's inbox via the last inbound message id.
+        const [lastInbound] = await withService((tx) =>
+          tx
+            .select({ ref: messages.providerRef })
+            .from(messages)
+            .where(
+              and(
+                eq(messages.conversationId, target.conversationId),
+                eq(messages.orgId, target.orgId),
+                eq(messages.direction, "inbound"),
+                isNotNull(messages.providerRef),
+              ),
+            )
+            .orderBy(desc(messages.createdAt))
+            .limit(1),
+        );
+        const sent = await sendQualifierEmail({
+          orgName: target.orgName,
+          toEmail: target.contactEmail,
+          conversationId: target.conversationId,
+          subject: `Your inquiry with ${target.orgName}`,
+          body,
+          inReplyTo: lastInbound?.ref ?? null,
+        });
+        if (sent.ok) {
+          channel = "email";
+          providerRef = sent.id ?? null;
+          note = "emailed to the contact";
+        } else {
+          // Record it anyway so the thread is intact; flag the delivery failure.
+          Sentry.captureMessage(`Qualifier email send failed: ${sent.error}`, "warning");
+          note = `recorded, but email delivery failed (${sent.error})`;
+        }
+      }
+
       await withService(async (tx) => {
         await tx.insert(messages).values({
           orgId: target.orgId,
           conversationId: target.conversationId,
           direction: "outbound",
           author: "assistant",
-          channel: target.channel,
+          channel,
           body,
+          providerRef,
         });
         // Stamp first-reply + move a brand-new conversation into 'active'.
         await tx
@@ -121,7 +169,7 @@ export async function dispatchTool(
           .where(scoped(target));
       });
       effects.replied = true;
-      return "Reply delivered to the contact.";
+      return `Reply ${note}.`;
     }
 
     case "record_fit_score": {

@@ -15,6 +15,30 @@ const errMsg = "mt-1 text-xs text-destructive";
 const labelClass = "block text-sm font-medium";
 const hintClass = "text-xs text-muted-foreground";
 
+/** Common US/Canada timezones (empty = fall back to the app default). */
+const TIMEZONES = [
+  ["", "App default (Eastern)"],
+  ["America/New_York", "Eastern — New York"],
+  ["America/Toronto", "Eastern — Toronto"],
+  ["America/Chicago", "Central — Chicago"],
+  ["America/Winnipeg", "Central — Winnipeg"],
+  ["America/Denver", "Mountain — Denver"],
+  ["America/Edmonton", "Mountain — Edmonton"],
+  ["America/Phoenix", "Mountain (no DST) — Phoenix"],
+  ["America/Los_Angeles", "Pacific — Los Angeles"],
+  ["America/Vancouver", "Pacific — Vancouver"],
+  ["America/Halifax", "Atlantic — Halifax"],
+] as const;
+
+/** Render whole-hour options as "HH:00" over [from, to]. */
+function hourOptions(from: number, to: number) {
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i).map((h) => (
+    <option key={h} value={h}>
+      {String(h).padStart(2, "0")}:00
+    </option>
+  ));
+}
+
 export function QualifierForm({ initial }: { initial: ProfileValues }) {
   const [state, action, pending] = useActionState(saveProfile, INITIAL);
   const router = useRouter();
@@ -150,6 +174,68 @@ export function QualifierForm({ initial }: { initial: ProfileValues }) {
           />
         </div>
       </div>
+
+      <fieldset className="space-y-4 rounded-lg border border-border p-4">
+        <legend className="px-1 text-sm font-medium">Follow-up</legend>
+        <p className={hintClass}>
+          When a lead goes quiet, Alevo follows up a few times over about a week, then closes the
+          thread. Nudges only go out inside the window below — in the contact&apos;s own timezone
+          when we know it, otherwise the default below. Replies to a brand-new lead are always
+          immediate.
+        </p>
+
+        <div className="space-y-1">
+          <label htmlFor="timezone" className={labelClass}>
+            Default timezone
+          </label>
+          <select
+            id="timezone"
+            name="timezone"
+            defaultValue={v("timezone")}
+            aria-invalid={!!e("timezone")}
+            className={fieldClass(!!e("timezone"))}
+          >
+            {TIMEZONES.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {e("timezone") && <p className={errMsg}>{e("timezone")}</p>}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label htmlFor="sendWindowStartHour" className={labelClass}>
+              Earliest
+            </label>
+            <select
+              id="sendWindowStartHour"
+              name="sendWindowStartHour"
+              defaultValue={String(v("sendWindowStartHour"))}
+              aria-invalid={!!e("sendWindow")}
+              className={fieldClass(!!e("sendWindow"))}
+            >
+              {hourOptions(0, 23)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="sendWindowEndHour" className={labelClass}>
+              Latest
+            </label>
+            <select
+              id="sendWindowEndHour"
+              name="sendWindowEndHour"
+              defaultValue={String(v("sendWindowEndHour"))}
+              aria-invalid={!!e("sendWindow")}
+              className={fieldClass(!!e("sendWindow"))}
+            >
+              {hourOptions(1, 24)}
+            </select>
+          </div>
+        </div>
+        {e("sendWindow") && <p className={errMsg}>{e("sendWindow")}</p>}
+      </fieldset>
 
       <div className="flex items-center gap-3">
         <button

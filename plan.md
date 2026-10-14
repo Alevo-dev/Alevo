@@ -7,10 +7,12 @@
 **Progress (2026-10-14):** Sprint 1 complete (platform foundation: identity/RLS,
 Members, billing tables, encrypted secrets, R2 files, Slack-per-org, Inngest
 baseline, separate super-admin app — all manually tested). Sprint 2 in progress:
-CRM core + hosted lead form + usage metering shipped (Slice 1); **the Qualifier**
-(Claude Sonnet 5 agent, MVP tool surface) shipped and testable end-to-end via the
-conversation thread's "reply as contact" box (Slice 2). Remaining Sprint 2:
-email (Resend) + SMS (Twilio) channels, the Inngest conversation cadence, KB
+CRM core + hosted lead form + usage metering (Slice 1); **the Qualifier** (Claude
+Sonnet 5 agent, MVP tool surface) shipped (Slice 2); **email channel (Resend)** —
+outbound Qualifier replies + inbound `email.received` webhook with
+per-conversation Reply-To threading (Slice 3); **the Inngest conversation
+cadence** — follow-up nudges (+1d/+3d/+3d → disqualify) with reply-cancellation and
+timezone-aware send windows (Slice 4). Remaining Sprint 2: SMS (Twilio), KB
 ingestion, and the Qualifier's booking / PSA / consent tools.
 
 Alevo is a multi-tenant AI SDR platform for MSPs. Tagline: *More conversations. More leads.*
@@ -184,10 +186,12 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 - [x] Tables: `contacts`, `conversations`, `messages`, `consents` (0007) + `org_profiles` (0008, the Qualifier's per-org ICP context)
 - [ ] Tables: `kb_documents`, `kb_chunks` (pgvector) — pending KB slice
 - [x] Hosted form per org → creates contact + conversation (`/f/[orgId]`); embeddable snippet pending
-- [ ] SMS (Twilio) and email (Resend): send, inbound webhook, STOP/unsubscribe, idempotent on `providerRef`
+- [x] Email (Resend): outbound Qualifier replies + inbound `email.received` webhook (`/api/webhooks/resend`), per-conversation Reply-To threading, idempotent on `providerRef`; feeds the same `conversation/message.received` event
+- [ ] SMS (Twilio): send, inbound webhook, STOP/unsubscribe, idempotent on `providerRef`
+- [ ] Email compliance: unsubscribe/List-Unsubscribe + suppression (deferred)
 - [ ] KB ingestion: PDF/text/URL → R2 → chunk → embed
 - [x] **The Qualifier**: Claude (Sonnet 5) agent with org ICP context, manual tool-use loop. Live tools: `reply_to_contact` (ask/answer), `record_fit_score` (0–100 + reasons), `set_status` (active/disqualified/handed_off), `escalate_to_human` (→ Slack). Runs via Inngest on each inbound message; Settings → Qualifier edits the profile. **Deferred tools:** `check_availability`, `book_meeting` (Sprint 3 booking), `write_to_psa` (Sprint 5), `record_consent`, and KB grounding. Not yet: `booked` end-state (needs booking)
-- [ ] Inngest flow per conversation: send → wait for reply or timeout → next action; cancelled on reply; contact-timezone send windows; priority + debounce per rule 10 _(today: react-on-inbound only, no cadence/timeouts)_
+- [x] Inngest flow per conversation: Qualifier arms `conversation/awaiting-reply` after a reply → `conversation-cadence` nudges on a schedule (+1d/+3d/+3d, then disqualifies), cancelled on any inbound reply (singleton per conversation); nudges gated to the org's send window in the contact's timezone (DST-correct, pure `Intl`); `priority` + per-conversation `debounce` on qualify per rule 10 (`CADENCE_FAST=1` to test locally)
 - [x] Conversation counted in `usage_counters` (`recordUsage` on inbound capture)
 - [x] Conversation view (thread, score + reasons, status) + "reply as contact" tester
 

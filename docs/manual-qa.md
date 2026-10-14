@@ -185,4 +185,35 @@ _Prereq: `npx supabase db push` (applies migration 0007). Restart the app._
 
 ---
 
+## Slice 4: conversation cadence (follow-up nudges)
+
+_Prereq: `npx supabase db push` (applies migration **0009**). Run the app with
+`CADENCE_FAST=1` in `.env.local` so the +1d/+3d/+3d schedule collapses to
+~20s/30s/40s, and run `npx inngest-cli dev` (watch its dashboard at
+`http://localhost:8288`). The Qualifier must be **enabled** (Settings →
+Qualifier) with a contact that has an email, or replies just record in-app._
+
+### Send-window settings (`/settings/qualifier`)
+- [ ] The **Follow-up** section shows a timezone select (default "App default (Eastern)") and Earliest/Latest hour selects (default 08:00 / 20:00).
+- [ ] Set Earliest **later** than Latest → Save → per-field error "The start time must be before the end time." under the hours; nothing saved.
+- [ ] Pick a real timezone + a valid window → Save → "Saved."; reload → values persist. (DB) `org_profiles.timezone`, `send_window_start_hour`, `send_window_end_hour` updated; `org_profiles_send_window_ck` would reject a bad window at the DB too.
+
+### Arming + nudging
+- [ ] Submit the hosted form (or use a conversation's "reply as contact"). The Qualifier replies → in the Inngest dashboard a **`conversation-cadence`** run starts (triggered by `conversation/awaiting-reply`) and is sleeping on `gap-0`.
+- [ ] Leave the lead quiet. After ~20s the first nudge is sent (a new outbound `assistant` message appears in the thread); then a second and third on the next gaps.
+- [ ] After the third nudge + gap with no reply, the conversation **status flips to `disqualified`** (Conversations list + DB) — a non-responsive lead is treated as not a fit.
+
+### Reply cancels the cadence
+- [ ] Arm a cadence (submit → Qualifier replies). While it's sleeping, **reply as the contact**. In the Inngest dashboard the running `conversation-cadence` is **cancelled** (cancelOn `conversation/message.received`), the Qualifier answers the new message, and a **fresh** cadence arms.
+- [ ] A lead the Qualifier **disqualified** or **handed off** does **not** arm a cadence (no `awaiting-reply`); an already-running cadence stops at its next `check-*` if the status changed.
+
+### Send windows (timezone)
+- [ ] Set the org window to a range that **excludes now** (e.g. Earliest 00:00 / Latest 01:00 if it's daytime). Arm a cadence → the nudge step `window-wait-*` sleeps until the window opens instead of sending immediately (visible in the Inngest run timeline). Widen the window → nudges send right away.
+- [ ] (DB) A lead from the hosted form has `contacts.timezone` set (your browser's tz); that tz — not the org default — drives its nudge timing.
+
+### Debounce (speed-to-lead trade-off)
+- [ ] Fire two inbound messages within a few seconds (double "reply as contact"). Only **one** `qualify-conversation` run executes (debounced per conversation), answering both.
+
+---
+
 _Next phase appends its own section here._

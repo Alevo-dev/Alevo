@@ -15,6 +15,9 @@ const EMPTY: ProfileValues = {
   tone: "",
   signoff: "",
   enabled: false,
+  timezone: "",
+  sendWindowStartHour: 8,
+  sendWindowEndHour: 20,
 };
 
 export default async function QualifierPage() {
@@ -46,6 +49,9 @@ export default async function QualifierPage() {
         tone: row.tone ?? "",
         signoff: row.signoff ?? "",
         enabled: row.enabled,
+        timezone: row.timezone ?? "",
+        sendWindowStartHour: row.sendWindowStartHour,
+        sendWindowEndHour: row.sendWindowEndHour,
       }
     : EMPTY;
 
