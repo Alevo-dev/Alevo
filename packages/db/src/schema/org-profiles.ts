@@ -29,6 +29,9 @@ export const orgProfiles = pgTable(
     timezone: text("timezone"),
     sendWindowStartHour: integer("send_window_start_hour").notNull().default(8),
     sendWindowEndHour: integer("send_window_end_hour").notNull().default(20),
+    // The org's Twilio number (E.164). Outbound SMS sends from it; inbound SMS
+    // is routed to the org by matching it. Unique across orgs (migration 0012).
+    smsFromNumber: text("sms_from_number"),
     ...timestamps,
   },
   (t) => [index("org_profiles_org_id_idx").on(t.orgId)],

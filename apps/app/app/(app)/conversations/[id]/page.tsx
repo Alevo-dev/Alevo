@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { contacts, conversations, messages, orgProfiles } from "@alevo/db";
+import { contacts, conversations, emailSuppressions, messages, orgProfiles } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
 import { ReplyAsContact } from "./reply-ui";
 import { AutoRefresh } from "./auto-refresh";
@@ -83,6 +83,25 @@ export default async function ConversationThread({
   );
   const qualifierEnabled = profile?.enabled ?? false;
 
+  // Is this contact's email suppressed? (unsubscribe / bounce / complaint)
+  const email = conv.email;
+  let suppressedReason: string | null = null;
+  if (email) {
+    const [row] = await withOrg((tx) =>
+      tx
+        .select({ reason: emailSuppressions.reason })
+        .from(emailSuppressions)
+        .where(
+          and(
+            sql`${emailSuppressions.orgId} = (select app.current_org_id())`,
+            sql`lower(${emailSuppressions.email}) = ${email.toLowerCase()}`,
+          ),
+        )
+        .limit(1),
+    );
+    suppressedReason = row?.reason ?? null;
+  }
+
   const name = [conv.firstName, conv.lastName].filter(Boolean).join(" ") || conv.email || "—";
 
   // Poll for the Qualifier's async reply only when it's actually on, a contact
@@ -98,6 +117,13 @@ export default async function ConversationThread({
       <Link href="/conversations" className="text-sm text-muted-foreground hover:underline">
         ← Conversations
       </Link>
+
+      {suppressedReason && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          This contact opted out ({suppressedReason}) — the Qualifier won&apos;t email them; replies
+          are recorded here only.
+        </div>
+      )}
 
       <div className="rounded-lg border border-border p-4">
         <h1 className="text-xl">{name}</h1>

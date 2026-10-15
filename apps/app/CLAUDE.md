@@ -80,6 +80,12 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
   `send_window_start_hour`/`send_window_end_hour` (daily window for follow-up
   nudges, CHECK-guarded) and `contacts.timezone` (best-effort, from the lead
   form's browser tz; preferred over the org default). Additive — no RLS change.
+- **0010** knowledge base: `kb_documents` + `kb_chunks` (pgvector `vector(1024)`,
+  hnsw cosine index) + the `kb_source_type` / `kb_doc_status` enums. Tenant-scoped.
+- **0011** `email_suppressions` (one row/(org,email); `unsubscribe`/`bounce`/
+  `complaint`). Checked before every outbound email.
+- **0012** `org_profiles.sms_from_number` (the org's Twilio number, unique where
+  set). Outbound SMS sends from it; inbound SMS routes to the org by it.
 
 ## The Qualifier (Claude agent)
 
@@ -128,6 +134,12 @@ importer of the `resend` SDK.
 - **Threading:** outbound sets `In-Reply-To`/`References` to the last inbound
   `Message-ID` (stored as `provider_ref`). Our matching is by the `reply+<id>`
   address, not headers.
+- **Compliance:** every send carries `List-Unsubscribe` + `List-Unsubscribe-Post`
+  (RFC 8058 one-click → `/api/unsubscribe?t=<signed token>`, public) and `org_id`
+  / `conversation_id` tags. `email.bounced` / `email.complained` webhooks →
+  `addSuppression` (org from the tag, else a unique contact-email match). The
+  Qualifier calls `isSuppressed()` before emailing and skips suppressed addresses.
+  Suppression token is an HMAC over {org,email} with `SECRETS_MASTER_KEY`.
 - **Setup (dashboard):** verify a sending domain; add a receiving domain
   (MX → Resend) or use the `<id>.resend.app` subdomain; create a "received mail"
   webhook pointing at `/api/webhooks/resend`; set `RESEND_API_KEY`,
@@ -142,9 +154,52 @@ importer of the `resend` SDK.
   only processes conversations in its own DB and 200-ignores the rest. Run
   `npx inngest-cli dev` so the fired event is processed.
 
-Coming next (Sprint 2): SMS channel (Twilio), KB ingestion (`kb_documents`,
-`kb_chunks`) for retrieval-grounded replies, and booking/PSA tools for the
-Qualifier.
+## SMS channel (Twilio)
+
+Mirrors the email channel. `lib/sms/twilio.ts` is the only importer of Twilio
+(raw HTTP, no SDK). Platform creds (`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`);
+each org sets its own number in Settings → Qualifier (`org_profiles.sms_from_number`).
+
+- **Outbound:** the Qualifier's `reply_to_contact` texts the lead when the
+  **conversation channel is `sms`** and the contact has a phone + the org has a
+  number + Twilio is configured — otherwise it falls through to email, then
+  in-app. A `21610` (recipient sent STOP) is treated as opted-out, not an error.
+- **Inbound:** Twilio posts form-encoded to **`/api/webhooks/twilio`** (verified
+  via `X-Twilio-Signature` — HMAC-SHA1 over the **public** URL rebuilt from
+  forwarded headers + sorted params). Routed to the org by the `To` number;
+  contact matched/created by `From` phone; attaches to the latest open `sms`
+  conversation or opens one; records an inbound `sms` message (idempotent on
+  `provider_ref` = `MessageSid`); meters a brand-new conversation; fires
+  `conversation/message.received`. STOP/UNSUBSCRIBE keywords are not engaged
+  (Twilio enforces carrier opt-out). The webhook always returns empty TwiML — we
+  reply async via the API.
+- **Setup (dashboard):** buy/assign a Twilio number per org; set it in Settings →
+  Qualifier; point the number's inbound "A message comes in" webhook at
+  `/api/webhooks/twilio` (POST); set `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`.
+  (Per-tenant subaccounts + A2P 10DLC per plan.md Sprint 0 — MVP uses one account
+  with a per-org number.)
+
+## Knowledge base (RAG)
+
+Grounds the Qualifier in each org's own material. `lib/kb/` owns it;
+`lib/email/resend.ts`-style config guards keep it optional.
+
+- **Ingest:** admins add Text / URL / PDF in **Settings → Knowledge**. A row is
+  created `pending` and `kb/document.ingest` fires → the `ingest-kb-document`
+  Inngest function (stepless, idempotent delete-then-insert, per-org concurrency)
+  extracts (`lib/kb/extract.ts`: raw text / URL HTML-strip / PDF via `unpdf` from
+  an R2 presigned-GET) → chunks (`chunk.ts`, ~1500 chars w/ overlap) → embeds
+  (`embeddings.ts`, **Voyage `voyage-3.5-lite`, 1024-dim**, raw HTTP) → stores
+  `kb_chunks`, sets `ready`/`failed`. PDFs reuse the files presign route for upload.
+- **Retrieve:** `retrieve.ts` embeds the latest inbound message as a query and
+  pulls top-k chunks by cosine similarity (drizzle `cosineDistance`, hnsw index),
+  injected into the Qualifier's system prompt. Best-effort: no `VOYAGE_API_KEY`,
+  no KB, or any failure → the Qualifier proceeds ungrounded.
+- **Env:** `VOYAGE_API_KEY`. Embedding dim (1024) is baked into the migration —
+  changing the model/dim means a new migration + re-embed.
+
+Sprint 2 is channel-complete (form, email, SMS). Coming next: booking tools for
+the Qualifier (Sprint 3) and PSA write-back (Sprint 5).
 
 ## Durable workflows (Inngest)
 
@@ -199,7 +254,7 @@ over the network; no local Postgres required.
 npx supabase link --project-ref <dev-ref>   # one-time; prompts for DB password
 npx supabase db push                        # apply supabase/migrations/* to the cloud DB
 npx inngest-cli dev                          # later phases
-pnpm --filter @alevo/app dev                 # app on :3000
+pnpm --filter @alevo/app dev                 # app on :3001 (web :3000, admin :3002)
 ```
 
 In `apps/app/.env.local` (copy from `.env.example`):
@@ -209,7 +264,8 @@ In `apps/app/.env.local` (copy from `.env.example`):
 
 `db push` does not run `seed.sql`; run the platform-admin bootstrap manually in
 the Supabase SQL editor after your first sign-in. For local Clerk webhooks,
-tunnel `:3000` with ngrok and point the Clerk webhook at `/api/webhooks/clerk`.
+tunnel `:3001` with ngrok and point the Clerk webhook at `/api/webhooks/clerk`.
+(See the repo-root [`DEVELOPMENT.md`](../../DEVELOPMENT.md) for the full dev runbook.)
 
 > Docker alternative (if WSL2 is ever available): `supabase start` + `supabase
 > db reset` give the full local stack on `:54322` and run `seed.sql`.

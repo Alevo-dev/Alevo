@@ -18,6 +18,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/settings/qualifier" className="hover:text-foreground">
               Qualifier
             </Link>
+            <Link href="/settings/knowledge" className="hover:text-foreground">
+              Knowledge
+            </Link>
             <Link href="/settings/members" className="hover:text-foreground">
               Members
             </Link>

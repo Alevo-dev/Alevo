@@ -10,9 +10,16 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "dev:web": "pnpm --filter @alevo/web dev",
-    "build:web": "pnpm --filter @alevo/web build"
+    "dev:app": "pnpm --filter @alevo/app dev",
+    "dev:admin": "pnpm --filter @alevo/admin dev",
+    "build:web": "pnpm --filter @alevo/web build",
+    "inngest": "npx inngest-cli@latest dev -u http://localhost:3001/api/inngest",
+    "tunnel": "ngrok http --domain=magical-midge-partly.ngrok-free.app 3001",
+    "dev:all": "concurrently -k -n web,app,admin,inngest -c cyan,green,magenta,yellow \"pnpm dev:web\" \"pnpm dev:app\" \"pnpm dev:admin\" \"pnpm inngest\"",
+    "dev:tunnel": "concurrently -k -n web,app,admin,inngest,ngrok -c cyan,green,magenta,yellow,blue \"pnpm dev:web\" \"pnpm dev:app\" \"pnpm dev:admin\" \"pnpm inngest\" \"pnpm tunnel\""
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "turbo": "^2.3.3"
   }
 }

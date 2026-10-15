@@ -32,3 +32,9 @@ export type ConversationMessageReceivedData = { orgId: string; conversationId: s
  * schedule and is cancelled the moment a new inbound message arrives.
  */
 export type ConversationAwaitingReplyData = { orgId: string; conversationId: string };
+
+/**
+ * Fired when a KB document is created or re-ingested. The ingest function
+ * extracts → chunks → embeds → stores. Carries `orgId` for the concurrency key.
+ */
+export type KbDocumentIngestData = { orgId: string; documentId: string };

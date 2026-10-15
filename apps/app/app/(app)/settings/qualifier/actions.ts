@@ -17,6 +17,7 @@ export type ProfileValues = {
   timezone: string;
   sendWindowStartHour: number;
   sendWindowEndHour: number;
+  smsFromNumber: string;
 };
 /** Per-field errors — only enforced when the Qualifier is being enabled. */
 export type ProfileErrors = {
@@ -25,7 +26,11 @@ export type ProfileErrors = {
   idealCustomer?: string;
   timezone?: string;
   sendWindow?: string;
+  smsFromNumber?: string;
 };
+
+/** E.164: a leading + and 8–15 digits (first digit 1–9). */
+const E164 = /^\+[1-9]\d{7,14}$/;
 export type ActionState = {
   ok?: boolean;
   error?: string;
@@ -56,6 +61,7 @@ function readValues(formData: FormData): ProfileValues {
     timezone: s("timezone"),
     sendWindowStartHour: hour(formData, "sendWindowStartHour", DEFAULT_START),
     sendWindowEndHour: hour(formData, "sendWindowEndHour", DEFAULT_END),
+    smsFromNumber: s("smsFromNumber"),
   };
 }
 
@@ -74,6 +80,9 @@ export async function saveProfile(
     }
     if (values.sendWindowStartHour >= values.sendWindowEndHour) {
       errors.sendWindow = "The start time must be before the end time.";
+    }
+    if (values.smsFromNumber && !E164.test(values.smsFromNumber)) {
+      errors.smsFromNumber = "Use E.164 format, e.g. +15551234567.";
     }
     // Enabling the Qualifier requires enough context to reason well.
     if (values.enabled) {
@@ -105,6 +114,7 @@ export async function saveProfile(
           timezone: nullable(values.timezone),
           sendWindowStartHour: values.sendWindowStartHour,
           sendWindowEndHour: values.sendWindowEndHour,
+          smsFromNumber: nullable(values.smsFromNumber),
         })
         .onConflictDoUpdate({
           target: orgProfiles.orgId,
@@ -120,6 +130,7 @@ export async function saveProfile(
             timezone: nullable(values.timezone),
             sendWindowStartHour: values.sendWindowStartHour,
             sendWindowEndHour: values.sendWindowEndHour,
+            smsFromNumber: nullable(values.smsFromNumber),
             updatedAt: new Date(),
           },
         }),

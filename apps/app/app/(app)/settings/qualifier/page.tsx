@@ -18,6 +18,7 @@ const EMPTY: ProfileValues = {
   timezone: "",
   sendWindowStartHour: 8,
   sendWindowEndHour: 20,
+  smsFromNumber: "",
 };
 
 export default async function QualifierPage() {
@@ -52,6 +53,7 @@ export default async function QualifierPage() {
         timezone: row.timezone ?? "",
         sendWindowStartHour: row.sendWindowStartHour,
         sendWindowEndHour: row.sendWindowEndHour,
+        smsFromNumber: row.smsFromNumber ?? "",
       }
     : EMPTY;
 

@@ -1,9 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { conversations, messages, withService, type Channel } from "@alevo/db";
+import { conversations, isSuppressed, messages, withService, type Channel } from "@alevo/db";
 import { notifySlack } from "@/lib/notifications/slack";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
+import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
 const SETTABLE_STATUS = ["active", "disqualified", "handed_off"] as const;
@@ -77,6 +78,8 @@ export type DispatchTarget = {
   channel: Channel;
   contactName: string;
   contactEmail: string | null;
+  contactPhone: string | null;
+  smsFromNumber: string | null;
   orgName: string;
 };
 
@@ -142,13 +145,32 @@ export async function dispatchTool(
       const body = String(input.message ?? "").trim();
       if (!body) return "Error: message was empty; nothing was sent.";
 
-      // Deliver by email when we have an address and email is configured;
-      // otherwise just record the reply in-app (dev / no-email fallback).
+      // Deliver on the conversation's channel: SMS conversations text back,
+      // everything else emails (if possible), else the reply is recorded in-app.
       let channel: Channel = target.channel;
       let providerRef: string | null = null;
-      let note = "recorded in-app (no email configured)";
+      let note = "recorded in-app (no channel configured)";
 
-      if (target.contactEmail && isEmailConfigured()) {
+      if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
+        const sent = await sendSms({
+          fromNumber: target.smsFromNumber,
+          toPhone: target.contactPhone,
+          body,
+        });
+        if (sent.ok) {
+          channel = "sms";
+          providerRef = sent.sid ?? null;
+          note = "texted to the contact";
+        } else if (sent.optedOut) {
+          note = "not sent — contact opted out of SMS (STOP)";
+        } else {
+          Sentry.captureMessage(`Qualifier SMS send failed: ${sent.error}`, "warning");
+          note = `recorded, but SMS delivery failed (${sent.error})`;
+        }
+      } else if (target.contactEmail && isEmailConfigured() && (await isSuppressed(target.orgId, target.contactEmail))) {
+        // Compliance: never email a suppressed address (unsubscribe/bounce/complaint).
+        note = "recorded in-app (contact is unsubscribed — not emailed)";
+      } else if (target.contactEmail && isEmailConfigured()) {
         // Thread the reply into the lead's inbox via the last inbound message id.
         const [lastInbound] = await withService((tx) =>
           tx
@@ -166,6 +188,7 @@ export async function dispatchTool(
             .limit(1),
         );
         const sent = await sendQualifierEmail({
+          orgId: target.orgId,
           orgName: target.orgName,
           toEmail: target.contactEmail,
           conversationId: target.conversationId,

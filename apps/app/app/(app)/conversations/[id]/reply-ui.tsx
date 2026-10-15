@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { replyAsContact, type ReplyState } from "./actions";
 
@@ -20,14 +20,22 @@ export function ReplyAsContact({
   const [state, action, pending] = useActionState(replyAsContact, INITIAL);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  // Transient confirmation — the thread's AutoRefresh shows the real reply, so
+  // this note self-dismisses instead of lingering as "replying…" forever.
+  const [showNote, setShowNote] = useState(false);
 
   useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      // Show the contact's message immediately; AutoRefresh on the thread then
-      // polls for the Qualifier's async reply.
-      router.refresh();
-    }
+    if (!state.ok) return;
+    formRef.current?.reset();
+    router.refresh();
+    // Deferred (not a synchronous setState in the effect body): show the note,
+    // then self-dismiss so it doesn't linger as "replying…" forever.
+    const show = setTimeout(() => setShowNote(true), 0);
+    const hide = setTimeout(() => setShowNote(false), 6000);
+    return () => {
+      clearTimeout(show);
+      clearTimeout(hide);
+    };
   }, [state, router]);
 
   const bodyError = state.errors?.body;
@@ -64,7 +72,7 @@ export function ReplyAsContact({
           {pending ? "Sending…" : "Send as contact"}
         </button>
         {state.error && <p className="text-sm text-destructive">{state.error}</p>}
-        {state.ok && !state.error && (
+        {showNote && !state.error && (
           <p className="text-sm text-muted-foreground">
             {qualifierEnabled ? "Sent — the Qualifier is replying…" : "Sent — Qualifier is off."}
           </p>

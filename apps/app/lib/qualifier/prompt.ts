@@ -5,6 +5,7 @@ export type ContactInfo = {
   lastName: string | null;
   company: string | null;
   email: string | null;
+  phone: string | null;
 };
 
 /** A labelled profile section, omitted entirely when the admin left it blank. */
@@ -18,7 +19,11 @@ function section(label: string, value: string | null): string | null {
  * asks qualifying questions, scores fit, and routes the conversation. The org's
  * profile supplies all the business context; everything else is behaviour.
  */
-export function buildSystemPrompt(profile: OrgProfile, contact: ContactInfo): string {
+export function buildSystemPrompt(
+  profile: OrgProfile,
+  contact: ContactInfo,
+  knowledge: string[] = [],
+): string {
   const company = profile.companyName?.trim() || "our company";
   const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim();
 
@@ -31,6 +36,13 @@ export function buildSystemPrompt(profile: OrgProfile, contact: ContactInfo): st
   ]
     .filter(Boolean)
     .join("\n\n");
+
+  // Retrieved knowledge-base passages, if any — authoritative for specifics.
+  const kb = knowledge.length
+    ? `\n\nKnowledge base — use these passages to answer specific questions accurately. If they don't cover something, say you'll check rather than inventing an answer:\n${knowledge
+        .map((k, i) => `[${i + 1}] ${k}`)
+        .join("\n\n")}`
+    : "";
 
   const signoff = profile.signoff?.trim()
     ? `Sign off your messages as: ${profile.signoff.trim()}`
@@ -46,7 +58,7 @@ export function buildSystemPrompt(profile: OrgProfile, contact: ContactInfo): st
 
   return `You are an inbound sales development representative for ${company}. You engage leads who reached out, qualify them against our criteria, and decide where the conversation should go.
 
-${context || "(No business profile has been configured yet — qualify conservatively and hand off anything promising to a human.)"}
+${context || "(No business profile has been configured yet — qualify conservatively and hand off anything promising to a human.)"}${kb}
 
 The person you're talking to:
 ${who || "(no contact details captured)"}

@@ -12,6 +12,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
+  "/api/unsubscribe(.*)", // public one-click unsubscribe (signed token)
   "/f/(.*)", // public hosted lead forms
 ]);
 

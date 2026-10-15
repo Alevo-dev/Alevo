@@ -9,4 +9,5 @@ export {
 } from "./secrets";
 export { recordAudit, type AuditEntry } from "./audit";
 export { recordUsage } from "./usage";
+export { isSuppressed, addSuppression } from "./suppressions";
 export * from "./schema";

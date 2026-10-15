@@ -40,3 +40,15 @@ export async function presignPutUrl(
   });
   return signed.url;
 }
+
+/** A presigned GET URL for server-side reads (e.g. the KB ingestor fetching a PDF). */
+export async function presignGetUrl(key: string, expiresIn = 300): Promise<string> {
+  const { accountId, accessKeyId, secretAccessKey, bucket } = r2Config();
+  const client = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" });
+  const endpoint = `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${key
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}?X-Amz-Expires=${expiresIn}`;
+  const signed = await client.sign(endpoint, { method: "GET", aws: { signQuery: true } });
+  return signed.url;
+}

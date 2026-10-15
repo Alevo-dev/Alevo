@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { makeUnsubscribeToken } from "./unsubscribe-token";
 
 /**
  * The email channel, backed by Resend. Outbound: the Qualifier emails leads from
@@ -87,6 +88,7 @@ export type SendResult = { ok: boolean; id?: string; error?: string };
  * conversation. In-Reply-To/References thread the message in the lead's client.
  */
 export async function sendQualifierEmail(params: {
+  orgId: string;
   orgName: string;
   toEmail: string;
   conversationId: string;
@@ -102,6 +104,22 @@ export async function sendQualifierEmail(params: {
     headers["In-Reply-To"] = params.inReplyTo;
     headers["References"] = params.inReplyTo;
   }
+  // One-click unsubscribe (RFC 8058) header + a visible footer link. Mail clients
+  // surface the header inconsistently, so we always render the link in the body too.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "");
+  const unsubscribeUrl = appUrl
+    ? `${appUrl}/api/unsubscribe?t=${makeUnsubscribeToken(params.orgId, params.toEmail)}`
+    : null;
+  if (unsubscribeUrl) {
+    headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  }
+  const text = unsubscribeUrl
+    ? `${params.body}\n\n—\nDon't want these emails? Unsubscribe: ${unsubscribeUrl}`
+    : params.body;
+  const html = unsubscribeUrl
+    ? `${toHtml(params.body)}\n<p style="color:#888;font-size:12px;margin-top:16px">Don't want these emails? <a href="${unsubscribeUrl}">Unsubscribe</a>.</p>`
+    : toHtml(params.body);
 
   try {
     const { data, error } = await resend().emails.send({
@@ -109,9 +127,14 @@ export async function sendQualifierEmail(params: {
       to: params.toEmail,
       replyTo: formatAddress(params.orgName, replyToAddress(params.conversationId)),
       subject: params.subject,
-      text: params.body,
-      html: toHtml(params.body),
+      text,
+      html,
       headers,
+      // Carried back on delivery events so bounce/complaint webhooks resolve the org.
+      tags: [
+        { name: "org_id", value: params.orgId },
+        { name: "conversation_id", value: params.conversationId },
+      ],
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true, id: data?.id };

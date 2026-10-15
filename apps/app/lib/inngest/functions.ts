@@ -4,10 +4,12 @@ import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
 import { FOLLOWUPS } from "@/lib/cadence/schedule";
 import { nextSendTime } from "@/lib/cadence/send-window";
+import { ingestDocument } from "@/lib/kb/ingest";
 import {
   inngest,
   type ConversationAwaitingReplyData,
   type ConversationMessageReceivedData,
+  type KbDocumentIngestData,
   type OrgProvisionedData,
 } from "./client";
 
@@ -164,5 +166,33 @@ export const conversationCadence = inngest.createFunction(
   },
 );
 
+/**
+ * KB ingestion. Extracts → chunks → embeds → stores a knowledge-base document
+ * so the Qualifier can ground replies in it (plan.md rule 9: heavy work — text
+ * extraction + embeddings — runs as an Inngest function).
+ *
+ * Per-tenant concurrency keyed on `orgId`. Intentionally stepless: ingestion is
+ * idempotent (delete-then-insert the doc's chunks), so a retry re-runs cleanly;
+ * it also sets its own terminal status (ready / failed) rather than throwing.
+ */
+export const ingestKbDocument = inngest.createFunction(
+  {
+    id: "ingest-kb-document",
+    concurrency: { key: "event.data.orgId", limit: 2 },
+    retries: 2,
+    triggers: [{ event: "kb/document.ingest" }],
+  },
+  async ({ event }) => {
+    const { orgId, documentId } = event.data as KbDocumentIngestData;
+    const result = await ingestDocument(orgId, documentId);
+    return { ok: true, ...result };
+  },
+);
+
 /** Every Inngest function must be registered in the serve route. */
-export const functions = [orgProvisioned, qualifyConversation, conversationCadence];
+export const functions = [
+  orgProvisioned,
+  qualifyConversation,
+  conversationCadence,
+  ingestKbDocument,
+];

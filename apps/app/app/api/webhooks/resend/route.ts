@@ -1,9 +1,62 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { conversations, messages, webhookEvents, withService } from "@alevo/db";
+import {
+  addSuppression,
+  contacts,
+  conversations,
+  messages,
+  webhookEvents,
+  withService,
+} from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
-import { verifyResendWebhook } from "@/lib/webhooks/verify";
+import { verifyResendWebhook, type ResendWebhookEvent } from "@/lib/webhooks/verify";
 import { fetchReceivedEmail, findConversationId } from "@/lib/email/resend";
+
+/** Read a value from Resend `tags` (array of {name,value} or a plain object). */
+function tagValue(tags: unknown, name: string): string | null {
+  if (Array.isArray(tags)) {
+    const t = tags.find(
+      (x): x is { name: string; value: string } =>
+        !!x && typeof x === "object" && (x as { name?: unknown }).name === name,
+    );
+    return t ? String(t.value) : null;
+  }
+  if (tags && typeof tags === "object") {
+    const v = (tags as Record<string, unknown>)[name];
+    return v == null ? null : String(v);
+  }
+  return null;
+}
+
+/** When tags don't carry org_id, fall back to a unique contact match by email. */
+async function resolveOrgByEmail(email: string): Promise<string | null> {
+  const rows = await withService((tx) =>
+    tx
+      .selectDistinct({ orgId: contacts.orgId })
+      .from(contacts)
+      .where(sql`lower(${contacts.email}) = ${email.toLowerCase()}`)
+      .limit(2),
+  );
+  return rows.length === 1 ? (rows[0]?.orgId ?? null) : null;
+}
+
+/**
+ * Bounce / spam complaint → add the recipient to the org's suppression list so
+ * the Qualifier stops emailing them (compliance). Best-effort; idempotent.
+ */
+async function handleSuppression(event: ResendWebhookEvent): Promise<Response> {
+  const data = event.data as { to?: string[] | string; tags?: unknown };
+  const toList = Array.isArray(data.to) ? data.to : data.to ? [data.to] : [];
+  const email = (toList[0] ?? "").toString().trim();
+  if (!email) return new Response("ok (no recipient)", { status: 200 });
+
+  const orgId = tagValue(data.tags, "org_id") ?? (await resolveOrgByEmail(email));
+  if (!orgId) return new Response("ok (org unresolved)", { status: 200 });
+
+  const reason = event.type === "email.complained" ? "complaint" : "bounce";
+  await addSuppression(orgId, email, reason).catch((err) => Sentry.captureException(err));
+  return new Response("ok (suppressed)", { status: 200 });
+}
 
 /**
  * Inbound email from Resend (`email.received`). A lead's reply arrives at the
@@ -23,6 +76,9 @@ export async function POST(req: Request) {
   }
   const { event } = verified;
 
+  if (event.type === "email.bounced" || event.type === "email.complained") {
+    return handleSuppression(event);
+  }
   if (event.type !== "email.received") {
     return new Response("ok (ignored)", { status: 200 });
   }

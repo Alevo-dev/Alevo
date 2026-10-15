@@ -237,6 +237,25 @@ export function QualifierForm({ initial }: { initial: ProfileValues }) {
         {e("sendWindow") && <p className={errMsg}>{e("sendWindow")}</p>}
       </fieldset>
 
+      <div className="space-y-1">
+        <label htmlFor="smsFromNumber" className={labelClass}>
+          SMS number (Twilio)
+        </label>
+        <p className={hintClass}>
+          Your Twilio number in E.164 format. The Qualifier texts from it, and replies to it route
+          back here. Leave blank if you&apos;re not using SMS.
+        </p>
+        <input
+          id="smsFromNumber"
+          name="smsFromNumber"
+          defaultValue={v("smsFromNumber")}
+          aria-invalid={!!e("smsFromNumber")}
+          className={fieldClass(!!e("smsFromNumber"))}
+          placeholder="+15551234567"
+        />
+        {e("smsFromNumber") && <p className={errMsg}>{e("smsFromNumber")}</p>}
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           type="submit"

@@ -1,9 +1,10 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import {
   contacts,
   conversations,
+  emailSuppressions,
   messages,
   orgProfiles,
   withService,
@@ -13,6 +14,7 @@ import {
 } from "@alevo/db";
 import { buildSystemPrompt, type ContactInfo } from "./prompt";
 import { dispatchTool, QUALIFIER_TOOLS, type QualifierEffects } from "./tools";
+import { retrieveKbContext } from "@/lib/kb/retrieve";
 
 /** The Qualifier runs on Sonnet 5 (near-Opus agentic quality at Sonnet cost). */
 const MODEL = "claude-sonnet-5";
@@ -69,10 +71,28 @@ export async function loadQualifierContext(
         lastName: contacts.lastName,
         company: contacts.company,
         email: contacts.email,
+        phone: contacts.phone,
       })
       .from(contacts)
       .where(and(eq(contacts.id, conv.contactId), eq(contacts.orgId, orgId)))
       .limit(1);
+
+    // Opted out of email + this conversation delivers by email → don't engage at
+    // all (no reply to generate, nowhere compliant to send it). SMS conversations
+    // aren't gated by email suppression.
+    if (conv.channel !== "sms" && contact?.email) {
+      const [sup] = await tx
+        .select({ id: emailSuppressions.id })
+        .from(emailSuppressions)
+        .where(
+          and(
+            eq(emailSuppressions.orgId, orgId),
+            sql`lower(${emailSuppressions.email}) = ${contact.email.toLowerCase()}`,
+          ),
+        )
+        .limit(1);
+      if (sup) return { skip: "suppressed" };
+    }
 
     const thread = await tx
       .select({ author: messages.author, body: messages.body })
@@ -85,7 +105,13 @@ export async function loadQualifierContext(
       conversationId,
       channel: conv.channel,
       profile,
-      contact: contact ?? { firstName: null, lastName: null, company: null, email: null },
+      contact: contact ?? {
+        firstName: null,
+        lastName: null,
+        company: null,
+        email: null,
+        phone: null,
+      },
       thread,
     };
   });
@@ -129,7 +155,10 @@ export async function runQualifier(
   if (!last || last.role !== "user") return { ran: false, skipped: "awaiting-contact" };
 
   const client = new Anthropic();
-  const system = buildSystemPrompt(ctx.profile, ctx.contact);
+  // Ground the reply in the org's knowledge base, keyed on the latest message.
+  const query = typeof last.content === "string" ? last.content : "";
+  const knowledge = await retrieveKbContext(ctx.orgId, query);
+  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge);
   const contactName =
     [ctx.contact.firstName, ctx.contact.lastName].filter(Boolean).join(" ").trim() ||
     ctx.contact.email ||
@@ -140,6 +169,8 @@ export async function runQualifier(
     channel: ctx.channel,
     contactName,
     contactEmail: ctx.contact.email,
+    contactPhone: ctx.contact.phone,
+    smsFromNumber: ctx.profile.smsFromNumber,
     orgName: ctx.profile.companyName?.trim() || "Alevo",
   };
   const effects: QualifierEffects = { replied: false, score: null, status: null, escalated: false };
