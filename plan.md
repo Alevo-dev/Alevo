@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-14
+**Last updated:** 2026-10-16
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -16,9 +16,10 @@ timezone-aware send windows (Slice 4); **KB ingestion + RAG** (Text/URL/PDF →
 Voyage embeddings → pgvector; grounds Qualifier replies) and **email compliance**
 (suppression list, one-click unsubscribe, bounce/complaint webhooks) (Slice 5);
 **SMS channel (Twilio)** — outbound + inbound with per-org number routing and
-STOP opt-out (Slice 6, on the `sms` branch pre-merge). Sprint 2 is now
-channel-complete (form + email + SMS). Remaining: the Qualifier's booking / PSA /
-consent tools (Sprint 3/5).
+STOP opt-out (Slice 6). Sprint 2 is channel-complete (form + email + SMS) and
+merged to `main`. Added **§11 Metrics & KPIs** (2026-10-16) — the owner's KPI set;
+north-star = meetings booked + pipeline sourced per seat. Remaining: the
+Qualifier's booking / PSA / consent tools (Sprint 3/5).
 
 Alevo is a multi-tenant AI SDR platform for MSPs. Tagline: *More conversations. More leads.*
 Starting from zero: nothing in the owner's partner deck or master plan is treated as built.
@@ -208,7 +209,7 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [ ] Booking adapter interface (`slots`, `book`, `cancel`, `reschedule`, `handleWebhook`) + `meetings` table
 - [ ] Qualifier `check_availability` / `book_meeting` tools call the org's adapter; booking confirmed back to the lead on the same channel
 - [ ] Consent capture on every inbound touch (full record + revocation)
-- [ ] Meeting outcome: showed / no-show / converted
+- [ ] Meeting outcome: showed / no-show / converted — feeds the meeting-show-rate / opportunities KPIs (§11)
 
 **Cal.com adapter — direct booking via API v2 (6–8h)** — the default for MSPs without a booking system
 - [ ] Connect: MSP pastes a Cal.com API key (encrypted per org) and picks the event type to book
@@ -240,7 +241,7 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 
 ### Sprint 5 — PSA write-back, dashboard, notifications (20–25h)
 - [ ] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking
-- [ ] Dashboard: leads in, qualified, meetings booked, missed calls recovered (weekly)
+- [ ] Dashboard: leads in, qualified, meetings booked, missed calls recovered (weekly) — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11)
 - [ ] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at`, shown to the tenant and alerted internally above ~60s
 - [ ] Usage meter: conversations, voice minutes, outbound dials vs plan allowance
 - [ ] Super-admin view: same numbers across all orgs
@@ -279,7 +280,7 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [ ] Reply webhook → classify (interested / not now / unsubscribe / out-of-office / bounce) → interested replies open a conversation the Qualifier takes over
 - [ ] Compliance: unsubscribe link + physical address in every email, global suppression list, one-click opt-out; CAN-SPAM for US recipients; **Canadian recipients blocked unless a CASL basis is recorded**
 - [ ] Daily send caps per mailbox; prospecting emails metered in `usage_counters`
-- [ ] Dashboard: sent, replies, interested, meetings booked from prospecting
+- [ ] Dashboard: sent, replies, interested, meetings booked from prospecting — plus the deliverability + email-engagement KPIs (§11)
 
 **LinkedIn outreach channel — PROPOSED, timing TBD (§9) (~20–30h)**
 - [ ] Unipile adapter behind the channel interface (rule 6): connect a tenant's LinkedIn account, send connection request, send DM, fetch replies
@@ -305,7 +306,7 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [ ] Two weeks living with the first MSP, fixing what real calls break
 
 ### Explicitly out of MVP
-Apollo/LinkedIn enrichment, outbound voice, HaloPSA, HubSpot, Stripe, white-label, A/B testing, analytics beyond the dashboard numbers, mobile app, multi-language, coaching.
+Apollo/LinkedIn enrichment, outbound voice, HaloPSA, HubSpot, Stripe, white-label, A/B testing, advanced analytics beyond the MVP dashboards (attribution, multichannel lift, NRR/cohort retention, the AI-quality + business-metrics dashboards — §11; the north-star funnel + deliverability basics stay in the MVP dashboards), mobile app, multi-language, coaching.
 
 Outbound voice is in every tier commercially but ships in Layer 2. Until then, early tenants get inbound + email prospecting, with outbound voice as part of the roadmap they're buying into.
 
@@ -323,7 +324,7 @@ If the owner keeps LinkedIn outreach and the buying-signal engine post-MVP, they
 | Second PSA/CRM (HaloPSA or HubSpot) | ~35h | Second adapter implementation |
 | Outbound AI voice | ~70h | Consent-gated dispatcher; dial only on valid consent; spoken "stop" revokes across channels; checks dial allowance before every call |
 | Stripe billing | ~15h | Tiers, overage line items from `usage_counters` |
-| Admin reporting expansion | TBD | Postgres views/materialized views; read-only role (future text-to-SQL) |
+| Admin reporting expansion | TBD | Advanced KPI analytics (§11): AI-quality dashboard, business-metrics dashboard (activation, WAU seats, retention, NRR), multichannel lift, seed-based inbox placement, cross-channel attribution. Postgres views/materialized views; read-only role (future text-to-SQL) |
 | Coaching (call analysis + analyzer persona) | ~60h | Reuses recordings/transcripts from Layers 1–2; low priority, capped concurrency, off-peak |
 | Ongoing hardening | ~50h | As tenants grow |
 
@@ -332,6 +333,8 @@ If the owner keeps LinkedIn outreach and the buying-signal engine post-MVP, they
 ## 6. Pricing & unit economics
 
 **Draft — tier limits and overage rates are proposals to confirm with the owner.** Inbound and outbound are included in every tier; tiers differ by usage limits.
+
+The core value metric is **meetings booked per customer per month** — the likely pricing anchor (see §11).
 
 ### Tiers
 
@@ -439,6 +442,7 @@ MVP ~6 weeks, first tenant ~8 weeks, full build ~11 weeks. At this pace vendors 
 
 - [ ] Owner approves MVP scope and build order
 - [ ] Owner confirms tier limits, overage rates, and the Growth price point (§6)
+- [ ] Confirm the north-star metric (meetings booked + pipeline sourced per seat) and whether meetings booked/customer/month is the pricing anchor (§11)
 - [ ] Customer vs channel: pricing points to selling directly to MSPs; confirm white-label is out of scope for now
 - [ ] Cold-email sending platform: Instantly (account opened) unless its API fails the per-tenant check; Smartlead as fallback
 - [ ] Who buys and owns tenant sending domains: Alevo (resold) or the MSP
@@ -467,3 +471,60 @@ MVP ~6 weeks, first tenant ~8 weeks, full build ~11 weeks. At this pace vendors 
 - Palette: blue and purple
 - Logo: owner's Gemini-generated square logo (A with rising arrow and bar chart, "Alevo" wordmark), used as-is
 - Tagline: *More conversations. More leads.*
+
+---
+
+## 11. Metrics & KPIs
+
+**North star: meetings booked + pipeline sourced per seat.** That's the outcome an MSP owner pays for — lead with it. Do **not** lead with open rates: Apple Mail Privacy Protection inflates them to near-meaningless, so opens and clicks are **secondary signals only**. Deliverability guardrail: keep the spam-complaint rate **< 0.1%** (Google and Yahoo enforce 0.3%).
+
+Each metric is instrumented as its underlying feature ships (capture then, don't retrofit) and surfaced on the dashboard noted below.
+
+### What we measure
+
+**Deliverability (the foundation)**
+- Inbox placement rate (seed testing), bounce rate (hard vs soft), spam-complaint rate (< 0.1%)
+- Domain + mailbox health score; SPF/DKIM/DMARC pass rates
+- Warm-up status and sends per mailbox per day
+
+**Email engagement**
+- Reply rate, positive-reply rate (AI-classified), unsubscribe rate
+- Click rate (secondary signal only)
+- Performance by sequence step (which touch drives replies)
+
+**LinkedIn** (ships with the LinkedIn channel — §9)
+- Connection-request acceptance rate
+- Message reply rate and positive-reply rate
+- Profile views generated, InMail response rate
+- Account safety: daily action counts vs safe limits
+
+**Pipeline & revenue (the outcomes MSPs buy)**
+- Meetings booked, meeting show rate, opportunities created
+- Pipeline value sourced, closed-won revenue attributed, cost per meeting
+- Time from first touch to meeting
+- Multichannel lift: email + LinkedIn vs either channel alone (a differentiator worth proving)
+
+**AI-quality dashboard** (internal)
+- Draft acceptance rate: sent unedited vs edited vs discarded
+- Personalization accuracy; hallucination / error flags
+- Reply-classification accuracy
+
+**Business-metrics dashboard** (internal)
+- Activation: time to first sequence sent, time to first meeting booked
+- Weekly active seats; retention / churn; net revenue retention
+- Meetings booked per customer per month — the core value metric and pricing-anchor candidate (§6)
+
+### Where each lands (capture → surface → phase)
+
+| KPI group | Captured by | Surfaced on | Phase |
+|---|---|---|---|
+| Pipeline funnel (meetings booked, show rate, speed-to-lead) | Sprint 3 (`meetings` + outcomes) | Sprint 5 customer dashboard | MVP |
+| Opportunities / pipeline value / closed-won | Sprint 5 PSA write-back (as ConnectWise exposes) | Sprint 5 customer dashboard | MVP |
+| Deliverability + email engagement (basics) | Sprint 7 email prospecting | Sprint 7 prospecting dashboard | MVP |
+| Seed-based inbox-placement testing | dedicated seed-list tooling | prospecting dashboard | Post-MVP |
+| LinkedIn KPIs | LinkedIn channel (§9) | prospecting dashboard | with that channel (Sprint 7 / Post-MVP) |
+| AI-quality dashboard | instrumented across the Qualifier + sequences | internal | Post-MVP |
+| Business-metrics dashboard (activation, WAU seats, retention, NRR) | usage + subscription data | internal | Post-MVP |
+| Multichannel lift, cross-channel attribution, cohort retention | multi-channel + revenue data | internal | Post-MVP |
+
+MVP dashboards (Sprint 5 customer, Sprint 7 prospecting) carry the north-star funnel plus deliverability/engagement basics. Advanced analytics — attribution, multichannel lift, cohort retention / NRR, seed inbox-placement, and the two internal dashboards — are Post-MVP (§5, *Admin reporting expansion*).
