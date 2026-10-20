@@ -11,7 +11,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        # Postgres 16 + pgvector (migration 0010 needs the `vector` extension).
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
