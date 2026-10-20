@@ -143,7 +143,7 @@ export default async function DashboardPage() {
                   <li key={c.id} style={{ animationDelay: `${i * 60}ms` }} className="animate-rise grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[132px_minmax(0,1fr)_auto]">
                     <span className="tabular font-mono text-label text-ink-muted">{fmtShort(c.createdAt, tz)}</span>
                     <span className="min-w-0 truncate text-sm">
-                      <Link href={`/conversations/${c.id}`} className="font-medium text-ink no-underline hover:underline">
+                      <Link href={`/conversations/${c.id}`} transitionTypes={["nav-forward"]} className="font-medium text-ink no-underline hover:underline">
                         {displayName(c.firstName, c.lastName, c.email)}
                       </Link>
                       <span className="text-ink-muted">

@@ -115,7 +115,7 @@ export default async function ConversationThread({ params }: { params: Promise<{
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
       <section aria-label="Messages" className="flex min-w-0 flex-col gap-6">
         <header className="border-b border-hairline pb-5">
-          <Link href="/conversations" className="text-label text-ink-muted no-underline hover:text-ink">
+          <Link href="/conversations" transitionTypes={["nav-back"]} className="text-label text-ink-muted no-underline hover:text-ink">
             Conversations
           </Link>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">

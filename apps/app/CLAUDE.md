@@ -69,6 +69,9 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   counts up. Bars: `animate-grow-x` / `animate-grow-y` (stagger with `animationDelay`).
   SVG lines: `pathLength="1"` + `animate-draw`. Lists/feeds: `animate-rise`. All of them
   respect `prefers-reduced-motion`. Any new graph on the dashboard uses these.
+- **Page transitions:** `components/page-transition.tsx` (React `ViewTransition`) via `(app)/template.tsx` + `settings/template.tsx`
+  (fade + rise by default). Tag list→detail links `transitionTypes={["nav-forward"]}` and
+  back links `["nav-back"]` to slide; CSS is in globals.css under "View transitions".
 - **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
   (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never
   render a raw enum value. Shared formatters live in `lib/format.ts`.

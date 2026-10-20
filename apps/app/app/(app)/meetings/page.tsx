@@ -81,7 +81,7 @@ export default async function MeetingsPage() {
                   <Tr key={m.id}>
                     <Td>
                       {m.conversationId ? (
-                        <Link href={`/conversations/${m.conversationId}`} className="font-semibold text-ink no-underline hover:underline">
+                        <Link href={`/conversations/${m.conversationId}`} transitionTypes={["nav-forward"]} className="font-semibold text-ink no-underline hover:underline">
                           {who}
                         </Link>
                       ) : (

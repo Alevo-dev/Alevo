@@ -312,5 +312,11 @@ https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1). Hand-check each screen at de
 - [ ] Returning from a calendar OAuth connect shows a "Connected your … calendar" toast once and cleans the URL; a connect **error** still renders as the red inline notice.
 - [ ] Validation errors are still inline (red border + message under the field), never a toast.
 
+## Page transitions
+- [ ] Sidebar navigation (Dashboard → Conversations → Meetings → Settings): the old page fades out quickly and the new page fades in with a slight rise; the sidebar and top bar don't move.
+- [ ] Settings tab switches: only the tab content crossfades; the "Settings" title and tab bar stay put.
+- [ ] Conversations list (or dashboard activity / meetings contact) → a thread: content slides **left** (forward); the "Conversations" back link at the top of a thread slides **right** (back). Browser back button: plain fade.
+- [ ] Clicks during a transition still register (no dead overlay). With the OS reduced-motion setting on, pages swap instantly.
+
 ## Public lead form (`/f/<orgId>`)
 - [ ] Centered card on the dark ground; inputs on canvas with control borders; the blue **Send** button; success state in a blue tint panel.

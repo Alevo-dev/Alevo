@@ -66,7 +66,11 @@ export default async function ConversationsPage() {
                 return (
                   <Tr key={c.id}>
                     <Td>
-                      <Link href={`/conversations/${c.id}`} className="block font-semibold text-ink no-underline hover:underline">
+                      <Link
+                        href={`/conversations/${c.id}`}
+                        transitionTypes={["nav-forward"]}
+                        className="block font-semibold text-ink no-underline hover:underline"
+                      >
                         {displayName(c.firstName, c.lastName, c.email)}
                       </Link>
                       <span className="block text-label text-ink-muted">{c.company ?? c.email ?? ""}</span>
