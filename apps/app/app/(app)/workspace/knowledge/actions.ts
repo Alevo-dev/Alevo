@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { files, kbDocuments } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import * as Sentry from "@sentry/nextjs";
 import { inngest } from "@/lib/inngest/client";
 import type { KbSourceType } from "@alevo/db";
 
@@ -31,11 +32,23 @@ async function orgId(): Promise<string> {
   return org.id;
 }
 
+/**
+ * Queue ingestion. If the event can't be sent (no/invalid INNGEST_EVENT_KEY,
+ * Inngest unreachable), say so on the document instead of leaving it "Queued"
+ * forever: it flips to failed with the reason, and Re-index retries.
+ */
 async function fireIngest(org: string, documentId: string) {
   try {
     await inngest.send({ name: "kb/document.ingest", data: { orgId: org, documentId } });
-  } catch {
-    // The doc is saved as 'pending'; it can be re-ingested from the list.
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "unknown error";
+    Sentry.captureException(err);
+    await withOrg((tx) =>
+      tx
+        .update(kbDocuments)
+        .set({ status: "failed", error: `Couldn't queue indexing: ${reason}`, updatedAt: new Date() })
+        .where(and(eq(kbDocuments.id, documentId), sql`${kbDocuments.orgId} = (select app.current_org_id())`)),
+    );
   }
 }
 

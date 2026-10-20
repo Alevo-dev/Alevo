@@ -258,7 +258,7 @@ function DocumentRow({ doc }: { doc: DocView }) {
         <Pill tone={status.tone}>{status.label}</Pill>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2">
-        {(doc.status === "failed" || doc.status === "ready") && (
+        {doc.status !== "processing" && (
           <form action={reAction}>
             <input type="hidden" name="id" value={doc.id} />
             <Button type="submit" size="sm" variant="ghost" loading={rePending}>
