@@ -61,12 +61,30 @@ pnpm tunnel   # ngrok http --domain=magical-midge-partly.ngrok-free.app 3001
 So a texted number hits `https://<your-ngrok>/api/webhooks/twilio`. Inspect
 traffic at http://127.0.0.1:4040.
 
-## Database (Supabase, cloud dev project)
+## Database (Supabase: dev + prod projects)
 
-```bash
-npx supabase link --project-ref <dev-ref>   # one-time; prompts for DB password
-npx supabase db push                        # apply supabase/migrations/* to the cloud DB
-```
+One migrations folder (`supabase/migrations/`), two targets:
+
+- **Dev** is the *linked* project on your machine. Link once, then push by hand
+  whenever you add a migration:
+
+  ```bash
+  npx supabase link --project-ref <dev-ref>   # one-time; prompts for the DB password
+  pnpm db:push:dev:dry                        # what would run
+  pnpm db:push:dev                            # apply to the dev project
+  ```
+
+- **Prod** is never pushed from a laptop. The `deploy-db-prod` job in
+  `.github/workflows/ci.yml` runs on every push to `main` after build-test
+  passes: it links the prod project and runs `supabase db push`. It needs three
+  repo secrets — `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROD_PROJECT_REF`,
+  `SUPABASE_PROD_DB_PASSWORD` — and uses the `production` GitHub environment, so
+  you can require a manual approval there if you want a gate.
+
+Rules: never edit a migration that has been applied anywhere (add a new one);
+`db push` is append-only and records what it applied in each project's
+`supabase_migrations.schema_migrations`, so the same file set converges both
+projects.
 
 Env lives in `apps/app/.env.local` (copy from `apps/app/.env.example`). After
 your first sign-in, promote yourself to platform admin in the Supabase SQL

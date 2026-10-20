@@ -9,6 +9,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "db:push:dev": "npx supabase db push --linked",
+    "db:push:dev:dry": "npx supabase db push --linked --dry-run",
     "dev:web": "pnpm --filter @alevo/web dev",
     "dev:app": "pnpm --filter @alevo/app dev",
     "dev:admin": "pnpm --filter @alevo/admin dev",
