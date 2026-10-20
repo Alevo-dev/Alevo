@@ -95,7 +95,12 @@ export const qualifyConversation = inngest.createFunction(
     // plain send (not step.sendEvent) to keep this function stepless; swallowed
     // so a send failure can't trigger a retry that re-runs the agent. A fresh
     // inbound reply cancels the cadence; each subsequent reply emits this again.
-    if (result.ran && result.replied && (result.status === null || result.status === "active")) {
+    if (
+      result.ran &&
+      result.replied &&
+      !result.booked &&
+      (result.status === null || result.status === "active")
+    ) {
       try {
         await inngest.send({
           name: "conversation/awaiting-reply",

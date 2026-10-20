@@ -1,4 +1,4 @@
-import { addSuppression } from "@alevo/db";
+import { addSuppression, revokeConsentForEmail } from "@alevo/db";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe-token";
 
 /**
@@ -14,6 +14,7 @@ async function suppress(token: string | null): Promise<boolean> {
   const parsed = verifyUnsubscribeToken(token);
   if (!parsed) return false;
   await addSuppression(parsed.orgId, parsed.email, "unsubscribe");
+  await revokeConsentForEmail(parsed.orgId, parsed.email);
   return true;
 }
 

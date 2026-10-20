@@ -37,6 +37,46 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
     `values` back so fields keep their input on error. (`useActionState` pattern;
     see the lead / members / secrets forms.)
 
+## UI (design system)
+
+The app renders on the **Alevo design system** from Claude Design (plan.md §10):
+dark navy default, brand blue for the one primary action / active nav / live state,
+violet for outbound and AI-drafted things, green/amber/red for status only.
+
+- **Tokens:** the `--ds-*` block in `packages/tokens/tokens.css` (light + `.dark`).
+  `app/globals.css` maps them into Tailwind — use `bg-canvas` / `bg-surface` /
+  `bg-raised`, `border-hairline` (dividers) / `border-control` (inputs), `text-ink` /
+  `text-ink-muted`, `bg-brand` + `text-on-brand` (never white on brand), `bg-violet`,
+  `text-success|warning|danger`, `text-title|heading|metric|label`, `font-display|mono`.
+  The shadcn aliases (`bg-background`, `text-muted-foreground`, …) still resolve to
+  the same tokens for legacy markup. No raw hex in components.
+- **Primitives** (`components/ui/`): `Button`/`buttonClass` (primary · accent ·
+  secondary · ghost · danger; sm/md), `Card`/`CardHeader`, `Field`/`Input`/`Textarea`/
+  `Select`/`FieldError` (red border + message beneath — rule 13), `SettingRow`
+  (label-left/control-right), `Switch`/`SwitchRow`, `Pill`/`StatusDot`, `StatTile`,
+  `PageHeader`, `Table`/`Th`/`Tr`/`Td`/`EmptyRow`, `Notice`. Compose these; don't
+  hand-roll class strings on pages.
+- **No browser-default controls.** Never a native `<select>`, `alert()`, `confirm()` or
+  default validation popup. Dropdowns are `Select` (`components/ui/select.tsx`); modals are
+  `Dialog`; every destructive action (delete, cancel, remove, revoke, clear, disconnect) goes
+  through `ConfirmSubmit` / `ConfirmDialog`; edits such as reschedule open a `Dialog` with a
+  Save button.
+- **Feedback:** successes are toasts (Sonner via `components/app-toaster.tsx`, on the
+  tokens; 4s, closable). After a server action use `useActionToast(state, "Saved.")`
+  (`lib/ui/use-action-toast.ts`) — it toasts once per dispatch and refreshes. Errors are
+  never toasts: per-field under the control, form-level next to the submit (rule 13).
+- **Charts animate on load.** Numbers: `StatTile` with a numeric `value` (or `CountUp`)
+  counts up. Bars: `animate-grow-x` / `animate-grow-y` (stagger with `animationDelay`).
+  SVG lines: `pathLength="1"` + `animate-draw`. Lists/feeds: `animate-rise`. All of them
+  respect `prefers-reduced-motion`. Any new graph on the dashboard uses these.
+- **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
+  (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never
+  render a raw enum value. Shared formatters live in `lib/format.ts`.
+- **Shell:** `(app)/layout.tsx` + `components/app-sidebar.tsx` (232px rail, plan card,
+  Clerk controls); Settings pages share `(app)/settings/layout.tsx` + `settings-tabs.tsx`.
+- **Icons:** `lucide-react`, 1.75 stroke, 16px in dense UI. Voice: operator reporting
+  in — plain verbs, sentence case, no exclamation marks or emoji.
+
 ## Data + auth seams
 
 - **`@alevo/db`** — Drizzle over `postgres-js` through the Supavisor transaction
@@ -86,6 +126,18 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
   `complaint`). Checked before every outbound email.
 - **0012** `org_profiles.sms_from_number` (the org's Twilio number, unique where
   set). Outbound SMS sends from it; inbound SMS routes to the org by it.
+- **0013** booking: `meetings` (provider / `provider_ref` / status / start/end /
+  join_url; tenant-scoped, unique `provider_ref` per org for webhook idempotency)
+  + the `booking_provider` / `meeting_status` enums, and
+  `org_profiles.calcom_event_type_id`.
+- **0014** `meetings.outcome` (`meeting_outcome` enum: pending/showed/no_show) +
+  `meetings.converted` — the rep-marked post-meeting result (feeds §11 KPIs).
+- **0015** `org_profiles.calendly_url` + `calendly` added to `booking_provider`
+  — Calendly link mode.
+- **0016** direct calendar booking: `org_profiles.calendar_provider`
+  (`google`/`m365`) + `calendar_id` + `calendar_account_email` +
+  `booking_length_min` / `booking_hours_start` / `booking_hours_end`. OAuth
+  refresh tokens live in `org_secrets`, not here.
 
 ## The Qualifier (Claude agent)
 
@@ -101,9 +153,12 @@ still active, it arms the follow-up cadence (see Durable workflows below).
   auto-runner). Model **`claude-sonnet-5`**, adaptive thinking, effort `medium`.
   Anthropic code lives only here — read the `claude-api` skill before touching it.
 - **Tools (MVP):** `reply_to_contact`, `record_fit_score`, `set_status`
-  (`active`/`disqualified`/`handed_off`), `escalate_to_human` (→ Slack). Booking
-  / PSA tools come with those integrations. All writes go through `withService`,
-  scoped to the org **in code** (Inngest has no session → no RLS).
+  (`active`/`disqualified`/`handed_off`), `escalate_to_human` (→ Slack). When
+  booking is connected (see below), the Qualifier can reach the **`booked`**
+  end-state — either the API tools (`check_availability` + `book_meeting`, Cal.com)
+  or the link tool (`send_booking_link`, Calendly), per the org's `bookingMode`.
+  All writes go through `withService`, scoped to the org **in code** (Inngest has
+  no session → no RLS). PSA write-back tools come in Sprint 5.
 - **Testing before email/SMS exist:** the conversation thread has a "reply as
   contact" box (`[id]/actions.ts` + `reply-ui.tsx`) that posts an inbound message
   and fires the event, so the full loop is exercisable end-to-end.
@@ -179,6 +234,87 @@ each org sets its own number in Settings → Qualifier (`org_profiles.sms_from_n
   (Per-tenant subaccounts + A2P 10DLC per plan.md Sprint 0 — MVP uses one account
   with a per-org number.)
 
+## Booking (Cal.com + Calendly + Google/M365)
+
+Lets the Qualifier book meetings instead of only handing off. The context loader
+computes a per-org **`bookingMode`**, in precedence order: **`calcom`** (Cal.com
+key + event type), else **`google`** / **`m365`** (a connected calendar — OAuth
+refresh token + `calendar_id`), else **`calendly`** (link mode, a Calendly URL),
+else `null` (hand off). Cal.com, Google, and M365 are all *API booking* and share
+the same tools (`check_availability` + `book_meeting`); Calendly is *link mode*
+(`send_booking_link`). `lib/booking/` is a provider-agnostic adapter
+(`BookingAdapter`: `availableSlots` + `book` + `cancel` + `reschedule`), resolved
+by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
+
+- **Connect (per org):** Cal.com API key + webhook secret in Settings →
+  Integrations (`org_secrets`); the event-type ID in Settings → Qualifier
+  (`org_profiles.calcom_event_type_id`). Or a Calendly scheduling link in
+  Settings → Qualifier (`org_profiles.calendly_url`) + its webhook signing key
+  (`calendly_webhook_secret`) in Integrations. Or a Google / Microsoft 365
+  calendar via OAuth (the "Booking calendar" block in Settings → Qualifier).
+- **Book (Cal.com):** `check_availability` → `GET /v2/slots`
+  (`cal-api-version: 2024-09-04`); `book_meeting` → `POST /v2/bookings`
+  (`cal-api-version: 2026-02-25`) with `metadata.alevoOrgId`/`alevoConversationId`.
+  On success it records a `meetings` row (`provider_ref` = booking uid, `provider`
+  = the adapter's) and sets the conversation to `booked` (terminal → the Qualifier
+  won't re-run and the cadence stops).
+- **Book (Google / M365 — OAuth direct):** `lib/booking/oauth.ts` runs the
+  consent flow (`/api/oauth/{google,microsoft}/start` → `…/callback`, CSRF via a
+  signed `state`); only the **refresh token** is stored (encrypted, in
+  `org_secrets` as `{google,m365}_calendar_refresh_token`), exchanged for a
+  short-lived access token per adapter build. `availableSlots` reads free/busy
+  (Google `POST /freeBusy`; Graph `POST /me/calendar/getSchedule`) and
+  `lib/booking/slots.ts` turns busy intervals into slots by simple rules
+  (weekday working-hours window + fixed length, tz-aware, no past). `book`
+  re-checks the slot (double-booking guard) then creates the event with a video
+  link (Google Meet via `conferenceData`; Teams via `isOnlineMeeting`),
+  recording the `meetings` row the same way. **No webhook** — contact-initiated
+  changes on these calendars don't sync back (basic, single-calendar by design).
+  Deliberately not built: round-robin, buffers, notice rules (→ Cal.com).
+- **Calendly (link mode):** `send_booking_link` sends the org's `calendly_url`
+  (with `utm_source=alevo` + `utm_content=<conversationId>` appended) for the lead
+  to self-book — no slot/booking API. When the lead books, Calendly's
+  **`invitee.created`** webhook records the `meetings` row (`provider = calendly`)
+  and flips the conversation to `booked`; **`invitee.canceled`** cancels the row
+  and reopens the conversation. Reschedule/cancel are handled by Calendly's own
+  links (the contact self-serves) — our Meetings tab doesn't expose them.
+- **Webhook:** `/api/webhooks/calcom` — `x-cal-signature-256` = HMAC-SHA256 over
+  the raw body with the org's `calcom_webhook_secret` (verified when set).
+  `BOOKING_CREATED/RESCHEDULED/CANCELLED` sync `meetings` + conversation status;
+  idempotent per `(event, uid)` via `webhook_events`; cancel reopens the
+  conversation. `/api/webhooks/calendly` — `Calendly-Webhook-Signature`
+  (`t=<ts>,v1=<sig>`) = HMAC-SHA256 over `<ts>.<rawBody>` with the org's
+  `calendly_webhook_secret`; idempotent per `(event, invitee uri)`.
+- **Surfaced:** the **Meetings** tab (`/meetings`) lists bookings and lets reps
+  set the **outcome** (showed / no-show / converted — feeds the §11 KPIs) and
+  **cancel / reschedule** for API-managed providers (Cal.com / Google / M365, via
+  the adapter's `cancel`/`reschedule`, then our row syncs). Calendly / manual rows
+  show outcome + converted only. The conversation thread shows the booked meeting
+  inline.
+- **Env (platform-level OAuth apps):** `GOOGLE_OAUTH_CLIENT_ID` /
+  `GOOGLE_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_CLIENT_ID` /
+  `MICROSOFT_OAUTH_CLIENT_SECRET` (+ optional `MICROSOFT_OAUTH_TENANT`, default
+  `common`); redirect URIs are `${NEXT_PUBLIC_APP_URL}/api/oauth/{google,
+  microsoft}/callback`. Google calendar scopes need app verification before
+  external tenants connect without warnings (plan.md Sprint 3 note — submit early).
+- **Deferred:** contact-initiated reschedule *through the Qualifier* (contacts
+  can already self-serve via Cal.com/Calendly invite links, synced by our
+  webhooks), and push-notification sync for Google/M365 calendar changes.
+
+## Consent (compliance)
+
+Consent is data, not a checkbox (plan.md rule 8). The `consents` table (0007)
+records one active row per (contact, channel); `@alevo/db` exposes `recordConsent`
+/ `revokeConsentForContact` / `revokeConsentForEmail`.
+
+- **Captured** on every inbound touch: hosted form (lead action), email reply
+  (`/api/webhooks/resend`), SMS inbound (`/api/webhooks/twilio`). `recordConsent`
+  is idempotent — one active consent per channel.
+- **Revoked** on opt-out: email unsubscribe (`/api/unsubscribe`) + bounce /
+  complaint (resend webhook) → `revokeConsentForEmail`; SMS STOP (twilio webhook)
+  → `revokeConsentForContact`. Revocation sets `revoked_at`; the email suppression
+  list is the separate hard-enforcement layer the Qualifier checks before sending.
+
 ## Knowledge base (RAG)
 
 Grounds the Qualifier in each org's own material. `lib/kb/` owns it;
@@ -198,8 +334,9 @@ Grounds the Qualifier in each org's own material. `lib/kb/` owns it;
 - **Env:** `VOYAGE_API_KEY`. Embedding dim (1024) is baked into the migration —
   changing the model/dim means a new migration + re-embed.
 
-Sprint 2 is channel-complete (form, email, SMS). Coming next: booking tools for
-the Qualifier (Sprint 3) and PSA write-back (Sprint 5).
+Sprint 2 is channel-complete (form, email, SMS); Sprint 3 Slice 1 adds Cal.com
+booking (above). Coming next: consent capture + meeting outcomes, Google/M365
+booking (Sprint 3), and PSA write-back (Sprint 5).
 
 ## Durable workflows (Inngest)
 

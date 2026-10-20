@@ -1,13 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 import { memberships, orgInvitations, users } from "@alevo/db";
 import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
-import {
-  InviteForm,
-  MemberRow,
-  PendingInviteRow,
-  type InviteView,
-  type MemberView,
-} from "./members-ui";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
+import { EmptyRow, Table, Th } from "@/components/ui/table";
+import { InviteForm, MemberRow, PendingInviteRow, type InviteView, type MemberView } from "./members-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +13,7 @@ export default async function MembersPage() {
     await requireRole("admin");
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      return (
-        <p className="text-muted-foreground">
-          You need an admin role to manage members.
-        </p>
-      );
+      return <Notice tone="warning">You need an admin role to manage members.</Notice>;
     }
     throw error;
   }
@@ -66,64 +59,43 @@ export default async function MembersPage() {
     role: r.role,
   }));
   const pending: InviteView[] = invites;
+  const total = members.length + pending.length;
 
   return (
-    <section className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl">Members</h1>
-        <p className="mt-1 text-muted-foreground">
-          Invite teammates and manage their roles.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader title="Invite a member" hint="Seats are unlimited on every plan. Reps see the same data as admins." />
+        <div className="mt-4">
+          <InviteForm />
+        </div>
+      </Card>
 
-      <div className="rounded-lg border border-border p-4">
-        <h2 className="mb-3 text-sm font-medium">Invite a teammate</h2>
-        <InviteForm />
-      </div>
-
-      <div>
-        <h2 className="mb-2 text-sm font-medium">
-          Members <span className="text-muted-foreground">({members.length})</span>
-        </h2>
-        <table className="w-full text-left text-sm">
-          <thead className="text-muted-foreground">
-            <tr className="border-b border-border">
-              <th className="py-2 pr-4 font-normal">Name</th>
-              <th className="py-2 pr-4 font-normal">Email</th>
-              <th className="py-2 pr-4 font-normal">Role</th>
-              <th className="py-2 font-normal" />
+      <Card padding="none">
+        <div className="flex items-center justify-between px-6 pt-5">
+          <h2 className="text-heading font-semibold">Members</h2>
+          <span className="text-label text-ink-muted">
+            {total} {total === 1 ? "person" : "people"}
+          </span>
+        </div>
+        <Table className="mt-2">
+          <thead>
+            <tr>
+              <Th>Member</Th>
+              <Th>Role</Th>
+              <Th className="text-right">Actions</Th>
             </tr>
           </thead>
           <tbody>
+            {total === 0 && <EmptyRow colSpan={3}>No members yet.</EmptyRow>}
             {members.map((m) => (
               <MemberRow key={m.userId} member={m} />
             ))}
+            {pending.map((inv) => (
+              <PendingInviteRow key={inv.id} invite={inv} />
+            ))}
           </tbody>
-        </table>
-      </div>
-
-      {pending.length > 0 && (
-        <div>
-          <h2 className="mb-2 text-sm font-medium">
-            Pending invitations{" "}
-            <span className="text-muted-foreground">({pending.length})</span>
-          </h2>
-          <table className="w-full text-left text-sm">
-            <thead className="text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="py-2 pr-4 font-normal">Email</th>
-                <th className="py-2 pr-4 font-normal">Role</th>
-                <th className="py-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((inv) => (
-                <PendingInviteRow key={inv.id} invite={inv} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
+        </Table>
+      </Card>
+    </div>
   );
 }

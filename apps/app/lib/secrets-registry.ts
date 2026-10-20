@@ -4,7 +4,11 @@
  * Keep key names stable — they're the DB identifiers.
  */
 
-export type SecretKey = "slack_webhook_url" | "calcom_api_key";
+export type SecretKey =
+  | "slack_webhook_url"
+  | "calcom_api_key"
+  | "calcom_webhook_secret"
+  | "calendly_webhook_secret";
 
 export type SecretSpec = {
   key: SecretKey;
@@ -45,6 +49,20 @@ export const SECRET_KEYS: readonly SecretSpec[] = [
     label: "Cal.com API key",
     help: "Used to read availability and book meetings via Cal.com.",
     placeholder: "cal_live_…",
+    inputType: "password",
+  },
+  {
+    key: "calcom_webhook_secret",
+    label: "Cal.com webhook secret",
+    help: "Signs Cal.com booking webhooks so we can verify them. Set the same secret on the Cal.com webhook pointing at /api/webhooks/calcom.",
+    placeholder: "whatever secret you set in Cal.com",
+    inputType: "password",
+  },
+  {
+    key: "calendly_webhook_secret",
+    label: "Cal­endly webhook signing key",
+    help: "Verifies Calendly booking webhooks. From the Calendly webhook subscription pointing at /api/webhooks/calendly.",
+    placeholder: "Calendly signing key",
     inputType: "password",
   },
 ];

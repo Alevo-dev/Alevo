@@ -1,6 +1,15 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { contacts, conversations, messages, orgProfiles, recordUsage, withService } from "@alevo/db";
+import {
+  contacts,
+  conversations,
+  messages,
+  orgProfiles,
+  recordConsent,
+  recordUsage,
+  revokeConsentForContact,
+  withService,
+} from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
 import { isOptOutMessage, verifyTwilioSignature } from "@/lib/sms/twilio";
 
@@ -49,8 +58,19 @@ export async function POST(req: Request) {
     if (!org) return twiml(); // unknown number — ack and ignore
     const orgId = org.orgId;
 
-    // Carrier opt-out: Twilio blocks future sends; we just don't engage.
-    if (isOptOutMessage(body)) return twiml();
+    // Carrier opt-out: Twilio blocks future sends; we don't engage, and we
+    // revoke the contact's SMS consent.
+    if (isOptOutMessage(body)) {
+      const [c] = await withService((tx) =>
+        tx
+          .select({ id: contacts.id })
+          .from(contacts)
+          .where(and(eq(contacts.orgId, orgId), eq(contacts.phone, fromPhone)))
+          .limit(1),
+      );
+      if (c) await revokeConsentForContact(orgId, c.id, "sms").catch((e) => Sentry.captureException(e));
+      return twiml();
+    }
 
     const result = await withService(async (tx) => {
       const [existing] = await tx
@@ -108,11 +128,18 @@ export async function POST(req: Request) {
         .onConflictDoNothing()
         .returning({ id: messages.id });
 
-      return { conversationId, createdConversation, isNewMessage: inserted.length > 0 };
+      return { conversationId, contactId, createdConversation, isNewMessage: inserted.length > 0 };
     });
 
     // Meter a brand-new SMS conversation (parity with the hosted form, rule 11).
     if (result.createdConversation) await recordUsage(orgId, "inbound_conversations");
+
+    // The contact texted in → consent on the SMS channel (idempotent).
+    if (result.isNewMessage) {
+      await recordConsent(orgId, result.contactId, "sms", "inbound_message", {
+        source: "sms",
+      }).catch((e) => Sentry.captureException(e));
+    }
 
     // Only hand to the Qualifier when we actually recorded a new message.
     if (result.isNewMessage) {

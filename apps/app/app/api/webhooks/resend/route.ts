@@ -5,6 +5,8 @@ import {
   contacts,
   conversations,
   messages,
+  recordConsent,
+  revokeConsentForEmail,
   webhookEvents,
   withService,
 } from "@alevo/db";
@@ -55,6 +57,7 @@ async function handleSuppression(event: ResendWebhookEvent): Promise<Response> {
 
   const reason = event.type === "email.complained" ? "complaint" : "bounce";
   await addSuppression(orgId, email, reason).catch((err) => Sentry.captureException(err));
+  await revokeConsentForEmail(orgId, email).catch((err) => Sentry.captureException(err));
   return new Response("ok (suppressed)", { status: 200 });
 }
 
@@ -113,10 +116,10 @@ export async function POST(req: Request) {
     const conversationId = findConversationId([...toList, ...forList]);
     if (!conversationId) return new Response("ok (unmatched)", { status: 200 });
 
-    // Resolve the org from the (unguessable) conversation id — service path.
+    // Resolve the org + contact from the (unguessable) conversation id.
     const [conv] = await withService((tx) =>
       tx
-        .select({ orgId: conversations.orgId })
+        .select({ orgId: conversations.orgId, contactId: conversations.contactId })
         .from(conversations)
         .where(eq(conversations.id, conversationId))
         .limit(1),
@@ -144,6 +147,11 @@ export async function POST(req: Request) {
     );
     // Same email delivered twice (providerRef dupe) → don't re-trigger the agent.
     if (inserted.length === 0) return new Response("ok (duplicate message)", { status: 200 });
+
+    // The contact replied by email → consent on the email channel (idempotent).
+    await recordConsent(conv.orgId, conv.contactId, "email", "inbound_reply", {
+      source: "email",
+    }).catch((e) => Sentry.captureException(e));
 
     // Hand to the Qualifier. Side effect — a send failure must not fail the
     // webhook (the message is already recorded; Resend would retry otherwise).

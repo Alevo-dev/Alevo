@@ -107,6 +107,77 @@
   --sidebar-ring: #7c3aed;
 }
 
+/* ============================================================================
+   Alevo design system (claude.ai/design "Alevo", 2026-10-14) — the product app.
+   Source: https://claude.ai/artifact/QmjsfhrQWLab4yrhNR23Q2 (tokens.json).
+   Dark is the brand default; light exists for docs, email and print.
+   The `--ds-*` prefix avoids colliding with the marketing semantic set above.
+   ========================================================================== */
+:root {
+  /* Fixed brand hues (theme-independent) — fills only, never text on light. */
+  /* Action hues are sampled from the approved app mockups (buttons, active tab,
+     chart lines); the lighter logo blues/violets are the hover + gradient steps. */
+  --ds-brand: #2e9be6; /* primary action, active nav, live */
+  --ds-brand-sky: #41b3fb; /* hover for brand fills; gradient start (logo blue) */
+  --ds-accent: #8a5ce8; /* violet: outbound / AI-drafted; gradient end */
+  --ds-accent-light: #966bf5; /* hover for accent fills (logo violet) */
+  --ds-accent-deep: #7d4fdb; /* pressed accent; the one brand hue legible on light */
+  --ds-gradient-brand: linear-gradient(100deg, var(--ds-brand) 0%, var(--ds-accent) 100%);
+
+  /* Vivid status fills (the dark theme's hues), fixed across both themes, for
+     solid pills/badges. Text on them is themed: white (light) / navy (dark). */
+  --ds-vivid-brand: #2e9be6;
+  --ds-vivid-accent: #8a5ce8;
+  --ds-vivid-success: #22c55e;
+  --ds-vivid-warning: #f6a723;
+  --ds-vivid-danger: #ff6b6b;
+
+  /* Themed — LIGHT */
+  --ds-on-brand: #ffffff; /* text/knob on a brand or accent fill (owner's call: white on light) */
+  --ds-on-vivid: #ffffff; /* text on vivid status pills (owner's call: white on light) */
+  --ds-canvas: #f6f8fc;
+  --ds-surface: #ffffff;
+  --ds-surface-raised: #edf1f8;
+  --ds-hairline: #dde4f0; /* dividers only (decorative) */
+  --ds-control: #7887aa; /* input / button borders (≥3:1) */
+  --ds-ink: #0b1224;
+  --ds-ink-muted: #515d80;
+  --ds-link: #7d4fdb;
+  --ds-brand-soft: #e2f2fe;
+  --ds-accent-soft: #ede6fe;
+  --ds-success: #0f7a5c;
+  --ds-warning: #9a5b00;
+  --ds-danger: #c32a22;
+
+  --ds-shadow-float: 0 2px 6px #04070f66, 0 14px 32px -6px #04070f99;
+  --ds-glow-brand: 0 0 0 1px #2e9be63d, 0 8px 28px -6px #2e9be64d;
+  --ds-focus-ring: 0 0 0 2px var(--ds-canvas), 0 0 0 4px var(--ds-brand);
+
+  /* Radius: controls 8, buttons/cards 12, panels 20, frames 28. */
+  --ds-radius-sm: 8px;
+  --ds-radius-md: 12px;
+  --ds-radius-lg: 20px;
+  --ds-radius-xl: 28px;
+}
+
+.dark {
+  --ds-on-brand: #06091a; /* navy on the brighter fills of the dark theme */
+  --ds-on-vivid: #06091a;
+  --ds-canvas: #0b1224;
+  --ds-surface: #111b33;
+  --ds-surface-raised: #1a2642;
+  --ds-hairline: #263352;
+  --ds-control: #64739c;
+  --ds-ink: #eef3fc;
+  --ds-ink-muted: #9dacc9;
+  --ds-link: #5cc3fb;
+  --ds-brand-soft: #122a4c;
+  --ds-accent-soft: #201c45;
+  --ds-success: #22c55e;
+  --ds-warning: #f6a723;
+  --ds-danger: #ff6b6b;
+}
+
 /* ===================== SEMANTIC — DARK (warm navy) ====================== */
 .dark {
   --background: #0a0e1a; /* deep, slightly warm navy */

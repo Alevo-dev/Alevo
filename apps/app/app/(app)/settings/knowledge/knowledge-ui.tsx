@@ -3,105 +3,113 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KbDocStatus, KbSourceType } from "@alevo/db";
-import {
-  addDocument,
-  addPdfDocument,
-  deleteDocument,
-  reingestDocument,
-  type ActionState,
-} from "./actions";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
+import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { Pill } from "@/components/ui/pill";
+import { cx } from "@/lib/cx";
+import { KB_STATUS } from "@/lib/ui/status";
+import { toast, useActionToast } from "@/lib/ui/use-action-toast";
+import { addDocument, addPdfDocument, deleteDocument, reingestDocument, type ActionState } from "./actions";
 
 const INITIAL: ActionState = {};
 
-const fieldClass = (err: boolean) =>
-  `w-full rounded-md border bg-background px-3 py-2 text-sm ${err ? "border-destructive" : "border-input"}`;
-const errMsg = "mt-1 text-xs text-destructive";
-const btn = "rounded-md border border-border px-3 py-1 text-sm hover:bg-accent disabled:opacity-50";
-
 type Tab = Extract<KbSourceType, "text" | "url" | "pdf">;
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "text", label: "Paste text" },
+  { id: "url", label: "Web address" },
+  { id: "pdf", label: "PDF" },
+];
+
+const SOURCE_LABEL: Record<KbSourceType, string> = { text: "Text", url: "Web address", pdf: "PDF" };
 
 export function AddDocumentForm() {
   const [tab, setTab] = useState<Tab>("text");
   const [state, action, pending] = useActionState(addDocument, INITIAL);
-  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  useActionToast(state, "Added to the knowledge base. Indexing starts now.");
 
   useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      router.refresh();
-    }
-  }, [state, router]);
+    if (state.ok) formRef.current?.reset();
+  }, [state]);
 
   const e = state.errors;
 
   return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="mb-3 flex gap-1">
-        {(["text", "url", "pdf"] as const).map((t) => (
+    <Card>
+      <CardHeader
+        title="Add to the knowledge base"
+        hint="Services, pricing, FAQs and policies. The agent reads these before every reply instead of guessing."
+      />
+
+      <div role="tablist" aria-label="Source type" className="mt-5 flex flex-wrap gap-2">
+        {TABS.map((t) => (
           <button
-            key={t}
+            key={t.id}
             type="button"
-            onClick={() => setTab(t)}
-            className={`rounded-md px-3 py-1 text-sm ${
-              tab === t ? "bg-foreground text-background" : "border border-border hover:bg-accent"
-            }`}
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={cx(
+              "h-8 rounded-full border px-3 text-label font-medium transition-colors",
+              tab === t.id ? "border-brand bg-brand-soft text-ink" : "border-hairline text-ink-muted hover:text-ink",
+            )}
           >
-            {t === "text" ? "Paste text" : t === "url" ? "URL" : "PDF"}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {tab === "pdf" ? (
-        <PdfUpload />
-      ) : (
-        <form ref={formRef} action={action} noValidate className="space-y-3">
-          <input type="hidden" name="sourceType" value={tab} />
-          <div>
-            <input
-              name="title"
-              defaultValue={state.values?.title ?? ""}
-              placeholder="Title (e.g. Services & pricing)"
-              aria-invalid={!!e?.title}
-              className={fieldClass(!!e?.title)}
-            />
-            {e?.title && <p className={errMsg}>{e.title}</p>}
-          </div>
-
-          {tab === "text" ? (
-            <div>
-              <textarea
-                name="text"
-                rows={5}
-                defaultValue={state.values?.text ?? ""}
-                placeholder="Paste FAQs, service descriptions, policies…"
-                aria-invalid={!!e?.text}
-                className={fieldClass(!!e?.text)}
+      <div className="mt-5">
+        {tab === "pdf" ? (
+          <PdfUpload />
+        ) : (
+          <form ref={formRef} action={action} noValidate className="space-y-4">
+            <input type="hidden" name="sourceType" value={tab} />
+            <Field label="Title" htmlFor="kb-title" error={e?.title}>
+              <Input
+                id="kb-title"
+                name="title"
+                defaultValue={state.values?.title ?? ""}
+                placeholder="Services and pricing"
+                invalid={!!e?.title}
               />
-              {e?.text && <p className={errMsg}>{e.text}</p>}
-            </div>
-          ) : (
-            <div>
-              <input
-                name="url"
-                defaultValue={state.values?.url ?? ""}
-                placeholder="https://your-site.com/services"
-                aria-invalid={!!e?.url}
-                className={fieldClass(!!e?.url)}
-              />
-              {e?.url && <p className={errMsg}>{e.url}</p>}
-            </div>
-          )}
+            </Field>
 
-          <div className="flex items-center gap-3">
-            <button type="submit" disabled={pending} className={btn}>
-              {pending ? "Adding…" : "Add to knowledge base"}
-            </button>
-            {state.error && <p className="text-sm text-destructive">{state.error}</p>}
-          </div>
-        </form>
-      )}
-    </div>
+            {tab === "text" ? (
+              <Field label="Text" htmlFor="kb-text" error={e?.text}>
+                <Textarea
+                  id="kb-text"
+                  name="text"
+                  rows={5}
+                  defaultValue={state.values?.text ?? ""}
+                  placeholder="Paste FAQs, service descriptions, policies…"
+                  invalid={!!e?.text}
+                />
+              </Field>
+            ) : (
+              <Field label="Web address" htmlFor="kb-url" hint="One page. The agent reads its text content." error={e?.url}>
+                <Input
+                  id="kb-url"
+                  name="url"
+                  defaultValue={state.values?.url ?? ""}
+                  placeholder="https://your-site.com/services"
+                  invalid={!!e?.url}
+                />
+              </Field>
+            )}
+
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {state.error && <p className="text-sm text-danger">{state.error}</p>}
+              <Button type="submit" variant="primary" disabled={pending}>
+                {pending ? "Adding…" : "Add to knowledge base"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -109,10 +117,12 @@ export function AddDocumentForm() {
 function PdfUpload() {
   const router = useRouter();
   const [status, setStatus] = useState("");
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function handleFile(file: File) {
     setBusy(true);
+    setFailed(false);
     try {
       setStatus("Requesting upload URL…");
       const presignRes = await fetch("/api/files/presign", {
@@ -135,12 +145,14 @@ function PdfUpload() {
       });
       if (!putRes.ok) throw new Error(`Upload failed (${putRes.status})`);
 
-      setStatus("Processing…");
+      setStatus("Indexing…");
       const res = await addPdfDocument({ title: file.name, r2Key: presign.key });
       if (!res.ok) throw new Error(res.error ?? "Could not add the PDF");
-      setStatus(`Added ${file.name}.`);
+      setStatus("");
+      toast.success(`Added ${file.name}. Indexing starts now.`);
       router.refresh();
     } catch (err) {
+      setFailed(true);
       setStatus(err instanceof Error ? err.message : "Upload error");
     } finally {
       setBusy(false);
@@ -148,19 +160,28 @@ function PdfUpload() {
   }
 
   return (
-    <div>
+    <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-control p-8 text-center">
+      <p className="text-sm text-ink-muted">A PDF up to the plan limit. Text is extracted and indexed.</p>
+      <label htmlFor="kb-pdf" className={buttonClass("primary", "md", "cursor-pointer")}>
+        {busy ? "Working…" : "Choose a PDF"}
+      </label>
       <input
+        id="kb-pdf"
         type="file"
         accept="application/pdf,.pdf"
         disabled={busy}
+        className="sr-only"
         onChange={(ev) => {
           const f = ev.target.files?.[0];
           if (f) void handleFile(f);
           ev.target.value = "";
         }}
-        className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-background file:px-3 file:py-1 file:text-sm"
       />
-      {status && <p className="mt-2 text-sm text-muted-foreground">{status}</p>}
+      {status && (
+        <p role="status" className={failed ? "text-sm text-danger" : "text-sm text-ink-muted"}>
+          {status}
+        </p>
+      )}
     </div>
   );
 }
@@ -172,13 +193,6 @@ export type DocView = {
   status: KbDocStatus;
   chunkCount: number;
   error: string | null;
-};
-
-const STATUS_STYLE: Record<KbDocStatus, string> = {
-  pending: "text-muted-foreground",
-  processing: "text-muted-foreground",
-  ready: "text-accent-foreground",
-  failed: "text-destructive",
 };
 
 export function DocumentList({ docs }: { docs: DocView[] }) {
@@ -196,49 +210,69 @@ export function DocumentList({ docs }: { docs: DocView[] }) {
     };
   }, [hasPending, router]);
 
-  if (docs.length === 0) {
-    return <p className="text-sm text-muted-foreground">No sources yet. Add text, a URL, or a PDF above.</p>;
-  }
-
   return (
-    <div className="space-y-2">
-      {docs.map((d) => (
-        <DocumentRow key={d.id} doc={d} />
-      ))}
-    </div>
+    <Card padding="none" className="px-6">
+      <div className="flex items-center justify-between py-5">
+        <h2 className="text-heading font-semibold">Knowledge base</h2>
+        <span className="text-label text-ink-muted">
+          {docs.length} {docs.length === 1 ? "document" : "documents"}
+        </span>
+      </div>
+      {docs.length === 0 ? (
+        <p className="pb-6 text-sm text-ink-muted">No sources yet. Add text, a web address or a PDF above.</p>
+      ) : (
+        <ul>
+          {docs.map((d) => (
+            <DocumentRow key={d.id} doc={d} />
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 
 function DocumentRow({ doc }: { doc: DocView }) {
-  const [, reAction, rePending] = useActionState(reingestDocument, INITIAL);
-  const [, delAction, delPending] = useActionState(deleteDocument, INITIAL);
+  const [reState, reAction, rePending] = useActionState(reingestDocument, INITIAL);
+  const [delState, delAction, delPending] = useActionState(deleteDocument, INITIAL);
+  useActionToast(reState, "Re-indexing started.");
+  useActionToast(delState, "Document deleted.");
+  const status = KB_STATUS[doc.status];
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-t border-hairline py-4 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{doc.title}</p>
-        <p className="text-xs text-muted-foreground">
-          {doc.sourceType} · <span className={STATUS_STYLE[doc.status]}>{doc.status}</span>
-          {doc.status === "ready" && ` · ${doc.chunkCount} chunks`}
-          {doc.status === "failed" && doc.error && ` · ${doc.error}`}
+        <p className="truncate text-sm font-semibold text-ink">{doc.title}</p>
+        <p className="truncate text-label text-ink-muted">
+          {SOURCE_LABEL[doc.sourceType]}
+          {doc.status === "ready" && `, ${doc.chunkCount} ${doc.chunkCount === 1 ? "chunk" : "chunks"}`}
+          {doc.status === "failed" && doc.error && <span className="text-danger">, {doc.error}</span>}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="order-last col-span-2 sm:order-none sm:col-span-1">
+        <Pill tone={status.tone}>{status.label}</Pill>
+      </div>
+      <div className="flex shrink-0 items-center justify-end gap-2">
         {(doc.status === "failed" || doc.status === "ready") && (
           <form action={reAction}>
             <input type="hidden" name="id" value={doc.id} />
-            <button type="submit" disabled={rePending} className={btn}>
-              {rePending ? "…" : "Re-ingest"}
-            </button>
+            <Button type="submit" size="sm" variant="ghost" disabled={rePending}>
+              {rePending ? "…" : "Re-index"}
+            </Button>
           </form>
         )}
         <form action={delAction}>
           <input type="hidden" name="id" value={doc.id} />
-          <button type="submit" disabled={delPending} className={btn}>
+          <ConfirmSubmit
+            size="sm"
+            disabled={delPending}
+            title={`Delete "${doc.title}"?`}
+            description="The agent stops using it immediately. This can't be undone; add it again to bring it back."
+            confirmLabel="Delete document"
+          >
             Delete
-          </button>
+          </ConfirmSubmit>
         </form>
       </div>
-    </div>
+    </li>
   );
 }

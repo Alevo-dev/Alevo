@@ -1,26 +1,17 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
+import { FieldError, Input } from "@/components/ui/field";
+import { Pill } from "@/components/ui/pill";
+import { useActionToast } from "@/lib/ui/use-action-toast";
 import { clearSecret, saveSecret, sendTestSlack, type ActionState } from "./actions";
 
 const INITIAL: ActionState = {};
-function inputClass(hasError: boolean) {
-  return `w-full rounded-md border bg-background px-3 py-1.5 text-sm ${
-    hasError ? "border-destructive" : "border-input"
-  }`;
-}
-const btnClass =
-  "rounded-md border border-border px-3 py-1 text-sm hover:bg-accent disabled:opacity-50";
 
-function useRefreshOnSuccess(state: ActionState) {
-  const router = useRouter();
-  useEffect(() => {
-    if (state.ok) router.refresh();
-  }, [state, router]);
-}
-
-export type SecretRowProps = {
+export type SecretCardProps = {
   secretKey: string;
   label: string;
   help: string;
@@ -31,92 +22,80 @@ export type SecretRowProps = {
   testable?: boolean;
 };
 
-export function SecretRow({
-  secretKey,
-  label,
-  help,
-  placeholder,
-  inputType,
-  isSet,
-  testable = false,
-}: SecretRowProps) {
+/** One integration credential: status, help, and save / replace / clear / test. */
+export function SecretCard({ secretKey, label, help, placeholder, inputType, isSet, testable = false }: SecretCardProps) {
   const [saveState, saveAction, savePending] = useActionState(saveSecret, INITIAL);
   const [clearState, clearAction, clearPending] = useActionState(clearSecret, INITIAL);
   const [testState, testAction, testPending] = useActionState(sendTestSlack, INITIAL);
   // Hide the last save/clear result once the user starts editing again.
   const [dirty, setDirty] = useState(false);
-  useRefreshOnSuccess(saveState);
-  useRefreshOnSuccess(clearState);
+  useActionToast(saveState, `${label} saved.`);
+  useActionToast(clearState, `${label} cleared.`);
+  useActionToast(testState, "Test message sent. Check your Slack channel.", { refresh: false });
   const valueError = dirty ? undefined : saveState.errors?.value;
   const error = dirty ? undefined : (saveState.error ?? clearState.error);
-  const saved = !dirty && !error && !valueError && (saveState.ok || clearState.ok);
+  const inputId = `secret-${secretKey}`;
 
   return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="flex items-center justify-between">
+    <Card as="article" padding="sm" className="flex flex-col gap-4 rounded-md p-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium">{label}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">{help}</p>
+          <h3 className="font-sans text-sm font-semibold tracking-normal text-ink">{label}</h3>
+          <p className="mt-1 text-label text-ink-muted">{help}</p>
         </div>
-        <span
-          className={
-            isSet
-              ? "rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
-              : "text-xs text-muted-foreground"
-          }
-        >
-          {isSet ? "Set" : "Not set"}
-        </span>
+        <Pill tone={isSet ? "success" : "muted"}>{isSet ? "Set" : "Not set"}</Pill>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-start gap-2">
-        <form
-          action={saveAction}
-          onSubmit={() => setDirty(false)}
-          noValidate
-          className="flex flex-1 flex-wrap items-start gap-2"
-        >
-          <input type="hidden" name="key" value={secretKey} />
-          <div className="min-w-72 flex-1">
-            <input
-              name="value"
-              type={inputType}
-              autoComplete="off"
-              defaultValue={saveState.value ?? ""}
-              onChange={() => setDirty(true)}
-              aria-invalid={!!valueError}
-              placeholder={isSet ? "Enter a new value to replace" : placeholder}
-              className={inputClass(!!valueError)}
-            />
-            {valueError && <p className="mt-1 text-xs text-destructive">{valueError}</p>}
-          </div>
-          <button type="submit" disabled={savePending} className={btnClass}>
+      <form action={saveAction} onSubmit={() => setDirty(false)} noValidate className="flex flex-col gap-2">
+        <input type="hidden" name="key" value={secretKey} />
+        <label htmlFor={inputId} className="sr-only">
+          {label}
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id={inputId}
+            name="value"
+            type={inputType}
+            autoComplete="off"
+            defaultValue={saveState.value ?? ""}
+            onChange={() => setDirty(true)}
+            invalid={!!valueError}
+            placeholder={isSet ? "Enter a new value to replace" : placeholder}
+            className="font-mono text-label"
+          />
+          <Button type="submit" variant={isSet ? "secondary" : "primary"} disabled={savePending}>
             {isSet ? "Replace" : "Save"}
-          </button>
-        </form>
-        {isSet && (
+          </Button>
+        </div>
+        <FieldError>{valueError}</FieldError>
+      </form>
+
+      {isSet && (
+        <div className="flex flex-wrap gap-2">
           <form action={clearAction} onSubmit={() => setDirty(false)}>
             <input type="hidden" name="key" value={secretKey} />
-            <button type="submit" disabled={clearPending} className={btnClass}>
+            <ConfirmSubmit
+              size="sm"
+              disabled={clearPending}
+              title={`Clear ${label}?`}
+              description="Anything that depends on it stops working until you save a new value."
+              confirmLabel="Clear secret"
+            >
               Clear
-            </button>
+            </ConfirmSubmit>
           </form>
-        )}
-        {testable && isSet && (
-          <form action={testAction}>
-            <button type="submit" disabled={testPending} className={btnClass}>
-              {testPending ? "Sending…" : "Send test"}
-            </button>
-          </form>
-        )}
-      </div>
-
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-      {saved && <p className="mt-2 text-sm text-muted-foreground">Saved.</p>}
-      {testState.error && <p className="mt-2 text-sm text-destructive">{testState.error}</p>}
-      {testState.ok && (
-        <p className="mt-2 text-sm text-muted-foreground">Sent — check your Slack channel.</p>
+          {testable && (
+            <form action={testAction}>
+              <Button type="submit" size="sm" variant="ghost" disabled={testPending}>
+                {testPending ? "Sending…" : "Send test"}
+              </Button>
+            </form>
+          )}
+        </div>
       )}
-    </div>
+
+      {error && <p className="text-sm text-danger">{error}</p>}
+      {testState.error && <p className="text-sm text-danger">{testState.error}</p>}
+    </Card>
   );
 }

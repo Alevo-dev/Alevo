@@ -1,27 +1,28 @@
 import { desc, sql } from "drizzle-orm";
 import { files } from "@alevo/db";
 import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
+import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
+import { Pill } from "@/components/ui/pill";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
+import { fmtDateTime, fmtSize } from "@/lib/format";
+import { getOrgTimezone } from "@/lib/org-timezone";
+import { fileStatus } from "@/lib/ui/status";
 import { FileUpload } from "./files-ui";
 
 export const dynamic = "force-dynamic";
-
-function fmtSize(bytes: number | null): string {
-  if (bytes == null) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 export default async function FilesPage() {
   try {
     await requireRole("admin");
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      return <p className="text-muted-foreground">You need an admin role to manage files.</p>;
+      return <Notice tone="warning">You need an admin role to manage files.</Notice>;
     }
     throw error;
   }
 
+  const tz = await getOrgTimezone();
   // Explicit active-org scope (platform admins bypass RLS).
   const rows = await withOrg((tx) =>
     tx
@@ -36,53 +37,49 @@ export default async function FilesPage() {
       .where(sql`${files.orgId} = (select app.current_org_id())`)
       .orderBy(desc(files.createdAt)),
   );
+  const totalBytes = rows.reduce((sum, f) => sum + (f.sizeBytes ?? 0), 0);
 
   return (
-    <section className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl">Files</h1>
-        <p className="mt-1 text-muted-foreground">
-          Uploads are stored in Cloudflare R2; this list tracks them.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <FileUpload />
 
-      <div>
-        <h2 className="mb-2 text-sm font-medium">
-          Uploaded <span className="text-muted-foreground">({rows.length})</span>
-        </h2>
-        <table className="w-full text-left text-sm">
-          <thead className="text-muted-foreground">
-            <tr className="border-b border-border">
-              <th className="py-2 pr-4 font-normal">Name</th>
-              <th className="py-2 pr-4 font-normal">Size</th>
-              <th className="py-2 pr-4 font-normal">Status</th>
-              <th className="py-2 font-normal">Uploaded</th>
+      <Card padding="none">
+        <div className="flex items-center justify-between px-6 pt-5">
+          <h2 className="text-heading font-semibold">Uploaded</h2>
+          <span className="tabular font-mono text-label text-ink-muted">
+            {rows.length} {rows.length === 1 ? "file" : "files"}, {fmtSize(totalBytes)}
+          </span>
+        </div>
+        <Table className="mt-2">
+          <thead>
+            <tr>
+              <Th>Name</Th>
+              <Th>Size</Th>
+              <Th>Status</Th>
+              <Th>Uploaded</Th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-2 text-muted-foreground">
-                  No files yet.
-                </td>
-              </tr>
+              <EmptyRow colSpan={4}>No files yet.</EmptyRow>
             ) : (
-              rows.map((f) => (
-                <tr key={f.id} className="border-b border-border">
-                  <td className="py-2 pr-4">{f.fileName ?? "—"}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{fmtSize(f.sizeBytes)}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{f.status}</td>
-                  <td className="py-2 text-muted-foreground">
-                    {new Date(f.createdAt).toISOString().slice(0, 16).replace("T", " ")}
-                  </td>
-                </tr>
-              ))
+              rows.map((f) => {
+                const status = fileStatus(f.status);
+                return (
+                  <Tr key={f.id}>
+                    <Td className="font-semibold">{f.fileName ?? "—"}</Td>
+                    <Td className="tabular font-mono text-label text-ink-muted">{fmtSize(f.sizeBytes)}</Td>
+                    <Td>
+                      <Pill tone={status.tone}>{status.label}</Pill>
+                    </Td>
+                    <Td className="tabular font-mono text-label text-ink-muted">{fmtDateTime(f.createdAt, tz)}</Td>
+                  </Tr>
+                );
+              })
             )}
           </tbody>
-        </table>
-      </div>
-    </section>
+        </Table>
+      </Card>
+    </div>
   );
 }

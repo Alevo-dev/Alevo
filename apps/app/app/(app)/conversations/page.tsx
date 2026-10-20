@@ -2,15 +2,19 @@ import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { contacts, conversations } from "@alevo/db";
 import { getCurrentOrg, withOrg } from "@alevo/auth";
+import { buttonClass } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Pill } from "@/components/ui/pill";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
+import { displayName, fmtDateTime, tzLabel } from "@/lib/format";
+import { getOrgTimezone } from "@/lib/org-timezone";
+import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
 
 export const dynamic = "force-dynamic";
 
-function displayName(firstName: string | null, lastName: string | null, email: string | null) {
-  return [firstName, lastName].filter(Boolean).join(" ") || email || "—";
-}
-
 export default async function ConversationsPage() {
-  const org = await getCurrentOrg();
+  const [org, tz] = await Promise.all([getCurrentOrg(), getOrgTimezone()]);
 
   // Explicit active-org scope (platform admins bypass RLS).
   const rows = await withOrg((tx) =>
@@ -24,6 +28,7 @@ export default async function ConversationsPage() {
         firstName: contacts.firstName,
         lastName: contacts.lastName,
         email: contacts.email,
+        company: contacts.company,
       })
       .from(conversations)
       .innerJoin(contacts, eq(contacts.id, conversations.contactId))
@@ -32,56 +37,53 @@ export default async function ConversationsPage() {
   );
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl">Conversations</h1>
-        <p className="mt-1 text-muted-foreground">Leads captured across your channels.</p>
+    <div className="space-y-8">
+      <PageHeader title="Conversations" description={`${rows.length} leads across your channels`}>
         {org && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your lead form:{" "}
-            <Link href={`/f/${org.id}`} className="underline hover:text-foreground">
-              /f/{org.id}
-            </Link>
-          </p>
+          <a href={`/f/${org.id}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
+            Open lead form
+          </a>
         )}
-      </div>
+      </PageHeader>
 
-      <table className="w-full text-left text-sm">
-        <thead className="text-muted-foreground">
-          <tr className="border-b border-border">
-            <th className="py-2 pr-4 font-normal">Contact</th>
-            <th className="py-2 pr-4 font-normal">Channel</th>
-            <th className="py-2 pr-4 font-normal">Status</th>
-            <th className="py-2 pr-4 font-normal">Score</th>
-            <th className="py-2 font-normal">Received</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
+      <Card padding="none">
+        <Table>
+          <thead>
             <tr>
-              <td colSpan={5} className="py-3 text-muted-foreground">
-                No conversations yet — submit your lead form to create one.
-              </td>
+              <Th>Contact</Th>
+              <Th>Channel</Th>
+              <Th>Status</Th>
+              <Th className="text-right">Score</Th>
+              <Th>Received ({tzLabel(tz)})</Th>
             </tr>
-          ) : (
-            rows.map((c) => (
-              <tr key={c.id} className="border-b border-border hover:bg-accent/40">
-                <td className="py-2 pr-4">
-                  <Link href={`/conversations/${c.id}`} className="hover:underline">
-                    {displayName(c.firstName, c.lastName, c.email)}
-                  </Link>
-                </td>
-                <td className="py-2 pr-4 text-muted-foreground">{c.channel}</td>
-                <td className="py-2 pr-4">{c.status}</td>
-                <td className="py-2 pr-4 text-muted-foreground">{c.fitScore ?? "—"}</td>
-                <td className="py-2 text-muted-foreground">
-                  {new Date(c.createdAt).toISOString().slice(0, 16).replace("T", " ")}
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </section>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <EmptyRow colSpan={5}>No conversations yet. Submit your lead form to create one.</EmptyRow>
+            ) : (
+              rows.map((c) => {
+                const status = CONVERSATION_STATUS[c.status];
+                return (
+                  <Tr key={c.id}>
+                    <Td>
+                      <Link href={`/conversations/${c.id}`} className="block font-semibold text-ink no-underline hover:underline">
+                        {displayName(c.firstName, c.lastName, c.email)}
+                      </Link>
+                      <span className="block text-label text-ink-muted">{c.company ?? c.email ?? ""}</span>
+                    </Td>
+                    <Td className="text-ink-muted">{CHANNEL_LABEL[c.channel]}</Td>
+                    <Td>
+                      <Pill tone={status.tone}>{status.label}</Pill>
+                    </Td>
+                    <Td className="tabular text-right font-mono text-ink-muted">{c.fitScore ?? "—"}</Td>
+                    <Td className="tabular font-mono text-label text-ink-muted">{fmtDateTime(c.createdAt, tz)}</Td>
+                  </Tr>
+                );
+              })
+            )}
+          </tbody>
+        </Table>
+      </Card>
+    </div>
   );
 }

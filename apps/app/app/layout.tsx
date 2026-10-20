@@ -1,12 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, DM_Sans } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemedClerkProvider } from "@/components/clerk-provider";
+import { AppToaster } from "@/components/app-toaster";
 import "./globals.css";
 
-// Same editorial pairing as the marketing site, wired to the token font vars.
-const fontDisplay = Fraunces({ variable: "--font-display", subsets: ["latin"], display: "swap" });
-const fontBody = DM_Sans({ variable: "--font-body", subsets: ["latin"], display: "swap" });
+// Design system: Space Grotesk sets headlines, Inter runs the product, and
+// JetBrains Mono is for values read character by character (phones, times, IDs).
+const fontDisplay = Space_Grotesk({
+  variable: "--font-display",
+  subsets: ["latin"],
+  display: "swap",
+});
+const fontBody = Inter({ variable: "--font-body", subsets: ["latin"], display: "swap" });
+const fontData = JetBrains_Mono({
+  variable: "--font-data",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Alevo", template: "%s · Alevo" },
@@ -16,27 +27,26 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f8fc" },
     { media: "(prefers-color-scheme: dark)", color: "#0b1224" },
   ],
-  colorScheme: "light dark",
+  colorScheme: "dark light",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${fontDisplay.variable} ${fontBody.variable} ${fontData.variable} h-full`}
     >
-      <html
-        lang="en"
-        suppressHydrationWarning
-        className={`${fontDisplay.variable} ${fontBody.variable} h-full`}
-      >
-        <body className="min-h-full">
-          <ThemeProvider>{children}</ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+      <body className="min-h-full">
+        {/* Theme first so Clerk's embedded UI can follow light/dark. */}
+        <ThemeProvider>
+          <ThemedClerkProvider>{children}</ThemedClerkProvider>
+          <AppToaster />
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

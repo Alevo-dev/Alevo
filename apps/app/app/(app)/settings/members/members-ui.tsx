@@ -1,24 +1,17 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  changeMemberRole,
-  inviteMember,
-  removeMember,
-  revokeInvite,
-  type ActionState,
-} from "./actions";
-
-/** Re-fetch the server-rendered list after a successful mutation so the UI
- *  reflects the change immediately (no manual reload). `state` is a fresh object
- *  per dispatch, so this fires on every success. */
-function useRefreshOnSuccess(state: ActionState) {
-  const router = useRouter();
-  useEffect(() => {
-    if (state.ok) router.refresh();
-  }, [state, router]);
-}
+import { useActionState, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
+import { Field, FieldError, Input } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
+import { Pill } from "@/components/ui/pill";
+import { Td, Tr } from "@/components/ui/table";
+import { cx } from "@/lib/cx";
+import { initials } from "@/lib/format";
+import { ROLE_LABEL } from "@/lib/ui/status";
+import { useActionToast } from "@/lib/ui/use-action-toast";
+import { changeMemberRole, inviteMember, removeMember, revokeInvite, type ActionState } from "./actions";
 
 const ROLES = ["viewer", "rep", "admin", "owner"] as const;
 type Role = (typeof ROLES)[number];
@@ -39,65 +32,74 @@ export type InviteView = {
 };
 
 const INITIAL: ActionState = {};
-const selectClass =
-  "rounded-md border border-input bg-background px-2 py-1 text-sm";
-const btnClass =
-  "rounded-md border border-border px-3 py-1 text-sm hover:bg-accent disabled:opacity-50";
+const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
 
-function RoleOptions() {
+const AVATAR_FILLS = ["bg-brand", "bg-violet", "bg-brand-sky", "bg-violet-light"];
+
+/** 32px initials disc; fill picked deterministically from the key. */
+function Avatar({ name, seed }: { name: string | null; seed: string }) {
+  let hash = 0;
+  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   return (
-    <>
-      {ROLES.map((r) => (
-        <option key={r} value={r}>
-          {r}
-        </option>
-      ))}
-    </>
+    <span
+      aria-hidden="true"
+      className={cx(
+        "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-on-brand",
+        AVATAR_FILLS[hash % AVATAR_FILLS.length],
+      )}
+    >
+      {initials(name ?? seed)}
+    </span>
+  );
+}
+
+function Identity({ name, email, seed, note }: { name: string | null; email: string | null; seed: string; note?: string }) {
+  return (
+    <span className="flex items-center gap-3">
+      <Avatar name={name} seed={seed} />
+      <span className="min-w-0">
+        <span className="block truncate font-semibold text-ink">{name ?? email ?? "—"}</span>
+        <span className={cx("block truncate text-label", note ? "text-warning" : "text-ink-muted")}>
+          {note ?? (name ? email : "")}
+        </span>
+      </span>
+    </span>
   );
 }
 
 export function InviteForm() {
   const [state, action, pending] = useActionState(inviteMember, INITIAL);
   const [dirty, setDirty] = useState(false);
-  useRefreshOnSuccess(state);
+  useActionToast(state, "Invitation sent.");
   const emailError = dirty ? undefined : state.errors?.email;
   const formError = dirty ? undefined : state.error;
-  const sent = !dirty && state.ok;
+
   return (
-    <form
-      action={action}
-      onSubmit={() => setDirty(false)}
-      noValidate
-      className="flex flex-wrap items-start gap-2"
-    >
-      <div className="min-w-64 flex-1">
-        <input
+    <form action={action} onSubmit={() => setDirty(false)} noValidate className="flex flex-wrap items-end gap-3">
+      <Field label="Email" htmlFor="invite-email" error={emailError} className="min-w-64 flex-1">
+        <Input
+          id="invite-email"
           name="email"
           type="email"
           defaultValue={state.values?.email}
           onChange={() => setDirty(true)}
-          aria-invalid={!!emailError}
-          placeholder="teammate@company.com"
-          className={`w-full rounded-md border bg-background px-3 py-1.5 text-sm ${
-            emailError ? "border-destructive" : "border-input"
-          }`}
+          invalid={!!emailError}
+          placeholder="name@company.com"
         />
-        {emailError && <p className="mt-1 text-xs text-destructive">{emailError}</p>}
-      </div>
-      <select
-        name="role"
-        defaultValue={state.values?.role ?? "rep"}
-        onChange={() => setDirty(true)}
-        className={selectClass}
-        aria-label="Role"
-      >
-        <RoleOptions />
-      </select>
-      <button type="submit" disabled={pending} className={btnClass}>
-        {pending ? "Inviting…" : "Invite"}
-      </button>
-      {formError && <p className="w-full text-sm text-destructive">{formError}</p>}
-      {sent && <p className="w-full text-sm text-muted-foreground">Invitation sent.</p>}
+      </Field>
+      <Field label="Role" htmlFor="invite-role" className="w-40">
+        <Select
+          id="invite-role"
+          name="role"
+          options={ROLE_OPTIONS}
+          defaultValue={state.values?.role ?? "rep"}
+          onChange={() => setDirty(true)}
+        />
+      </Field>
+      <Button type="submit" variant="primary" disabled={pending} className="mb-[1px]">
+        {pending ? "Sending…" : "Send invite"}
+      </Button>
+      {formError && <p className="w-full text-sm text-danger">{formError}</p>}
     </form>
   );
 }
@@ -106,91 +108,79 @@ export function MemberRow({ member }: { member: MemberView }) {
   const [roleState, roleAction, rolePending] = useActionState(changeMemberRole, INITIAL);
   const [rmState, rmAction, rmPending] = useActionState(removeMember, INITIAL);
   const [dirty, setDirty] = useState(false);
-  useRefreshOnSuccess(roleState);
-  useRefreshOnSuccess(rmState);
+  useActionToast(roleState, "Role updated.");
+  useActionToast(rmState, "Member removed.");
   const error = dirty ? undefined : (roleState.error ?? rmState.error);
 
   return (
-    <>
-      <tr className="border-b border-border">
-        <td className="py-2 pr-4">{member.name ?? "—"}</td>
-        <td className="py-2 pr-4 text-muted-foreground">{member.email ?? "—"}</td>
-        <td className="py-2 pr-4">
-          <form
-            action={roleAction}
-            onSubmit={() => setDirty(false)}
-            noValidate
-            className="flex items-center gap-2"
+    <Tr>
+      <Td>
+        <Identity name={member.name} email={member.email} seed={member.email ?? member.userId} />
+      </Td>
+      <Td>
+        <form action={roleAction} onSubmit={() => setDirty(false)} noValidate className="flex items-center gap-2">
+          <input type="hidden" name="userId" value={member.userId} />
+          <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
+          <Select
+            name="role"
+            inline
+            size="sm"
+            options={ROLE_OPTIONS}
+            defaultValue={member.role}
+            onChange={() => setDirty(true)}
+            aria-label={`Role for ${member.email ?? member.userId}`}
+          />
+          <Button type="submit" size="sm" variant="ghost" disabled={rolePending}>
+            Save
+          </Button>
+        </form>
+        <FieldError>{error}</FieldError>
+      </Td>
+      <Td className="text-right">
+        <form action={rmAction} onSubmit={() => setDirty(false)}>
+          <input type="hidden" name="userId" value={member.userId} />
+          <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
+          <ConfirmSubmit
+            size="sm"
+            disabled={rmPending}
+            title={`Remove ${member.name ?? member.email ?? "this member"}?`}
+            description="They lose access to this workspace right away. Their past activity stays on the record."
+            confirmLabel="Remove member"
           >
-            <input type="hidden" name="userId" value={member.userId} />
-            <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
-            <select
-              name="role"
-              defaultValue={member.role}
-              onChange={() => setDirty(true)}
-              className={selectClass}
-              aria-label={`Role for ${member.email ?? member.userId}`}
-            >
-              <RoleOptions />
-            </select>
-            <button type="submit" disabled={rolePending} className={btnClass}>
-              Save
-            </button>
-          </form>
-        </td>
-        <td className="py-2">
-          <form action={rmAction} onSubmit={() => setDirty(false)}>
-            <input type="hidden" name="userId" value={member.userId} />
-            <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
-            <button type="submit" disabled={rmPending} className={btnClass}>
-              Remove
-            </button>
-          </form>
-        </td>
-      </tr>
-      {error && (
-        <tr>
-          <td colSpan={4} className="pb-2 text-sm text-destructive">
-            {error}
-          </td>
-        </tr>
-      )}
-    </>
+            Remove
+          </ConfirmSubmit>
+        </form>
+      </Td>
+    </Tr>
   );
 }
 
 export function PendingInviteRow({ invite }: { invite: InviteView }) {
   const [state, action, pending] = useActionState(revokeInvite, INITIAL);
-  useRefreshOnSuccess(state);
+  useActionToast(state, "Invite revoked.");
   return (
-    <>
-      <tr className="border-b border-border">
-        <td className="py-2 pr-4">{invite.email}</td>
-        <td className="py-2 pr-4 text-muted-foreground">{invite.role}</td>
-        <td className="py-2">
-          <form action={action}>
-            <input
-              type="hidden"
-              name="clerkInvitationId"
-              value={invite.clerkInvitationId ?? ""}
-            />
-            <button
-              type="submit"
-              disabled={pending || !invite.clerkInvitationId}
-              className={btnClass}
-            >
-              Revoke
-            </button>
-          </form>
-        </td>
-      </tr>
-      {state.error && (
-        <tr>
-          <td colSpan={3} className="pb-2 text-sm text-destructive">
-            {state.error}
-          </td>
-        </tr>
-      )}
-    </>
+    <Tr>
+      <Td>
+        <Identity name={null} email={invite.email} seed={invite.email} note="Invite pending" />
+      </Td>
+      <Td>
+        <Pill tone="brand">{ROLE_LABEL[invite.role]}</Pill>
+        <FieldError>{state.error}</FieldError>
+      </Td>
+      <Td className="text-right">
+        <form action={action}>
+          <input type="hidden" name="clerkInvitationId" value={invite.clerkInvitationId ?? ""} />
+          <ConfirmSubmit
+            size="sm"
+            disabled={pending || !invite.clerkInvitationId}
+            title={`Revoke the invite for ${invite.email}?`}
+            description="The link in their email stops working. You can send a new invite any time."
+            confirmLabel="Revoke invite"
+          >
+            Revoke
+          </ConfirmSubmit>
+        </form>
+      </Td>
+    </Tr>
   );
 }

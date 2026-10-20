@@ -1,10 +1,10 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-16
+**Last updated:** 2026-10-20
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
-**Progress (2026-10-14):** Sprint 1 complete (platform foundation: identity/RLS,
+**Progress (2026-10-20):** Sprint 1 complete (platform foundation: identity/RLS,
 Members, billing tables, encrypted secrets, R2 files, Slack-per-org, Inngest
 baseline, separate super-admin app — all manually tested). Sprint 2 in progress:
 CRM core + hosted lead form + usage metering (Slice 1); **the Qualifier** (Claude
@@ -16,10 +16,24 @@ timezone-aware send windows (Slice 4); **KB ingestion + RAG** (Text/URL/PDF →
 Voyage embeddings → pgvector; grounds Qualifier replies) and **email compliance**
 (suppression list, one-click unsubscribe, bounce/complaint webhooks) (Slice 5);
 **SMS channel (Twilio)** — outbound + inbound with per-org number routing and
-STOP opt-out (Slice 6). Sprint 2 is channel-complete (form + email + SMS) and
-merged to `main`. Added **§11 Metrics & KPIs** (2026-10-16) — the owner's KPI set;
-north-star = meetings booked + pipeline sourced per seat. Remaining: the
-Qualifier's booking / PSA / consent tools (Sprint 3/5).
+STOP opt-out (Slice 6). Sprint 2 is channel-complete (form + email + SMS),
+merged to `main`, and **fully manually tested** (incl. live SMS send after
+upgrading Twilio out of trial, and KB grounding verified end-to-end). Added
+**§11 Metrics & KPIs** (2026-10-16) — the owner's KPI set;
+north-star = meetings booked + pipeline sourced per seat. **Sprint 3 Slice 1**
+(Cal.com booking core): `meetings` table (0013), provider-agnostic booking
+adapter, the Qualifier's `check_availability` / `book_meeting` tools → `booked`,
+and the `/api/webhooks/calcom` sync — plus **consent capture + revocation** across
+channels, **meeting outcomes** (showed/no-show/converted on the Meetings tab), and
+**Cal.com reschedule/cancel** (rep-initiated), the **Calendly link-mode adapter**
+(`send_booking_link` + `/api/webhooks/calendly`), and the **Google Calendar +
+Microsoft 365 adapters** (OAuth connect, free/busy → slots, event + Meet/Teams
+link, double-booking guard). Sprint 3 is feature-complete and **next up for
+manual QA** (Cal.com first; Google/M365 await their OAuth-app credentials for
+live testing). **App UI restyled** (2026-10-20) onto the Alevo design system from
+Claude Design (see §10): sidebar shell, Settings tabs, dark-default navy palette,
+Space Grotesk / Inter / JetBrains Mono, shared primitives in `apps/app/components/ui/`.
+Next build: PSA write-back (Sprint 5).
 
 Alevo is a multi-tenant AI SDR platform for MSPs. Tagline: *More conversations. More leads.*
 Starting from zero: nothing in the owner's partner deck or master plan is treated as built.
@@ -201,35 +215,37 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 - [x] Conversation counted in `usage_counters` (`recordUsage` on inbound capture)
 - [x] Conversation view (thread, score + reasons, status) + "reply as contact" tester
 
-### Sprint 3 — Booking + consent (21–29h)
+### Sprint 3 — Booking + consent (21–29h) — ✅ Cal.com + Calendly + Google/M365 booking, consent, outcomes all built (Google/M365 pending live OAuth-app setup); PSA write-back is Sprint 5
 
 Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are set up on Cal.com; Google/M365 users get basic booking, and if they later want round-robin or self-serve rescheduling, they move to Cal.com.
 
-**Shared (6–8h)**
-- [ ] Booking adapter interface (`slots`, `book`, `cancel`, `reschedule`, `handleWebhook`) + `meetings` table
-- [ ] Qualifier `check_availability` / `book_meeting` tools call the org's adapter; booking confirmed back to the lead on the same channel
-- [ ] Consent capture on every inbound touch (full record + revocation)
-- [ ] Meeting outcome: showed / no-show / converted — feeds the meeting-show-rate / opportunities KPIs (§11)
+**Shared (6–8h)** — Slice 1 ✅ (booking core)
+- [x] Booking adapter interface (`availableSlots`, `book`) + `meetings` table (0013). `cancel`/`reschedule`/`handleWebhook` deferred
+- [x] Qualifier `check_availability` / `book_meeting` tools call the org's adapter (added only when booking is connected); on success → `meetings` row + conversation `booked`; `book_meeting` sends the confirmation itself (never relies on the model to follow up)
+- [x] Meetings view: `/meetings` tab (contact / time / status / join link) + booked-meeting detail on the conversation thread
+- [x] Consent capture on every inbound touch (form / email reply / SMS → `recordConsent`, idempotent) + revocation on unsubscribe / bounce / complaint / STOP (`revokeConsent*`); stored in `consents` (0007)
+- [x] Meeting outcome: showed / no-show / converted (`meetings.outcome` + `converted`, 0014), set by reps on the Meetings tab — feeds the meeting-show-rate / opportunities KPIs (§11)
 
-**Cal.com adapter — direct booking via API v2 (6–8h)** — the default for MSPs without a booking system
-- [ ] Connect: MSP pastes a Cal.com API key (encrypted per org) and picks the event type to book
-- [ ] MSPs with no booking tool: onboarding walks them through creating a Cal.com account (their own, connected to their Google/M365 calendar), then connects it here
-- [ ] `GET /v2/slots` for open times (Cal.com applies the MSP's own hours, buffers, notice, round-robin)
-- [ ] `POST /v2/bookings` with attendee + `alevoConversationId` metadata; Cal.com sends invites, video link, confirmations
-- [ ] Reschedule / cancel via the bookings endpoints
-- [ ] Webhooks (`BOOKING_CREATED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`) → update `meetings`, incl. bookings made outside Alevo
+**Cal.com adapter — direct booking via API v2 (6–8h)** — the default for MSPs without a booking system — Slice 1 ✅
+- [x] Connect: MSP pastes a Cal.com API key + webhook secret (encrypted per org, Settings → Integrations) and sets the event-type ID (Settings → Qualifier)
+- [ ] MSPs with no booking tool: onboarding walks them through creating a Cal.com account (their own, connected to their Google/M365 calendar), then connects it here *(onboarding wizard, Sprint 6)*
+- [x] `GET /v2/slots` for open times (`cal-api-version: 2024-09-04`; Cal.com applies the MSP's own hours, buffers, notice, round-robin)
+- [x] `POST /v2/bookings` (`cal-api-version: 2026-02-25`) with attendee + `alevoOrgId`/`alevoConversationId` metadata; Cal.com sends invites, video link, confirmations
+- [x] Reschedule / cancel via the bookings endpoints — adapter `cancel`/`reschedule` (v2 `POST /v2/bookings/{uid}/cancel|reschedule`) + rep-initiated from the Meetings tab; contacts can also self-serve via Cal.com's invite links (synced by the webhook)
+- [x] Webhooks (`BOOKING_CREATED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`) → `/api/webhooks/calcom` (HMAC-verified) update `meetings` + conversation status
 
-**Google Calendar + Microsoft 365 adapters — basic, single rep (7–10h)**
-- [ ] OAuth for one booking calendar per org (Google Calendar API; Microsoft Graph `Calendars.ReadWrite`), tokens encrypted, refresh handled
-- [ ] Free/busy (Google `freeBusy`, Graph `getSchedule`) → slots from simple rules: working hours, meeting length, timezone
-- [ ] Create event with the lead as attendee + Meet/Teams link; the calendar invite is the confirmation
-- [ ] Double-booking guard: re-check free/busy before inserting
-- [ ] Changes: the lead replies on the conversation or to the invite; the Qualifier or a human handles it. No Alevo reschedule page
-- [ ] Not built: round-robin, buffers/notice rules, self-serve reschedule pages — those come from Cal.com
+**Google Calendar + Microsoft 365 adapters — basic, single rep (7–10h)** — ✅
+- [x] OAuth for one booking calendar per org (`/api/oauth/{google,microsoft}/{start,callback}`, signed-state CSRF); only the refresh token is stored encrypted (`org_secrets`), exchanged for an access token per use. Connect/disconnect in Settings → Qualifier
+- [x] Free/busy (Google `POST /freeBusy`, Graph `POST /me/calendar/getSchedule`) → slots from simple rules: weekday working-hours window + meeting length + timezone (`lib/booking/slots.ts`, tz-aware)
+- [x] Create event with the lead as attendee + Meet/Teams link (Google `conferenceData` hangoutsMeet; Graph `isOnlineMeeting` teamsForBusiness); the calendar invite is the confirmation
+- [x] Double-booking guard: re-check free/busy right before inserting (and on reschedule)
+- [x] Changes: rep cancels/reschedules from the Meetings tab (adapter `cancel`/`reschedule`); the lead can reply on the conversation. No Alevo reschedule page
+- [x] Not built: round-robin, buffers/notice rules, self-serve reschedule pages — those come from Cal.com. Also deferred: webhook/push sync of contact-initiated changes on these calendars
+- [ ] Prereqs for live testing: a Google Cloud OAuth app (Calendar scopes; verification for external tenants) + an Azure app registration (`Calendars.ReadWrite`, `User.Read`), and their client id/secret in env
 
-**Calendly — link mode only (2–3h)**
-- [ ] Qualifier sends the MSP's Calendly link; on voice, the agent says it will text the link and sends it after the call
-- [ ] Meeting counted only when detected (Calendly `invitee.created` webhook on paid Calendly plans, or a connected Google/M365 calendar); otherwise marked "link sent"
+**Calendly — link mode only (2–3h)** — ✅
+- [x] Qualifier sends the MSP's Calendly link (`send_booking_link`, with `utm_source`/`utm_content` tags); on voice, the agent says it will text the link and sends it after the call
+- [x] Meeting counted when detected via the Calendly `invitee.created` webhook (`/api/webhooks/calendly`, signature-verified) → `meetings` row (`provider = calendly`) + conversation `booked`; `invitee.canceled` reopens it. Reschedule/cancel handled by Calendly's own links.
 
 ### Sprint 4 — Inbound voice (25–35h)
 - [ ] Per-org Twilio number provisioning
@@ -471,6 +487,12 @@ MVP ~6 weeks, first tenant ~8 weeks, full build ~11 weeks. At this pace vendors 
 - Palette: blue and purple
 - Logo: owner's Gemini-generated square logo (A with rising arrow and bar chart, "Alevo" wordmark), used as-is
 - Tagline: *More conversations. More leads.*
+- **Design system (Claude Design, 2026-10-14):** https://claude.ai/artifact/QmjsfhrQWLab4yrhNR23Q2 —
+  navy canvas `#0B1224`, brand blue `#41B3FB`, violet `#966BF5`, status green/amber/red;
+  Space Grotesk (headings) · Inter (UI) · JetBrains Mono (data). Mirrored as the `--ds-*`
+  block in `packages/tokens/tokens.css`; the app's Tailwind theme reads it (`apps/app/app/globals.css`).
+- **App screen mockups:** https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1 (Dashboard, Conversation,
+  Meetings, Settings tabs, Prospecting, Onboarding, marketing home). Prospecting/Onboarding/home not built yet.
 
 ---
 

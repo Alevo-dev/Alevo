@@ -4,14 +4,21 @@
  *
  * Marketing site  -> getalevo.com (this repo)
  * Product app     -> app.getalevo.com (separate)  via NEXT_PUBLIC_APP_URL
+ *
+ * `NEXT_PUBLIC_APP_URL` wins when set (Vercel sets it per environment). Unset,
+ * we default to the local app (`:3001`) in dev and the prod domain otherwise —
+ * so the Sign in / Get started CTAs work locally without any env setup.
  */
+
+const defaultAppUrl =
+  process.env.NODE_ENV === "production" ? "https://app.getalevo.com" : "http://localhost:3001";
 
 export const siteConfig = {
   name: "Alevo",
   domain: "getalevo.com",
   url: "https://getalevo.com",
   /** Product app — all Login / Get started / Dashboard CTAs point here. */
-  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "https://app.getalevo.com",
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? defaultAppUrl,
   /** Google Calendar appointment-schedule URL (embedded on /contact). */
   bookingUrl: process.env.NEXT_PUBLIC_BOOKING_URL ?? "",
   tagline: "AI SDR for inbound and outbound",
@@ -24,10 +31,10 @@ export const siteConfig = {
   },
 } as const;
 
-/** Convenience helpers for app links. */
+/** Convenience helpers for app links (match the app's Clerk auth routes). */
 export const appLinks = {
-  signup: `${siteConfig.appUrl}/signup`,
-  login: `${siteConfig.appUrl}/login`,
+  signup: `${siteConfig.appUrl}/sign-up`,
+  login: `${siteConfig.appUrl}/sign-in`,
   dashboard: `${siteConfig.appUrl}/dashboard`,
 } as const;
 

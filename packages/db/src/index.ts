@@ -10,4 +10,5 @@ export {
 export { recordAudit, type AuditEntry } from "./audit";
 export { recordUsage } from "./usage";
 export { isSuppressed, addSuppression } from "./suppressions";
+export { recordConsent, revokeConsentForContact, revokeConsentForEmail } from "./consents";
 export * from "./schema";

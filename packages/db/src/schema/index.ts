@@ -8,6 +8,7 @@ export * from "./conversations";
 export * from "./org-profiles";
 export * from "./knowledge";
 export * from "./suppressions";
+export * from "./meetings";
 
 import * as identity from "./identity";
 import * as billing from "./billing";
@@ -19,6 +20,7 @@ import * as conversations from "./conversations";
 import * as orgProfiles from "./org-profiles";
 import * as knowledge from "./knowledge";
 import * as suppressions from "./suppressions";
+import * as meetings from "./meetings";
 
 /** Aggregate passed to drizzle() so `tx.query.*` is available for every table. */
 export const schema = {
@@ -32,4 +34,5 @@ export const schema = {
   ...orgProfiles,
   ...knowledge,
   ...suppressions,
+  ...meetings,
 };

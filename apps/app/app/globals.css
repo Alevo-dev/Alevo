@@ -3,45 +3,84 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Map design tokens -> Tailwind theme so utilities read the live CSS vars and
-   light/dark flips come straight from tokens.css (single source of truth). */
+/* The product app renders on the Alevo design-system tokens (`--ds-*` in
+   tokens.css — single source of truth). Utilities below read the live CSS
+   vars, so light/dark flips come from the `.dark` class alone. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  /* Design-system names — use these in new code. */
+  --color-canvas: var(--ds-canvas);
+  --color-surface: var(--ds-surface);
+  --color-raised: var(--ds-surface-raised);
+  --color-hairline: var(--ds-hairline);
+  --color-control: var(--ds-control);
+  --color-ink: var(--ds-ink);
+  --color-ink-muted: var(--ds-ink-muted);
+  --color-link: var(--ds-link);
+  --color-brand: var(--ds-brand);
+  --color-brand-sky: var(--ds-brand-sky);
+  --color-brand-soft: var(--ds-brand-soft);
+  --color-violet: var(--ds-accent);
+  --color-violet-light: var(--ds-accent-light);
+  --color-violet-deep: var(--ds-accent-deep);
+  --color-violet-soft: var(--ds-accent-soft);
+  --color-on-brand: var(--ds-on-brand);
+  --color-success: var(--ds-success);
+  --color-warning: var(--ds-warning);
+  --color-danger: var(--ds-danger);
+  --color-vivid-brand: var(--ds-vivid-brand);
+  --color-vivid-violet: var(--ds-vivid-accent);
+  --color-vivid-success: var(--ds-vivid-success);
+  --color-vivid-warning: var(--ds-vivid-warning);
+  --color-vivid-danger: var(--ds-vivid-danger);
+  --color-on-vivid: var(--ds-on-vivid);
 
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-border: var(--sidebar-border);
+  /* shadcn-style aliases, mapped onto the same tokens so legacy markup
+     (lead form, Clerk pages) stays consistent. */
+  --color-background: var(--ds-canvas);
+  --color-foreground: var(--ds-ink);
+  --color-card: var(--ds-surface);
+  --color-card-foreground: var(--ds-ink);
+  --color-popover: var(--ds-surface-raised);
+  --color-popover-foreground: var(--ds-ink);
+  --color-primary: var(--ds-brand);
+  --color-primary-foreground: var(--ds-on-brand);
+  --color-secondary: var(--ds-surface-raised);
+  --color-secondary-foreground: var(--ds-ink);
+  --color-muted: var(--ds-surface-raised);
+  --color-muted-foreground: var(--ds-ink-muted);
+  --color-accent: var(--ds-surface-raised);
+  --color-accent-foreground: var(--ds-ink);
+  --color-destructive: var(--ds-danger);
+  --color-border: var(--ds-hairline);
+  --color-input: var(--ds-control);
+  --color-ring: var(--ds-brand);
 
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
+  --font-mono: var(--font-data);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
+
+  --shadow-float: var(--ds-shadow-float);
+  --shadow-glow: var(--ds-glow-brand);
+
+  /* Type styles from the design system (size / line-height). */
+  --text-title: 32px;
+  --text-title--line-height: 38px;
+  --text-heading: 21px;
+  --text-heading--line-height: 28px;
+  --text-metric: 34px;
+  --text-metric--line-height: 40px;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-hairline;
   }
 
   html {
@@ -50,18 +89,99 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-canvas text-ink;
   }
 
-  h1, h2, h3, h4 {
+  /* Display face for headings only (design system: Space Grotesk, never body). */
+  h1,
+  h2,
+  h3 {
     @apply font-display;
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
+  a {
+    @apply text-link;
+  }
+
+  ::placeholder {
+    @apply text-ink-muted;
+  }
+
+  /* Keyboard focus: a 2px canvas gap then a 2px brand ring. */
   :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-    border-radius: 2px;
+    outline: none;
+    box-shadow: var(--ds-focus-ring);
+    border-radius: var(--ds-radius-sm);
+  }
+
+  /* Native pickers (date/time) follow the active theme, not the OS. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  input[type="range"] {
+    accent-color: var(--ds-brand);
+  }
+}
+
+@layer utilities {
+  /* Tabular figures for anything that counts up (metrics, durations). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Chart intro animations. Stagger with `style={{ animationDelay }}`. */
+  .animate-grow-x {
+    transform-origin: left;
+    animation: ds-grow-x 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .animate-grow-y {
+    transform-origin: bottom;
+    animation: ds-grow-y 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* For SVG paths/polylines with `pathLength="1"`. */
+  .animate-draw {
+    stroke-dasharray: 1;
+    animation: ds-draw 1.2s ease-out both;
+  }
+  .animate-rise {
+    animation: ds-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-grow-x,
+    .animate-grow-y,
+    .animate-draw,
+    .animate-rise {
+      animation: none;
+    }
+  }
+}
+
+@keyframes ds-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes ds-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes ds-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ds-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }

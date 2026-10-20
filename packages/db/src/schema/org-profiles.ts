@@ -6,6 +6,7 @@
  */
 import { boolean, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { organizations, timestamps } from "./identity";
+import { bookingProvider } from "./meetings";
 
 export const orgProfiles = pgTable(
   "org_profiles",
@@ -32,6 +33,22 @@ export const orgProfiles = pgTable(
     // The org's Twilio number (E.164). Outbound SMS sends from it; inbound SMS
     // is routed to the org by matching it. Unique across orgs (migration 0012).
     smsFromNumber: text("sms_from_number"),
+    // The Cal.com event type the Qualifier books (migration 0013). The API key +
+    // webhook secret live in org_secrets.
+    calcomEventTypeId: integer("calcom_event_type_id"),
+    // Calendly scheduling link (migration 0015) — link mode; used when Cal.com
+    // isn't connected. The Qualifier sends this for the contact to self-book.
+    calendlyUrl: text("calendly_url"),
+    // Direct calendar booking over OAuth (migration 0016). `calendarProvider` is
+    // `google` / `m365` when connected; the refresh token lives in org_secrets.
+    // `calendarId` is the calendar to book on; the window + length drive the
+    // slot generator (we don't rebuild buffers / round-robin — that's Cal.com).
+    calendarProvider: bookingProvider("calendar_provider"),
+    calendarId: text("calendar_id"),
+    calendarAccountEmail: text("calendar_account_email"),
+    bookingLengthMin: integer("booking_length_min").notNull().default(30),
+    bookingHoursStart: integer("booking_hours_start").notNull().default(9),
+    bookingHoursEnd: integer("booking_hours_end").notNull().default(17),
     ...timestamps,
   },
   (t) => [index("org_profiles_org_id_idx").on(t.orgId)],

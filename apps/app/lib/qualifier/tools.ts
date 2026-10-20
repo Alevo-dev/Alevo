@@ -1,10 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { conversations, isSuppressed, messages, withService, type Channel } from "@alevo/db";
+import { conversations, isSuppressed, meetings, messages, withService, type Channel } from "@alevo/db";
 import { notifySlack } from "@/lib/notifications/slack";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
+import { getBookingAdapter, type BookingConfig } from "@/lib/booking";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
 const SETTABLE_STATUS = ["active", "disqualified", "handed_off"] as const;
@@ -70,18 +71,66 @@ export type QualifierEffects = {
   score: number | null;
   status: SettableStatus | null;
   escalated: boolean;
+  booked: boolean;
 };
 
 export type DispatchTarget = {
   orgId: string;
   conversationId: string;
+  contactId: string;
   channel: Channel;
   contactName: string;
   contactEmail: string | null;
   contactPhone: string | null;
+  contactTimezone: string | null;
   smsFromNumber: string | null;
+  bookingConfig: BookingConfig;
+  calendlyUrl: string | null;
   orgName: string;
 };
+
+/** Booking tools — added to the Qualifier's toolset only when booking is connected. */
+export const BOOKING_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "check_availability",
+    description:
+      "List the org's open meeting slots for the next week. Call this before proposing a time; then propose one or two to the contact.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "book_meeting",
+    description:
+      "Book a meeting at a specific slot once the contact has agreed to a time. Requires the contact's email — ask for it first if missing.",
+    input_schema: {
+      type: "object",
+      properties: {
+        start: {
+          type: "string",
+          description: "The chosen slot's start as an ISO-8601 timestamp (from check_availability).",
+        },
+      },
+      required: ["start"],
+    },
+  },
+];
+
+/** Calendly link-mode tool — added when the org uses Calendly instead of Cal.com. */
+export const LINK_BOOKING_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "send_booking_link",
+    description:
+      "Send the org's scheduling link so the contact books a time themselves. Use when a qualified lead wants to talk, book, or see a demo.",
+    input_schema: {
+      type: "object",
+      properties: {
+        message: {
+          type: "string",
+          description: "Optional short, friendly intro to send just before the link.",
+        },
+      },
+    },
+  },
+];
 
 const clampScore = (n: unknown) =>
   typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : null;
@@ -131,6 +180,97 @@ async function notifyHandoff(
 }
 
 /**
+ * Deliver one outbound message on the conversation's channel (SMS → email →
+ * in-app fallback), record it, and move a brand-new conversation to 'active'.
+ * Returns a short human note describing what happened. Shared by reply_to_contact
+ * and book_meeting's confirmation so delivery never depends on the model
+ * remembering to call the reply tool afterwards.
+ */
+async function deliverMessage(target: DispatchTarget, body: string): Promise<string> {
+  let channel: Channel = target.channel;
+  let providerRef: string | null = null;
+  let note = "recorded in-app (no channel configured)";
+
+  if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
+    const sent = await sendSms({
+      fromNumber: target.smsFromNumber,
+      toPhone: target.contactPhone,
+      body,
+    });
+    if (sent.ok) {
+      channel = "sms";
+      providerRef = sent.sid ?? null;
+      note = "texted to the contact";
+    } else if (sent.optedOut) {
+      note = "not sent — contact opted out of SMS (STOP)";
+    } else {
+      Sentry.captureMessage(`Qualifier SMS send failed: ${sent.error}`, "warning");
+      note = `recorded, but SMS delivery failed (${sent.error})`;
+    }
+  } else if (
+    target.contactEmail &&
+    isEmailConfigured() &&
+    (await isSuppressed(target.orgId, target.contactEmail))
+  ) {
+    note = "recorded in-app (contact is unsubscribed — not emailed)";
+  } else if (target.contactEmail && isEmailConfigured()) {
+    const [lastInbound] = await withService((tx) =>
+      tx
+        .select({ ref: messages.providerRef })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.conversationId, target.conversationId),
+            eq(messages.orgId, target.orgId),
+            eq(messages.direction, "inbound"),
+            isNotNull(messages.providerRef),
+          ),
+        )
+        .orderBy(desc(messages.createdAt))
+        .limit(1),
+    );
+    const sent = await sendQualifierEmail({
+      orgId: target.orgId,
+      orgName: target.orgName,
+      toEmail: target.contactEmail,
+      conversationId: target.conversationId,
+      subject: `Your inquiry with ${target.orgName}`,
+      body,
+      inReplyTo: lastInbound?.ref ?? null,
+    });
+    if (sent.ok) {
+      channel = "email";
+      providerRef = sent.id ?? null;
+      note = "emailed to the contact";
+    } else {
+      Sentry.captureMessage(`Qualifier email send failed: ${sent.error}`, "warning");
+      note = `recorded, but email delivery failed (${sent.error})`;
+    }
+  }
+
+  await withService(async (tx) => {
+    await tx.insert(messages).values({
+      orgId: target.orgId,
+      conversationId: target.conversationId,
+      direction: "outbound",
+      author: "assistant",
+      channel,
+      body,
+      providerRef,
+    });
+    await tx
+      .update(conversations)
+      .set({
+        firstReplySentAt: sql`coalesce(${conversations.firstReplySentAt}, now())`,
+        status: sql`case when ${conversations.status} = 'new' then 'active' else ${conversations.status} end`,
+        updatedAt: new Date(),
+      })
+      .where(scoped(target));
+  });
+  return note;
+}
+
+/**
  * Execute one Claude tool call against the DB and return the text result Claude
  * sees. All writes go through the service path, scoped to the org in code.
  */
@@ -144,89 +284,7 @@ export async function dispatchTool(
     case "reply_to_contact": {
       const body = String(input.message ?? "").trim();
       if (!body) return "Error: message was empty; nothing was sent.";
-
-      // Deliver on the conversation's channel: SMS conversations text back,
-      // everything else emails (if possible), else the reply is recorded in-app.
-      let channel: Channel = target.channel;
-      let providerRef: string | null = null;
-      let note = "recorded in-app (no channel configured)";
-
-      if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
-        const sent = await sendSms({
-          fromNumber: target.smsFromNumber,
-          toPhone: target.contactPhone,
-          body,
-        });
-        if (sent.ok) {
-          channel = "sms";
-          providerRef = sent.sid ?? null;
-          note = "texted to the contact";
-        } else if (sent.optedOut) {
-          note = "not sent — contact opted out of SMS (STOP)";
-        } else {
-          Sentry.captureMessage(`Qualifier SMS send failed: ${sent.error}`, "warning");
-          note = `recorded, but SMS delivery failed (${sent.error})`;
-        }
-      } else if (target.contactEmail && isEmailConfigured() && (await isSuppressed(target.orgId, target.contactEmail))) {
-        // Compliance: never email a suppressed address (unsubscribe/bounce/complaint).
-        note = "recorded in-app (contact is unsubscribed — not emailed)";
-      } else if (target.contactEmail && isEmailConfigured()) {
-        // Thread the reply into the lead's inbox via the last inbound message id.
-        const [lastInbound] = await withService((tx) =>
-          tx
-            .select({ ref: messages.providerRef })
-            .from(messages)
-            .where(
-              and(
-                eq(messages.conversationId, target.conversationId),
-                eq(messages.orgId, target.orgId),
-                eq(messages.direction, "inbound"),
-                isNotNull(messages.providerRef),
-              ),
-            )
-            .orderBy(desc(messages.createdAt))
-            .limit(1),
-        );
-        const sent = await sendQualifierEmail({
-          orgId: target.orgId,
-          orgName: target.orgName,
-          toEmail: target.contactEmail,
-          conversationId: target.conversationId,
-          subject: `Your inquiry with ${target.orgName}`,
-          body,
-          inReplyTo: lastInbound?.ref ?? null,
-        });
-        if (sent.ok) {
-          channel = "email";
-          providerRef = sent.id ?? null;
-          note = "emailed to the contact";
-        } else {
-          // Record it anyway so the thread is intact; flag the delivery failure.
-          Sentry.captureMessage(`Qualifier email send failed: ${sent.error}`, "warning");
-          note = `recorded, but email delivery failed (${sent.error})`;
-        }
-      }
-
-      await withService(async (tx) => {
-        await tx.insert(messages).values({
-          orgId: target.orgId,
-          conversationId: target.conversationId,
-          direction: "outbound",
-          author: "assistant",
-          channel,
-          body,
-          providerRef,
-        });
-        // Stamp first-reply + move a brand-new conversation into 'active'.
-        await tx
-          .update(conversations)
-          .set({
-            firstReplySentAt: sql`coalesce(${conversations.firstReplySentAt}, now())`,
-            status: sql`case when ${conversations.status} = 'new' then 'active' else ${conversations.status} end`,
-            updatedAt: new Date(),
-          })
-          .where(scoped(target));
-      });
+      const note = await deliverMessage(target, body);
       effects.replied = true;
       return `Reply ${note}.`;
     }
@@ -274,6 +332,111 @@ export async function dispatchTool(
       effects.status = "handed_off";
       effects.escalated = true;
       return "Escalated to a human and notified the team.";
+    }
+
+    case "check_availability": {
+      const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
+      if (!adapter) return "Booking isn't connected for this org — hand off instead.";
+      const tz = target.contactTimezone ?? "UTC";
+      const now = new Date();
+      const to = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      let slots;
+      try {
+        slots = await adapter.availableSlots(now.toISOString(), to.toISOString(), tz);
+      } catch (err) {
+        Sentry.captureException(err);
+        return "Couldn't fetch availability right now — try again or hand off.";
+      }
+      if (slots.length === 0) return "No open slots in the next 7 days — hand off to a human.";
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
+      const lines = slots
+        .slice(0, 6)
+        .map((s) => `- ${fmt.format(new Date(s.startIso))} — ${s.startIso}`);
+      return `Open times (propose one to the contact, then call book_meeting with its ISO start):\n${lines.join("\n")}`;
+    }
+
+    case "book_meeting": {
+      if (!target.contactEmail) return "Ask the contact for their email before booking.";
+      const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
+      if (!adapter) return "Booking isn't connected for this org — hand off instead.";
+      const startIso = String(input.start ?? "").trim();
+      if (!startIso || Number.isNaN(Date.parse(startIso))) {
+        return "Error: provide the slot start as an ISO-8601 timestamp from check_availability.";
+      }
+      const result = await adapter.book({
+        startIso,
+        attendeeName: target.contactName,
+        attendeeEmail: target.contactEmail,
+        attendeeTimeZone: target.contactTimezone ?? "UTC",
+        conversationId: target.conversationId,
+        orgId: target.orgId,
+      });
+      if (!result.ok) return `Booking failed (${result.error}). Offer another time or hand off.`;
+
+      // Confirm to the contact ourselves — never rely on the model to follow up.
+      const when = new Intl.DateTimeFormat("en-US", {
+        timeZone: target.contactTimezone ?? "UTC",
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(new Date(result.startIso));
+      const note = await deliverMessage(
+        target,
+        `Great news — you're booked for ${when}. You'll get a calendar invite by email with all the details. Looking forward to speaking!`,
+      );
+
+      await withService(async (tx) => {
+        await tx
+          .insert(meetings)
+          .values({
+            orgId: target.orgId,
+            conversationId: target.conversationId,
+            contactId: target.contactId,
+            provider: adapter.provider,
+            providerRef: result.uid,
+            status: "scheduled",
+            startAt: new Date(result.startIso),
+            endAt: result.endIso ? new Date(result.endIso) : null,
+            joinUrl: result.joinUrl,
+          })
+          .onConflictDoNothing();
+        await tx
+          .update(conversations)
+          .set({ status: "booked", updatedAt: new Date() })
+          .where(scoped(target));
+      });
+      effects.booked = true;
+      effects.replied = true;
+      return `Booked for ${result.startIso} and confirmed to the contact (${note}). You're done — do not send another message.`;
+    }
+
+    case "send_booking_link": {
+      if (!target.calendlyUrl) return "No scheduling link configured — hand off instead.";
+      let link: string;
+      try {
+        const u = new URL(target.calendlyUrl);
+        u.searchParams.set("utm_source", "alevo");
+        // Carries back on the Calendly webhook so we tie the booking to this conversation.
+        u.searchParams.set("utm_content", target.conversationId);
+        link = u.toString();
+      } catch {
+        return "The configured scheduling link is invalid.";
+      }
+      const intro = String(input.message ?? "").trim() || "You can grab a time that works for you here:";
+      const note = await deliverMessage(target, `${intro}\n${link}`);
+      effects.replied = true;
+      return `Scheduling link sent (${note}). The contact books themselves — you're done, do not send another message.`;
     }
 
     default:

@@ -7,13 +7,21 @@ import {
   emailSuppressions,
   messages,
   orgProfiles,
+  orgSecrets,
   withService,
   type Channel,
   type ConversationStatus,
   type OrgProfile,
 } from "@alevo/db";
-import { buildSystemPrompt, type ContactInfo } from "./prompt";
-import { dispatchTool, QUALIFIER_TOOLS, type QualifierEffects } from "./tools";
+import { bookingConfigFromProfile } from "@/lib/booking";
+import { buildSystemPrompt, type BookingMode, type ContactInfo } from "./prompt";
+import {
+  BOOKING_TOOLS,
+  dispatchTool,
+  LINK_BOOKING_TOOLS,
+  QUALIFIER_TOOLS,
+  type QualifierEffects,
+} from "./tools";
 import { retrieveKbContext } from "@/lib/kb/retrieve";
 
 /** The Qualifier runs on Sonnet 5 (near-Opus agentic quality at Sonnet cost). */
@@ -26,10 +34,13 @@ const TERMINAL: ReadonlySet<ConversationStatus> = new Set(["booked", "closed"]);
 export type QualifierContext = {
   orgId: string;
   conversationId: string;
+  contactId: string;
   channel: Channel;
   profile: OrgProfile;
   contact: ContactInfo;
   thread: { author: "contact" | "assistant" | "human"; body: string }[];
+  /** How the Qualifier can book: Cal.com API, Calendly link, or not at all. */
+  bookingMode: BookingMode;
 };
 
 export type QualifierResult =
@@ -72,6 +83,7 @@ export async function loadQualifierContext(
         company: contacts.company,
         email: contacts.email,
         phone: contacts.phone,
+        timezone: contacts.timezone,
       })
       .from(contacts)
       .where(and(eq(contacts.id, conv.contactId), eq(contacts.orgId, orgId)))
@@ -100,9 +112,31 @@ export async function loadQualifierContext(
       .where(and(eq(messages.conversationId, conversationId), eq(messages.orgId, orgId)))
       .orderBy(asc(messages.createdAt));
 
+    // Booking precedence: Cal.com (API key + event type) → a connected calendar
+    // (Google / M365, OAuth refresh token present) → Calendly link mode.
+    const hasSecret = async (keyName: string) => {
+      const [row] = await tx
+        .select({ id: orgSecrets.id })
+        .from(orgSecrets)
+        .where(and(eq(orgSecrets.orgId, orgId), eq(orgSecrets.keyName, keyName)))
+        .limit(1);
+      return Boolean(row);
+    };
+    let bookingMode: BookingMode = null;
+    if (profile.calcomEventTypeId && (await hasSecret("calcom_api_key"))) bookingMode = "calcom";
+    if (!bookingMode && profile.calendarProvider && profile.calendarId) {
+      const tokenKey =
+        profile.calendarProvider === "google"
+          ? "google_calendar_refresh_token"
+          : "m365_calendar_refresh_token";
+      if (await hasSecret(tokenKey)) bookingMode = profile.calendarProvider as BookingMode;
+    }
+    if (!bookingMode && profile.calendlyUrl) bookingMode = "calendly";
+
     return {
       orgId,
       conversationId,
+      contactId: conv.contactId,
       channel: conv.channel,
       profile,
       contact: contact ?? {
@@ -111,8 +145,10 @@ export async function loadQualifierContext(
         company: null,
         email: null,
         phone: null,
+        timezone: null,
       },
       thread,
+      bookingMode,
     };
   });
 }
@@ -158,7 +194,19 @@ export async function runQualifier(
   // Ground the reply in the org's knowledge base, keyed on the latest message.
   const query = typeof last.content === "string" ? last.content : "";
   const knowledge = await retrieveKbContext(ctx.orgId, query);
-  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge);
+  // Email conversations get the "one complete email" style; SMS/voice/chat stay
+  // conversational (one question at a time).
+  const emailStyle =
+    (ctx.channel === "form" || ctx.channel === "email") && Boolean(ctx.contact.email);
+  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle);
+  // Cal.com / Google / M365 are API booking (slots + book); Calendly is link mode.
+  const bookingTools =
+    ctx.bookingMode === "calcom" || ctx.bookingMode === "google" || ctx.bookingMode === "m365"
+      ? BOOKING_TOOLS
+      : ctx.bookingMode === "calendly"
+        ? LINK_BOOKING_TOOLS
+        : [];
+  const tools = [...QUALIFIER_TOOLS, ...bookingTools];
   const contactName =
     [ctx.contact.firstName, ctx.contact.lastName].filter(Boolean).join(" ").trim() ||
     ctx.contact.email ||
@@ -166,24 +214,34 @@ export async function runQualifier(
   const target = {
     orgId: ctx.orgId,
     conversationId: ctx.conversationId,
+    contactId: ctx.contactId,
     channel: ctx.channel,
     contactName,
     contactEmail: ctx.contact.email,
     contactPhone: ctx.contact.phone,
+    contactTimezone: ctx.contact.timezone ?? ctx.profile.timezone,
     smsFromNumber: ctx.profile.smsFromNumber,
+    bookingConfig: bookingConfigFromProfile(ctx.profile),
+    calendlyUrl: ctx.profile.calendlyUrl,
     orgName: ctx.profile.companyName?.trim() || "Alevo",
   };
-  const effects: QualifierEffects = { replied: false, score: null, status: null, escalated: false };
+  const effects: QualifierEffects = {
+    replied: false,
+    score: null,
+    status: null,
+    escalated: false,
+    booked: false,
+  };
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       thinking: { type: "adaptive" },
       output_config: { effort: "medium" },
       system,
       messages: messagesForClaude,
-      tools: QUALIFIER_TOOLS,
+      tools,
     });
 
     const toolUses = response.content.filter(

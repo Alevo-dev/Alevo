@@ -1,7 +1,8 @@
 import { listOrgSecretKeys } from "@alevo/db";
 import { ForbiddenError, getCurrentOrg, requireRole } from "@alevo/auth";
+import { Notice } from "@/components/ui/notice";
 import { SECRET_KEYS } from "@/lib/secrets-registry";
-import { SecretRow } from "./secrets-ui";
+import { SecretCard } from "./secrets-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +11,7 @@ export default async function SecretsPage() {
     await requireRole("admin");
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      return (
-        <p className="text-muted-foreground">You need an admin role to manage integrations.</p>
-      );
+      return <Notice tone="warning">You need an admin role to manage integrations.</Notice>;
     }
     throw error;
   }
@@ -21,17 +20,17 @@ export default async function SecretsPage() {
   const setKeys = org ? new Set(await listOrgSecretKeys(org.id)) : new Set<string>();
 
   return (
-    <section className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl">Integrations</h1>
-        <p className="mt-1 text-muted-foreground">
-          Store per-organization credentials. Values are encrypted and never shown again.
+        <h2 className="text-heading font-semibold">API keys and secrets</h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Stored encrypted per organization. Values are never shown again after you save them.
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {SECRET_KEYS.map((s) => (
-          <SecretRow
+          <SecretCard
             key={s.key}
             secretKey={s.key}
             label={s.label}
@@ -43,6 +42,6 @@ export default async function SecretsPage() {
           />
         ))}
       </div>
-    </section>
+    </div>
   );
 }
