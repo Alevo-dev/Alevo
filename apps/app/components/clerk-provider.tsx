@@ -2,6 +2,7 @@
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
+import { TASK_URLS } from "@/components/auth/after-auth";
 
 /** Clerk's embedded UI on the design-system palette, per resolved theme. */
 const SHARED = {
@@ -43,6 +44,7 @@ export function ThemedClerkProvider({ children }: { children: React.ReactNode })
   return (
     <ClerkProvider
       appearance={{ variables }}
+      taskUrls={TASK_URLS}
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"
     >

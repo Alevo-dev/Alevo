@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { cx } from "@/lib/cx";
 import { toFormErrors } from "./clerk-errors";
 import { ForgotPasswordForm } from "./forgot-password-form";
+import { GoogleMark } from "./google-mark";
+import { InviteJoin, type Invite } from "./invite-join";
 import { SignInForm } from "./sign-in-form";
 import { SignUpForm } from "./sign-up-form";
 
@@ -24,7 +26,7 @@ const COPY: Record<View, { title: string; blurb: string }> = {
  * the tabs switch views in place (the URL is updated without a reload) and
  * the panel fades + rises on each switch.
  */
-export function AuthScreen({ initialMode }: { initialMode: AuthMode }) {
+export function AuthScreen({ initialMode, invite }: { initialMode: AuthMode; invite?: Invite }) {
   const [view, setView] = useState<View>(initialMode);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [oauthPending, setOauthPending] = useState(false);
@@ -62,12 +64,32 @@ export function AuthScreen({ initialMode }: { initialMode: AuthMode }) {
     }
   }
 
+  const logo = (
+    <div className="mb-10 flex items-center gap-3">
+      <Image src="/alevo-mark.png" alt="" width={32} height={32} className="size-8" />
+      <span className="font-display text-xl font-semibold tracking-tight text-ink">Alevo</span>
+    </div>
+  );
+
+  // Arrived from an invitation email: redeem the ticket instead of the tabs.
+  if (invite) {
+    return (
+      <div className="w-full max-w-[400px]">
+        {logo}
+        <h1 className="text-title font-semibold text-ink">You&apos;re invited</h1>
+        <p className="mt-2 text-[15px] leading-[22px] text-ink-muted">
+          A teammate invited you to their Alevo workspace.
+        </p>
+        <div className="mt-7">
+          <InviteJoin invite={invite} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-[400px]">
-      <div className="mb-10 flex items-center gap-3">
-        <Image src="/alevo-mark.png" alt="" width={32} height={32} className="size-8" />
-        <span className="font-display text-xl font-semibold tracking-tight text-ink">Alevo</span>
-      </div>
+      {logo}
 
       <div role="tablist" aria-label="Account" className="relative grid grid-cols-2 border-b border-hairline">
         {(["in", "up"] as const).map((m) => (
@@ -105,6 +127,11 @@ export function AuthScreen({ initialMode }: { initialMode: AuthMode }) {
         </div>
       </div>
 
+      {/* Clerk's bot protection (Smart CAPTCHA) renders into this element when it
+          needs to — on signUp.create and on Google sign-up from either tab. It
+          must exist in the DOM before those calls, so it lives here, not in a form. */}
+      <div id="clerk-captcha" className="mt-4 empty:mt-0" />
+
       {view !== "forgot" && (
         <>
           <div className="my-7 flex items-center gap-3 text-label text-ink-muted">
@@ -138,16 +165,5 @@ export function AuthScreen({ initialMode }: { initialMode: AuthMode }) {
         )}
       </p>
     </div>
-  );
-}
-
-function GoogleMark() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4c-.2 1.2-.9 2.3-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z" fill="#4285F4" />
-      <path d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6C4.8 19.8 8.2 22 12 22z" fill="#34A853" />
-      <path d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1C2.4 8.8 2 10.4 2 12s.4 3.2 1.1 4.6L6.4 14z" fill="#FBBC05" />
-      <path d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9C17 2.9 14.7 2 12 2 8.2 2 4.8 4.2 3.1 7.4L6.4 10c.8-2.3 3-4 5.6-4z" fill="#EA4335" />
-    </svg>
   );
 }

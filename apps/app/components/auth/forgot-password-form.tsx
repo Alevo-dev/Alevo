@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useSignIn } from "@clerk/nextjs";
+import { useClerk, useSignIn } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { nextPathAfterAuth } from "./after-auth";
 import { toFormErrors, type FormErrors } from "./clerk-errors";
 import { PasswordInput } from "./password-input";
 
@@ -12,6 +14,8 @@ const NONE: FormErrors = { fields: {} };
 /** Reset by emailed code: email → code + new password (Clerk custom flow). */
 export function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const clerk = useClerk();
+  const router = useRouter();
   const [step, setStep] = useState<"email" | "reset">("email");
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<FormErrors>(NONE);
@@ -55,7 +59,8 @@ export function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
       }
       const res = attempt.status === "complete" ? attempt : await signIn.resetPassword({ password });
       if (res.status === "complete") {
-        await setActive({ session: res.createdSessionId, redirectUrl: "/dashboard" });
+        await setActive({ session: res.createdSessionId });
+        router.push(nextPathAfterAuth(clerk));
       } else {
         setErrors({ fields: {}, form: "Couldn't finish the reset. Try again." });
       }

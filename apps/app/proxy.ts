@@ -10,6 +10,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/onboarding(.*)", // Clerk session-task pages (pending sessions count as signed out)
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
   "/api/unsubscribe(.*)", // public one-click unsubscribe (signed token)

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useSignIn } from "@clerk/nextjs";
+import { useClerk, useSignIn } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { nextPathAfterAuth } from "./after-auth";
 import { toFormErrors, type FormErrors } from "./clerk-errors";
 import { PasswordInput } from "./password-input";
 
@@ -12,6 +14,8 @@ const NONE: FormErrors = { fields: {} };
 /** Email + password sign-in (Clerk custom flow). */
 export function SignInForm({ onForgot }: { onForgot: () => void }) {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const clerk = useClerk();
+  const router = useRouter();
   const [errors, setErrors] = useState<FormErrors>(NONE);
   const [pending, setPending] = useState(false);
 
@@ -31,7 +35,8 @@ export function SignInForm({ onForgot }: { onForgot: () => void }) {
     try {
       const res = await signIn.create({ strategy: "password", identifier: email, password });
       if (res.status === "complete") {
-        await setActive({ session: res.createdSessionId, redirectUrl: "/dashboard" });
+        await setActive({ session: res.createdSessionId });
+        router.push(nextPathAfterAuth(clerk));
       } else if (res.status === "needs_second_factor") {
         setErrors({ fields: {}, form: "This account uses two-step verification, which isn't supported here yet." });
       } else {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useOrganizationList, useSignUp } from "@clerk/nextjs";
+import { useClerk, useOrganizationList, useSignUp } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { nextPathAfterAuth } from "./after-auth";
 import { toFormErrors, type FormErrors } from "./clerk-errors";
 import { PasswordInput } from "./password-input";
 
@@ -16,6 +17,7 @@ export function SignUpForm() {
   const router = useRouter();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { createOrganization } = useOrganizationList();
+  const clerk = useClerk();
   const [step, setStep] = useState<"details" | "verify">("details");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
@@ -77,15 +79,15 @@ export function SignUpForm() {
         return;
       }
       await setActive({ session: res.createdSessionId });
-      // The company becomes the workspace. If this fails (limits, permissions),
-      // the dashboard still offers to create one.
+      // The company becomes the workspace, which also resolves Clerk's
+      // choose-organization task. If it fails, the task page takes over.
       try {
         const org = await createOrganization?.({ name: company });
         if (org) await setActive({ organization: org.id });
       } catch {
-        /* fall through to the dashboard prompt */
+        /* handled by the onboarding step */
       }
-      router.push("/dashboard");
+      router.push(nextPathAfterAuth(clerk));
     } catch (err) {
       setErrors(toFormErrors(err));
     } finally {
@@ -154,8 +156,6 @@ export function SignUpForm() {
         </label>
         {errors.fields.terms && <p className="mt-1 text-label text-danger">{errors.fields.terms}</p>}
       </div>
-      {/* Clerk mounts its bot-protection widget here when enabled. */}
-      <div id="clerk-captcha" />
       {errors.form && <p className="text-sm text-danger">{errors.form}</p>}
       <Button type="submit" variant="primary" loading={pending} disabled={!isLoaded} className="w-full">
         {pending ? "Creating…" : "Create account"}

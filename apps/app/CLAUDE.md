@@ -80,6 +80,10 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   (URL updated via `history.replaceState`), email-code verification, forgot-password reset,
   Google OAuth via `/sign-(in|up)/sso-callback` (`AuthenticateWithRedirectCallback`). Sign-up
   creates the org from the Company field. Clerk errors map to fields in `clerk-errors.ts`.
+  The Clerk instance **forces organization selection**: new sessions are *pending* with a
+  `choose-organization` task (pending = signed out for `auth.protect()`), so every flow
+  routes through `nextPathAfterAuth` → `/onboarding/choose-organization`
+  (`components/auth/choose-organization.tsx`, registered as `taskUrls`, public in proxy).
 - **Workspace (not "Settings"):** the org's setup lives under `/workspace/*` — Business
   profile (`profile/`: company, offering, ICP, criteria, disqualifiers, voice →
   `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, channels, booking, calendar →
