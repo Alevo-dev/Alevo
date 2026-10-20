@@ -201,45 +201,45 @@
 }
 
 /* ============================================================================
-   View transitions (app/(app)/template.tsx). Old content leaves fast, new
-   content arrives a beat later and settles; forward/back slide 40px.
+   View transitions (app/(app)/template.tsx). Very fast: old content is gone
+   in 50ms, new content is in place within ~120ms, no start delay.
    ========================================================================== */
 ::view-transition {
   pointer-events: none;
 }
 
 ::view-transition-old(.page-exit) {
-  animation: 120ms ease-in both vt-fade reverse;
+  animation: 50ms ease-in both vt-fade reverse;
 }
 ::view-transition-new(.page-enter) {
   animation:
-    200ms ease-out 80ms both vt-fade,
-    360ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-rise;
+    100ms ease-out both vt-fade,
+    130ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-rise;
 }
 
 ::view-transition-old(.nav-forward) {
-  --vt-offset: -40px;
+  --vt-offset: -64px;
   animation:
-    120ms ease-in both vt-fade reverse,
-    320ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide reverse;
+    50ms ease-in both vt-fade reverse,
+    120ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide reverse;
 }
 ::view-transition-new(.nav-forward) {
-  --vt-offset: 40px;
+  --vt-offset: 64px;
   animation:
-    200ms ease-out 100ms both vt-fade,
-    360ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide;
+    100ms ease-out both vt-fade,
+    150ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide;
 }
 ::view-transition-old(.nav-back) {
-  --vt-offset: 40px;
+  --vt-offset: 64px;
   animation:
-    120ms ease-in both vt-fade reverse,
-    320ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide reverse;
+    50ms ease-in both vt-fade reverse,
+    120ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide reverse;
 }
 ::view-transition-new(.nav-back) {
-  --vt-offset: -40px;
+  --vt-offset: -64px;
   animation:
-    200ms ease-out 100ms both vt-fade,
-    360ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide;
+    100ms ease-out both vt-fade,
+    150ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-slide;
 }
 
 @keyframes vt-fade {
@@ -252,7 +252,7 @@
 }
 @keyframes vt-rise {
   from {
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
   to {
     transform: translateY(0);

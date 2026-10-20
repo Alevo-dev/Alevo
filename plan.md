@@ -33,6 +33,12 @@ manual QA** (Cal.com first; Google/M365 await their OAuth-app credentials for
 live testing). **App UI restyled** (2026-10-20) onto the Alevo design system from
 Claude Design (see §10): sidebar shell, Settings tabs, dark-default navy palette,
 Space Grotesk / Inter / JetBrains Mono, shared primitives in `apps/app/components/ui/`.
+**In production (2026-10-20):** deployed to Vercel against the prod stack
+(Supabase, Clerk, Resend, Voyage, R2, Inngest, Anthropic); everything built up
+to — but not including — the SMS channel (platform foundation, CRM + hosted
+form, the Qualifier, email channel + compliance, cadence, KB/RAG) is **verified
+working in both dev and production**. Still pending in prod: Twilio SMS (env +
+per-org number; A2P registration is the gate) and the Google/M365 OAuth apps.
 Next build: PSA write-back (Sprint 5).
 
 Alevo is a multi-tenant AI SDR platform for MSPs. Tagline: *More conversations. More leads.*
@@ -202,7 +208,7 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 - [x] Slack webhook per org
 - [x] `CLAUDE.md` with schema, rules 1–13, patterns + admin bootstrap
 
-### Sprint 2 — Capture, conversation, Qualifier (35–45h) — ✅ core complete (SMS on `sms` branch, pre-merge)
+### Sprint 2 — Capture, conversation, Qualifier (35–45h) — ✅ complete (merged; tested in dev; all but SMS verified in production — SMS awaits prod Twilio/A2P)
 - [x] Tables: `contacts`, `conversations`, `messages`, `consents` (0007) + `org_profiles` (0008, the Qualifier's per-org ICP context)
 - [x] Tables: `kb_documents`, `kb_chunks` (pgvector `vector(1024)`, hnsw cosine) (0010)
 - [x] Hosted form per org → creates contact + conversation (`/f/[orgId]`); embeddable snippet pending
