@@ -44,7 +44,7 @@ export async function saveSecret(
       action: "secret.set",
       target: key,
     });
-    revalidatePath("/settings/secrets");
+    revalidatePath("/workspace/integrations");
     return { ok: true };
   } catch (error) {
     return { ...fail(error), value };
@@ -83,7 +83,7 @@ export async function clearSecret(
       action: "secret.cleared",
       target: key,
     });
-    revalidatePath("/settings/secrets");
+    revalidatePath("/workspace/integrations");
     return { ok: true };
   } catch (error) {
     return fail(error);

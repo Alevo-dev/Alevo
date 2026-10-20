@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { contacts, conversations } from "@alevo/db";
@@ -12,6 +13,8 @@ import { getOrgTimezone } from "@/lib/org-timezone";
 import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Conversations" };
 
 export default async function ConversationsPage() {
   const [org, tz] = await Promise.all([getCurrentOrg(), getOrgTimezone()]);

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { desc, sql } from "drizzle-orm";
 import { files } from "@alevo/db";
 import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
@@ -7,10 +8,13 @@ import { Pill } from "@/components/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { fmtDateTime, fmtSize } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
+import { purposeLabelFromKey } from "@/lib/files/keys";
 import { fileStatus } from "@/lib/ui/status";
 import { FileUpload } from "./files-ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Files" };
 
 export default async function FilesPage() {
   try {
@@ -29,6 +33,7 @@ export default async function FilesPage() {
       .select({
         id: files.id,
         fileName: files.fileName,
+        r2Key: files.r2Key,
         status: files.status,
         sizeBytes: files.sizeBytes,
         createdAt: files.createdAt,
@@ -54,6 +59,7 @@ export default async function FilesPage() {
           <thead>
             <tr>
               <Th>Name</Th>
+              <Th>Kind</Th>
               <Th>Size</Th>
               <Th>Status</Th>
               <Th>Uploaded</Th>
@@ -61,13 +67,14 @@ export default async function FilesPage() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <EmptyRow colSpan={4}>No files yet.</EmptyRow>
+              <EmptyRow colSpan={5}>No files yet.</EmptyRow>
             ) : (
               rows.map((f) => {
                 const status = fileStatus(f.status);
                 return (
                   <Tr key={f.id}>
                     <Td className="font-semibold">{f.fileName ?? "—"}</Td>
+                    <Td className="text-ink-muted">{purposeLabelFromKey(f.r2Key)}</Td>
                     <Td className="tabular font-mono text-label text-ink-muted">{fmtSize(f.sizeBytes)}</Td>
                     <Td>
                       <Pill tone={status.tone}>{status.label}</Pill>

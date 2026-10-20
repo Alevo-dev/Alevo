@@ -20,7 +20,7 @@ const fontData = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Alevo", template: "%s · Alevo" },
+  title: { default: "Alevo", template: "%s | Alevo" },
   description: "Alevo — AI SDR platform.",
   robots: { index: false, follow: false },
 };

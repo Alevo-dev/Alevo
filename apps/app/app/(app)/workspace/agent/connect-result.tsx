@@ -12,7 +12,7 @@ export function ConnectResult({ connected }: { connected?: string }) {
     if (!connected) return;
     const name = connected === "m365" ? "Microsoft 365" : "Google";
     toast.success(`Connected your ${name} calendar. The agent will book meetings on it.`);
-    router.replace("/settings/qualifier");
+    router.replace("/workspace/agent");
   }, [connected, router]);
   return null;
 }

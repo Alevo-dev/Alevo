@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
-import { kbDocuments } from "@alevo/db";
+import { files, kbDocuments } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { inngest } from "@/lib/inngest/client";
 import type { KbSourceType } from "@alevo/db";
@@ -73,7 +73,7 @@ export async function addDocument(_prev: ActionState, formData: FormData): Promi
     );
     if (!doc) return { error: "Could not save the document.", values };
     await fireIngest(org, doc.id);
-    revalidatePath("/settings/knowledge");
+    revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Something went wrong", values };
@@ -96,8 +96,15 @@ export async function addPdfDocument(params: {
         .returning({ id: kbDocuments.id }),
     );
     if (!doc) return { ok: false, error: "Could not save the document." };
+    // The upload finished (we have the key), so the Files ledger row is stored.
+    await withOrg((tx) =>
+      tx
+        .update(files)
+        .set({ status: "uploaded", updatedAt: new Date() })
+        .where(and(eq(files.r2Key, params.r2Key), sql`${files.orgId} = (select app.current_org_id())`)),
+    );
     await fireIngest(org, doc.id);
-    revalidatePath("/settings/knowledge");
+    revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Something went wrong" };
@@ -118,7 +125,7 @@ export async function reingestDocument(_prev: ActionState, formData: FormData): 
         .returning({ id: kbDocuments.id }),
     );
     if (doc) await fireIngest(org, doc.id);
-    revalidatePath("/settings/knowledge");
+    revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Something went wrong" };
@@ -135,7 +142,7 @@ export async function deleteDocument(_prev: ActionState, formData: FormData): Pr
         .delete(kbDocuments)
         .where(and(eq(kbDocuments.id, id), sql`${kbDocuments.orgId} = (select app.current_org_id())`)),
     );
-    revalidatePath("/settings/knowledge");
+    revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Something went wrong" };

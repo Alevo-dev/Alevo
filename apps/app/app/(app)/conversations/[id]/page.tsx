@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { contacts, conversations, emailSuppressions, meetings, messages, orgProfiles } from "@alevo/db";
@@ -14,6 +15,19 @@ import { AutoRefresh } from "./auto-refresh";
 import { FitScore } from "./fit-score";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const [row] = await withOrg((tx) =>
+    tx
+      .select({ firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email })
+      .from(conversations)
+      .innerJoin(contacts, eq(contacts.id, conversations.contactId))
+      .where(and(eq(conversations.id, id), sql`${conversations.orgId} = (select app.current_org_id())`))
+      .limit(1),
+  );
+  return { title: row ? displayName(row.firstName, row.lastName, row.email) : "Conversation" };
+}
 
 const AUTHOR_LABEL = { contact: "Contact", assistant: "Alevo agent", human: "Rep" } as const;
 

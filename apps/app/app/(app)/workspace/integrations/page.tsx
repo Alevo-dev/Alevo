@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import { listOrgSecretKeys } from "@alevo/db";
 import { ForbiddenError, getCurrentOrg, requireRole } from "@alevo/auth";
 import { Notice } from "@/components/ui/notice";
 import { SECRET_KEYS } from "@/lib/secrets-registry";
-import { SecretCard } from "./secrets-ui";
+import { SecretCard } from "./integrations-ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Integrations" };
 
 export default async function SecretsPage() {
   try {

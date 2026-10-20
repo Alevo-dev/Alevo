@@ -17,7 +17,7 @@ import {
  * session; the callback is stateless (the signed `state` carries the org).
  */
 
-const SETTINGS = "/settings/qualifier";
+const SETTINGS = "/workspace/agent";
 
 function base(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");

@@ -59,7 +59,7 @@ _(With no DSN set, the route still 500s but nothing is sent — Sentry is a no-o
 
 ---
 
-## Members screen (`/settings/members`)
+## Members screen (`/workspace/members`)
 
 _Prereqs: `npx supabase db push` to apply migration 0003; in Clerk → Webhooks,
 add the events `organizationInvitation.created`, `organizationInvitation.accepted`,
@@ -67,7 +67,7 @@ add the events `organizationInvitation.created`, `organizationInvitation.accepte
 the rest). Restart the dev server._
 
 ### Access
-- [x] As owner/admin, header shows a **Members** link → opens `/settings/members`; you're listed as **owner**.
+- [x] As owner/admin, header shows a **Members** link → opens `/workspace/members`; you're listed as **owner**.
 - [x] As a **rep/viewer** (change your own role in SQL to test), the page shows "You need an admin role to manage members."
 
 ### Invite + role-on-invite
@@ -104,13 +104,13 @@ _Prereq: in a separate terminal run `npx inngest-cli dev` (it auto-discovers
 
 ---
 
-## Encrypted org secrets (`/settings/secrets` → "Integrations")
+## Encrypted org secrets (`/workspace/integrations` → "Integrations")
 
 _Prereq: `npx supabase db push` to apply migration 0004; `SECRETS_MASTER_KEY` set
 in `.env.local` (already added); restart the dev server._
 
 ### Access
-- [x] Header shows **Integrations**; as admin/owner it opens `/settings/secrets` with the secret registry (Slack webhook, Cal.com key).
+- [x] Header shows **Integrations**; as admin/owner it opens `/workspace/integrations` with the secret registry (Slack webhook, Cal.com key).
 - [x] As a **rep/viewer**, the page shows "You need an admin role to manage integrations."
 
 ### Validation
@@ -132,7 +132,7 @@ in `.env.local` (already added); restart the dev server._
 
 _Prereq: a Slack **incoming webhook** URL saved under Integrations (`slack_webhook_url`)._
 
-- [x] On `/settings/secrets`, with the Slack webhook **set**, click **Send test** → your Slack channel receives "Test notification from Alevo — <org>", and the page shows "Sent".
+- [x] On `/workspace/integrations`, with the Slack webhook **set**, click **Send test** → your Slack channel receives "Test notification from Alevo — <org>", and the page shows "Sent".
 - [x] With the webhook **not set**, the Send test button is disabled.
 - [x] A wrong/revoked webhook → the page shows the Slack error (e.g. "Slack returned 404"), and nothing else breaks.
 
@@ -154,11 +154,11 @@ _Prereq: `npx supabase db push` (applies migration 0006); R2 env vars set in `.e
 (`R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET`); the R2 bucket
 has a **CORS rule** allowing `PUT` from your app origin (ngrok/localhost). Restart dev._
 
-- [x] On `/settings/files` (admin), choose a file → it uploads directly to R2; status goes "Requesting…" → "Uploading…" → "Uploaded", and the file appears in the list as **uploaded**.
+- [x] On `/workspace/files` (admin), choose a file → it uploads directly to R2; status goes "Requesting…" → "Uploading…" → "Uploaded", and the file appears in the list as **uploaded**.
 - [x] (R2 dashboard) the object exists at key `org/<orgId>/<fileId>/<filename>`.
 - [x] (DB) `files` has a matching row (`status = uploaded`, size, content type).
 - [x] Without R2 env configured, the upload shows a clear "R2 is not configured" error (nothing crashes).
-- [x] As a rep/viewer, `/settings/files` shows "You need an admin role to manage files."
+- [x] As a rep/viewer, `/workspace/files` shows "You need an admin role to manage files."
 
 ---
 
@@ -193,7 +193,7 @@ _Prereq: `npx supabase db push` (applies migration **0009**). Run the app with
 `http://localhost:8288`). The Qualifier must be **enabled** (Settings →
 Qualifier) with a contact that has an email, or replies just record in-app._
 
-### Send-window settings (`/settings/qualifier`)
+### Send-window settings (`/workspace/agent`)
 - [x] The **Follow-up** section shows a timezone select (default "App default (Eastern)") and Earliest/Latest hour selects (default 08:00 / 20:00).
 - [x] Set Earliest **later** than Latest → Save → per-field error "The start time must be before the end time." under the hours; nothing saved.
 - [x] Pick a real timezone + a valid window → Save → "Saved."; reload → values persist. (DB) `org_profiles.timezone`, `send_window_start_hour`, `send_window_end_hour` updated; `org_profiles_send_window_ck` would reject a bad window at the DB too.
@@ -221,14 +221,14 @@ Qualifier) with a contact that has an email, or replies just record in-app._
 Dashboards: **Cal.com** (Bookings), **Calendly** (Scheduled events + Webhooks), **Inngest** dev UI, **App** `/meetings`, **Supabase** (`meetings`, `consents` tables).
 
 ### Cal.com booking (API mode)
-- [ ] In Settings → Integrations set a Cal.com **API key** + **webhook secret**; in Settings → Qualifier set the numeric **event-type ID**. The Qualifier now offers to book.
+- [ ] In Workspace → Integrations set a Cal.com **API key** + **webhook secret**; in Workspace → Agent set the numeric **event-type ID**. The Qualifier now offers to book.
 - [ ] As a lead, ask for a meeting. The Qualifier calls `check_availability` and offers real open slots; on acceptance it books → you see the booking in **Cal.com** and a new row in **`/meetings`** (status `scheduled`, source `calcom`), and the lead gets a **confirmation message**.
 - [ ] The conversation flips to **`booked`** (terminal — Qualifier stops, cadence stops).
 - [ ] From `/meetings`, **Reschedule** (pick a new time) and **Cancel** both propagate to Cal.com and update the row; cancel **reopens** the conversation.
 - [ ] Cancel/reschedule the booking **in Cal.com directly** → the `/api/webhooks/calcom` sync updates our row (visible in Inngest + the Meetings tab).
 
 ### Calendly booking (link mode)
-- [ ] Leave the Cal.com event-type **blank**; in Settings → Qualifier paste a **Calendly scheduling link** (`https://calendly.com/...`) and set `calendly_webhook_secret` in Integrations. Add a Calendly webhook subscription (invitee.created + invitee.canceled) pointing at `/api/webhooks/calendly`.
+- [ ] Leave the Cal.com event-type **blank**; in Workspace → Agent paste a **Calendly scheduling link** (`https://calendly.com/...`) and set `calendly_webhook_secret` in Integrations. Add a Calendly webhook subscription (invitee.created + invitee.canceled) pointing at `/api/webhooks/calendly`.
 - [ ] As a lead, ask to book. The Qualifier sends the **Calendly link** (not slot options) — the URL carries `utm_source=alevo` and `utm_content=<conversationId>`.
 - [ ] Book through the Calendly link. Calendly fires `invitee.created` → a new **`/meetings`** row appears (source `calendly`, status `scheduled`) and the conversation flips to **`booked`**. Confirm in Inngest the webhook was signature-verified and processed once (idempotent).
 - [ ] On a Calendly row, the Meetings tab shows **outcome + converted controls only** — no Reschedule/Cancel buttons (managed via Calendly's own links).
@@ -237,7 +237,7 @@ Dashboards: **Cal.com** (Bookings), **Calendly** (Scheduled events + Webhooks), 
 
 ### Google Calendar / Microsoft 365 booking (OAuth direct)
 Prereq: a Google Cloud OAuth app (Calendar scope) and/or an Azure app registration (`Calendars.ReadWrite`, `User.Read`), with client id/secret in env (`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `MICROSOFT_OAUTH_CLIENT_ID/SECRET`) and the redirect URIs `${NEXT_PUBLIC_APP_URL}/api/oauth/{google,microsoft}/callback` registered.
-- [ ] Settings → Qualifier → **Booking calendar** → **Connect Google Calendar** (or Microsoft 365). You're sent to the provider's consent screen; approving returns to Settings with a green "Connected …" banner showing the account email.
+- [ ] Workspace → Agent → **Booking calendar** → **Connect Google Calendar** (or Microsoft 365). You're sent to the provider's consent screen; approving returns to Settings with a green "Connected …" banner showing the account email.
 - [ ] Leave Cal.com event-type blank. Set a **Meeting length** + **Earliest/Latest** working hours and Save.
 - [ ] As a lead, ask to book. The Qualifier calls `check_availability` and offers open times — only weekday slots inside your window, in the contact's timezone, with your calendar's busy blocks removed.
 - [ ] Accept a time. A `/meetings` row appears (source `google`/`m365`, status `scheduled`) with a **Join** link (Google Meet / Teams), the event shows on your real calendar with the lead invited, the lead gets a confirmation message, and the conversation flips to **`booked`**.
@@ -306,6 +306,22 @@ https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1). Hand-check each screen at de
 - [ ] **Files**: dashed upload card with **Choose a file**; table shows size/status/uploaded; header shows total count + size.
 - [ ] Non-admins see an amber notice on Qualifier / Knowledge / Members / Integrations / Files.
 
+## Loading states (site-wide)
+- [ ] Every submit button shows a **spinner + "…ing" label and is disabled** while its request runs: Sign in, Create account, Send code, Set new password, Continue with Google (spins until Google loads), the lead form's Send, the test "Send as contact", Save changes (Qualifier bar), Send invite / Save role, Save / Replace / Send test (Integrations), Add to knowledge base / Re-index, Mark converted, Save new time, and every confirm-dialog action (Cancel meeting, Remove member, Revoke invite, Delete document, Clear secret, Disconnect). Choose a file / Choose a PDF show a spinner while uploading.
+- [ ] While spinning, a second click does nothing; Cancel / Keep / Discard beside a spinning button are disabled, not spinning.
+
+## Workspace (was "Settings")
+- [ ] Sidebar item reads **Workspace** (building icon) and opens `/workspace/profile`; tabs are **Business profile · Agent · Knowledge · Members · Integrations · Files**.
+- [ ] Old links redirect: `/settings/qualifier` → `/workspace/agent`, `/settings/secrets` → `/workspace/integrations`, `/settings/members` → `/workspace/members` (and the rest).
+- [ ] **Business profile** saves company, offering, ideal customer, criteria, disqualifiers, tone and sign-off on its own (toast "Business profile saved."). With the agent **on**, blanking company / offering / ideal customer shows a per-field "Required while the agent is on" error.
+- [ ] **Agent** saves on/off, timezone, send window, SMS number, Cal.com ID, Calendly link, meeting length and working hours (toast "Agent settings saved."). Turning it **on** with an incomplete Business profile shows an error under the switch linking to the profile; the hint under the switch also says so beforehand. The Booking calendar card sits below the form; connect / disconnect still work and return to `/workspace/agent`.
+- [ ] Both tabs have the floating Unsaved changes bar and the leave guard.
+
+## File storage layout + Files ledger
+- [ ] Upload on Workspace → Files: the object lands at `organizations/{orgId}/files/{uuid}-{name}` in R2 (check the bucket); the row shows Kind **File**, status **Stored**.
+- [ ] Add a PDF on Workspace → Knowledge: object at `organizations/{orgId}/knowledge/{uuid}-{name}`; the Files row shows Kind **Knowledge base** and **Stored** (not Pending) as soon as the document is registered.
+- [ ] A file name with spaces/odd characters uploads fine (the key is sanitised; the Files row keeps the original name).
+
 ## Toasts (success feedback)
 - [ ] Saving the Qualifier, inviting / changing / removing a member, saving / clearing a secret, adding / deleting a knowledge document, uploading a file, recording a meeting outcome, rescheduling, cancelling, and the test "reply as contact" each show a **toast bottom-right** (dark surface, green check) that slides in, stacks if several fire, and **disappears after ~4s**; the **×** closes it early. No inline "Saved." text remains.
 - [ ] Toasts follow the theme (light surface in Light mode).
@@ -317,6 +333,16 @@ https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1). Hand-check each screen at de
 - [ ] Settings tab switches: only the tab content crossfades; the "Settings" title and tab bar stay put.
 - [ ] Conversations list (or dashboard activity / meetings contact) → a thread: content slides **left** (forward); the "Conversations" back link at the top of a thread slides **right** (back). Browser back button: plain fade.
 - [ ] Clicks during a transition still register (no dead overlay). With the OS reduced-motion setting on, pages swap instantly.
+
+## Sign in / Create account (`/sign-in`, `/sign-up`)
+Custom screens over Clerk's sign-in/sign-up flows (no Clerk-hosted UI). Check in a signed-out window.
+- [ ] Layout matches the mockup: curved brand-gradient panel on the left with the mark, two floating cards and "Every lead answered."; form column on the right with the logo, **Sign in / Create account** tabs, the form, an "or" rule, **Continue with Google**, and the switch line at the bottom. On a phone the art collapses to a 260px band on top.
+- [ ] Clicking the other tab (or the bottom link) slides the blue indicator and fades/rises the new form in place; the URL flips between `/sign-in` and `/sign-up` without a reload. Browser back/forward and deep links to either URL open the right tab.
+- [ ] **Sign in**: empty fields show inline errors under each field; a wrong password shows Clerk's message inline (never a toast/alert); a correct one lands on `/dashboard`. The eye icon toggles password visibility.
+- [ ] **Forgot password?** → email step → "We sent a code to …" → code + new password → signed in on `/dashboard`. "Use a different email" and "Back to sign in" work.
+- [ ] **Create account**: name, company, work email, password, terms checkbox all validate inline; submitting sends a code; the verify step → **Create account** signs you in, creates a workspace named after the company (org switcher shows it), and lands on `/dashboard`. "Send a new code" resends. If Clerk bot-protection is on, its widget appears above the button.
+- [ ] **Continue with Google** from either tab round-trips through Google and lands on `/dashboard` (new Google users get an account; the dashboard then prompts for a workspace).
+- [ ] Theme: the screen follows light/dark like the rest of the app.
 
 ## Public lead form (`/f/<orgId>`)
 - [ ] Centered card on the dark ground; inputs on canvas with control borders; the blue **Send** button; success state in a blue tint panel.

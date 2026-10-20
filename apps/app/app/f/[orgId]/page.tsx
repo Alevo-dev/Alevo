@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { organizations, withService } from "@alevo/db";
 import { Card } from "@/components/ui/card";
@@ -5,16 +6,22 @@ import { LeadForm } from "./lead-form";
 
 export const dynamic = "force-dynamic";
 
+async function loadOrg(orgId: string) {
+  const [org] = await withService((tx) =>
+    tx.select({ id: organizations.id, name: organizations.name }).from(organizations).where(eq(organizations.id, orgId)).limit(1),
+  );
+  return org ?? null;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ orgId: string }> }): Promise<Metadata> {
+  const org = await loadOrg((await params).orgId);
+  return { title: org ? `Contact ${org.name}` : "Contact form" };
+}
+
 export default async function LeadFormPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
 
-  const [org] = await withService((tx) =>
-    tx
-      .select({ id: organizations.id, name: organizations.name })
-      .from(organizations)
-      .where(eq(organizations.id, orgId))
-      .limit(1),
-  );
+  const org = await loadOrg(orgId);
 
   if (!org) {
     return (

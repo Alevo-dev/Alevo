@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import { Loader2 } from "lucide-react";
 import { cx } from "@/lib/cx";
 
 export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "danger";
@@ -31,12 +32,39 @@ export function buttonClass(
   return cx(BASE, VARIANT[variant], SIZE[size], className);
 }
 
+/** The in-button spinner, also usable in button-styled labels/links. */
+export function Spinner({ size = "md" }: { size?: ButtonSize }) {
+  return <Loader2 className={cx("shrink-0 animate-spin", size === "sm" ? "size-3.5" : "size-4")} aria-hidden="true" />;
+}
+
 // `ComponentProps` (not `ButtonHTMLAttributes`) so `ref` passes through (React 19).
 type Props = ComponentProps<"button"> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** In flight: shows a spinner, disables the button and sets aria-busy. */
+  loading?: boolean;
 };
 
-export function Button({ variant = "secondary", size = "md", className, type = "button", ...rest }: Props) {
-  return <button type={type} className={buttonClass(variant, size, className)} {...rest} />;
+export function Button({
+  variant = "secondary",
+  size = "md",
+  loading = false,
+  disabled,
+  className,
+  type = "button",
+  children,
+  ...rest
+}: Props) {
+  return (
+    <button
+      type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={buttonClass(variant, size, className)}
+      {...rest}
+    >
+      {loading && <Spinner size={size} />}
+      {children}
+    </button>
+  );
 }

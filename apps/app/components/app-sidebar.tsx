@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OrganizationSwitcher } from "@clerk/nextjs";
-import { CalendarCheck, LayoutDashboard, MessagesSquare, Settings } from "lucide-react";
+import { Building2, CalendarCheck, LayoutDashboard, MessagesSquare } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -12,7 +12,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/conversations", label: "Conversations", icon: MessagesSquare },
   { href: "/meetings", label: "Meetings", icon: CalendarCheck },
-  { href: "/settings/qualifier", label: "Settings", icon: Settings, match: "/settings" },
+  { href: "/workspace/profile", label: "Workspace", icon: Building2, match: "/workspace" },
 ] as const;
 
 export type PlanCard = { name: string; renews: string | null } | null;

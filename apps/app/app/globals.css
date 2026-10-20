@@ -151,11 +151,16 @@
   .animate-rise {
     animation: ds-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
+  /* Gentle hover for decorative floating cards (auth art). */
+  .animate-bob {
+    animation: ds-bob 6s ease-in-out infinite;
+  }
   @media (prefers-reduced-motion: reduce) {
     .animate-grow-x,
     .animate-grow-y,
     .animate-draw,
-    .animate-rise {
+    .animate-rise,
+    .animate-bob {
       animation: none;
     }
   }
@@ -183,6 +188,15 @@
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+@keyframes ds-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
   }
 }
 

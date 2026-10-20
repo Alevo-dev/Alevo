@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -14,6 +15,8 @@ import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
 
 // Reads the session + DB, so it must render per-request.
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 const WINDOW_DAYS = 7;
 
@@ -107,7 +110,7 @@ export default async function DashboardPage() {
         }
       >
         {!agentOn && (
-          <Link href="/settings/qualifier" className={buttonClass("primary")}>
+          <Link href="/workspace/agent" className={buttonClass("primary")}>
             Turn the agent on
           </Link>
         )}

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { desc, sql } from "drizzle-orm";
 import { kbDocuments } from "@alevo/db";
 import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
@@ -5,6 +6,8 @@ import { Notice } from "@/components/ui/notice";
 import { AddDocumentForm, DocumentList, type DocView } from "./knowledge-ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Knowledge" };
 
 export default async function KnowledgePage() {
   try {

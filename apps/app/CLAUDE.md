@@ -61,6 +61,9 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   `Dialog`; every destructive action (delete, cancel, remove, revoke, clear, disconnect) goes
   through `ConfirmSubmit` / `ConfirmDialog`; edits such as reschedule open a `Dialog` with a
   Save button.
+- **In-flight buttons:** every submit / confirm / OAuth button passes `loading={pending}` to
+  `Button` (spinner + disabled + `aria-busy`), never a bare `disabled`. Cancel/Discard
+  buttons beside them just `disabled`. Button-styled labels use `<Spinner />`.
 - **Feedback:** successes are toasts (Sonner via `components/app-toaster.tsx`, on the
   tokens; 4s, closable). After a server action use `useActionToast(state, "Saved.")`
   (`lib/ui/use-action-toast.ts`) — it toasts once per dispatch and refreshes. Errors are
@@ -69,14 +72,25 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   counts up. Bars: `animate-grow-x` / `animate-grow-y` (stagger with `animationDelay`).
   SVG lines: `pathLength="1"` + `animate-draw`. Lists/feeds: `animate-rise`. All of them
   respect `prefers-reduced-motion`. Any new graph on the dashboard uses these.
-- **Page transitions:** `components/page-transition.tsx` (React `ViewTransition`) via `(app)/template.tsx` + `settings/template.tsx`
+- **Page transitions:** `components/page-transition.tsx` (React `ViewTransition`) via `(app)/template.tsx` + `workspace/template.tsx`
   (fade + rise by default). Tag list→detail links `transitionTypes={["nav-forward"]}` and
   back links `["nav-back"]` to slide; CSS is in globals.css under "View transitions".
+- **Auth screens** (`(auth)/`): custom UI over Clerk's custom flows (`useSignIn` /
+  `useSignUp`), not the hosted `<SignIn/>`: `components/auth/*` — tabs switch views in place
+  (URL updated via `history.replaceState`), email-code verification, forgot-password reset,
+  Google OAuth via `/sign-(in|up)/sso-callback` (`AuthenticateWithRedirectCallback`). Sign-up
+  creates the org from the Company field. Clerk errors map to fields in `clerk-errors.ts`.
+- **Workspace (not "Settings"):** the org's setup lives under `/workspace/*` — Business
+  profile (`profile/`: company, offering, ICP, criteria, disqualifiers, voice →
+  `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, channels, booking, calendar →
+  `saveAgentSettings`; enabling requires the profile's three required fields), Knowledge,
+  Members, Integrations, Files. "Settings" is reserved for per-user app preferences.
+  `/settings/*` redirects (next.config.ts).
 - **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
   (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never
   render a raw enum value. Shared formatters live in `lib/format.ts`.
 - **Shell:** `(app)/layout.tsx` + `components/app-sidebar.tsx` (232px rail, plan card,
-  Clerk controls); Settings pages share `(app)/settings/layout.tsx` + `settings-tabs.tsx`.
+  Clerk controls); Settings pages share `(app)/workspace/layout.tsx` + `settings-tabs.tsx`.
 - **Icons:** `lucide-react`, 1.75 stroke, 16px in dense UI. Voice: operator reporting
   in — plain verbs, sentence case, no exclamation marks or emoji.
 
@@ -110,14 +124,17 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
 - **0003** `org_invitations` (mirrors Clerk invites, carries the app role).
 - **0004** `org_secrets` (AES-256-GCM, service-path only — rule 12).
 - **0005** `audit_log` (append-only; `recordAudit`; tenant-scoped reads).
-- **0006** `files` (R2 object key + metadata; tenant-scoped reads).
+- **0006** `files` (R2 object key + metadata; tenant-scoped reads). Bucket layout:
+  `organizations/{orgId}/{files|knowledge|images|avatars|logos}/{uuid}-{name}` —
+  `lib/files/keys.ts`; the presign route takes `purpose`. A KB PDF is one object with a
+  `files` row (ledger) and a `kb_documents` row (indexed source).
 - **0007** CRM core: `contacts`, `conversations`, `messages`, `consents` (+ the
   `channel` / `conversation_status` / `message_direction` / `message_author`
   enums). The hosted lead form writes via the service path; tenant users work
   leads via RLS. `recordUsage()` meters inbound conversations (rule 11).
 - **0008** `org_profiles` (one row/org): the Qualifier's per-org context (company
   offering, ICP, qualifying criteria, disqualifiers, tone, signoff, `enabled`).
-  Edited by admins in Settings → Qualifier; read by the Qualifier via the
+  Edited by admins in Workspace → Agent; read by the Qualifier via the
   service path.
 - **0009** cadence send windows: `org_profiles.timezone` +
   `send_window_start_hour`/`send_window_end_hour` (daily window for follow-up
@@ -216,7 +233,7 @@ importer of the `resend` SDK.
 
 Mirrors the email channel. `lib/sms/twilio.ts` is the only importer of Twilio
 (raw HTTP, no SDK). Platform creds (`TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`);
-each org sets its own number in Settings → Qualifier (`org_profiles.sms_from_number`).
+each org sets its own number in Workspace → Agent (`org_profiles.sms_from_number`).
 
 - **Outbound:** the Qualifier's `reply_to_contact` texts the lead when the
   **conversation channel is `sms`** and the contact has a phone + the org has a
@@ -250,11 +267,11 @@ the same tools (`check_availability` + `book_meeting`); Calendly is *link mode*
 by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
 
 - **Connect (per org):** Cal.com API key + webhook secret in Settings →
-  Integrations (`org_secrets`); the event-type ID in Settings → Qualifier
+  Integrations (`org_secrets`); the event-type ID in Workspace → Agent
   (`org_profiles.calcom_event_type_id`). Or a Calendly scheduling link in
-  Settings → Qualifier (`org_profiles.calendly_url`) + its webhook signing key
+  Workspace → Agent (`org_profiles.calendly_url`) + its webhook signing key
   (`calendly_webhook_secret`) in Integrations. Or a Google / Microsoft 365
-  calendar via OAuth (the "Booking calendar" block in Settings → Qualifier).
+  calendar via OAuth (the "Booking calendar" block in Workspace → Agent).
 - **Book (Cal.com):** `check_availability` → `GET /v2/slots`
   (`cal-api-version: 2024-09-04`); `book_meeting` → `POST /v2/bookings`
   (`cal-api-version: 2026-02-25`) with `metadata.alevoOrgId`/`alevoConversationId`.
@@ -323,7 +340,7 @@ records one active row per (contact, channel); `@alevo/db` exposes `recordConsen
 Grounds the Qualifier in each org's own material. `lib/kb/` owns it;
 `lib/email/resend.ts`-style config guards keep it optional.
 
-- **Ingest:** admins add Text / URL / PDF in **Settings → Knowledge**. A row is
+- **Ingest:** admins add Text / URL / PDF in **Workspace → Knowledge**. A row is
   created `pending` and `kb/document.ingest` fires → the `ingest-kb-document`
   Inngest function (stepless, idempotent delete-then-insert, per-org concurrency)
   extracts (`lib/kb/extract.ts`: raw text / URL HTML-strip / PDF via `unpdf` from

@@ -96,7 +96,7 @@ export async function inviteMember(
       target: email,
       metadata: { role },
     });
-    revalidatePath("/settings/members");
+    revalidatePath("/workspace/members");
     return { ok: true };
   } catch (error) {
     return { ...fail(error), values };
@@ -156,7 +156,7 @@ export async function changeMemberRole(
       target: userId,
       metadata: { role: newRole },
     });
-    revalidatePath("/settings/members");
+    revalidatePath("/workspace/members");
     return { ok: true };
   } catch (error) {
     return fail(error);
@@ -206,7 +206,7 @@ export async function removeMember(
       action: "member.removed",
       target: userId,
     });
-    revalidatePath("/settings/members");
+    revalidatePath("/workspace/members");
     return { ok: true };
   } catch (error) {
     return fail(error);
@@ -235,7 +235,7 @@ export async function revokeInvite(
       action: "invite.revoked",
       target: clerkInvitationId,
     });
-    revalidatePath("/settings/members");
+    revalidatePath("/workspace/members");
     return { ok: true };
   } catch (error) {
     return fail(error);

@@ -57,7 +57,7 @@ export function OutcomeControls({
           <input type="hidden" name="op" value="converted" />
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="converted" value={converted ? "false" : "true"} />
-          <Button type="submit" size="sm" variant={converted ? "primary" : "ghost"} disabled={pending}>
+          <Button type="submit" size="sm" variant={converted ? "primary" : "ghost"} loading={pending}>
             {converted ? "Converted" : "Mark converted"}
           </Button>
         </form>
@@ -98,7 +98,7 @@ export function ManageControls({
           <input type="hidden" name="id" value={id} />
           <ConfirmSubmit
             size="sm"
-            disabled={pending}
+            loading={pending}
             title={`Cancel the meeting with ${contact}?`}
             description="The event is removed from the calendar and the contact is told. The conversation reopens so the agent can offer a new time."
             confirmLabel="Cancel meeting"
@@ -162,7 +162,7 @@ function RescheduleDialog({ id, contact }: { id: string; contact: string }) {
             <Button variant="secondary" onClick={close} disabled={pending}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={save} disabled={pending}>
+            <Button variant="primary" onClick={save} loading={pending}>
               {pending ? "Saving…" : "Save new time"}
             </Button>
           </>

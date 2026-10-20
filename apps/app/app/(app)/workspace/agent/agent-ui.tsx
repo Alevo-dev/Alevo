@@ -1,24 +1,25 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState } from "react";
+import Link from "next/link";
 import type { BookingProvider } from "@alevo/db";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
-import { FieldError, Input, Textarea } from "@/components/ui/field";
-import { Select, type SelectOption } from "@/components/ui/select";
+import { FieldError, Input } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
+import { Select, type SelectOption } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
 import { Switch } from "@/components/ui/switch";
-import { LeaveDialog, UnsavedBar, useFormDirty, useLeaveGuard } from "@/components/ui/unsaved-changes";
+import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import {
   disconnectCalendar,
-  saveProfile,
+  saveAgentSettings,
   type ActionState,
+  type AgentErrors,
+  type AgentValues,
   type DisconnectState,
-  type ProfileErrors,
-  type ProfileValues,
 } from "./actions";
 
 const INITIAL: ActionState = {};
@@ -75,96 +76,38 @@ function HourRange({
   );
 }
 
-export function QualifierForm({ initial }: { initial: ProfileValues }) {
-  const [state, action, pending] = useActionState(saveProfile, INITIAL);
-  useActionToast(state, "Qualifier settings saved.");
+export function AgentForm({ initial, profileReady }: { initial: AgentValues; profileReady: boolean }) {
+  const [state, action, pending] = useActionState(saveAgentSettings, INITIAL);
+  useActionToast(state, "Agent settings saved.");
+  const { formRef, formKey, dirty, recheck, touch, discard, guard } = useUnsavedForm(state);
 
-  const formRef = useRef<HTMLFormElement>(null);
-  // Bumping the key remounts every field at its saved value (= Discard).
-  const [formKey, setFormKey] = useState(0);
-  const { dirty, recheck, touch, markClean } = useFormDirty(formRef);
-  const guard = useLeaveGuard(dirty);
-
-  // A successful save makes the current values the new baseline.
-  useEffect(() => {
-    if (state.ok) queueMicrotask(markClean);
-  }, [state, markClean]);
-
-  const discard = () => {
-    setFormKey((k) => k + 1);
-    setTimeout(markClean, 0);
-  };
-
-  // Echo submitted values back on error; fall back to the saved profile.
-  const v = <K extends keyof ProfileValues>(key: K): ProfileValues[K] =>
-    (state.values?.[key] ?? initial[key]) as ProfileValues[K];
-  const e = (key: keyof ProfileErrors) => state.errors?.[key];
+  const v = <K extends keyof AgentValues>(key: K): AgentValues[K] => (state.values?.[key] ?? initial[key]) as AgentValues[K];
+  const e = (key: keyof AgentErrors) => state.errors?.[key];
 
   return (
     <form key={formKey} ref={formRef} action={action} noValidate onInput={recheck} onChange={recheck} className="space-y-6">
       <Card>
         <CardHeader
           title="The agent"
-          hint="When on, Alevo replies to new leads, asks qualifying questions and scores fit. Company name, offering and ideal customer are required to turn it on."
+          hint="When on, Alevo replies to new leads, asks qualifying questions and scores fit. Off means new leads wait for a person."
         />
         <div className="mt-2">
-          <SettingRow label="Agent is on" htmlFor="enabled" hint="Off means new leads wait for a person.">
+          <SettingRow
+            label="Agent is on"
+            htmlFor="enabled"
+            hint={
+              profileReady ? undefined : (
+                <>
+                  Needs the company name, offering and ideal customer in your{" "}
+                  <Link href="/workspace/profile">Business profile</Link> first.
+                </>
+              )
+            }
+            error={e("enabled")}
+          >
             <div className="flex h-10 items-center md:justify-end">
               <Switch id="enabled" name="enabled" defaultChecked={Boolean(v("enabled"))} />
             </div>
-          </SettingRow>
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader title="Your business" hint="The agent grounds every reply in this." />
-        <div className="mt-6">
-          <SettingRow label="Company name" htmlFor="companyName" error={e("companyName")}>
-            <Input id="companyName" name="companyName" defaultValue={v("companyName")} invalid={!!e("companyName")} placeholder="Northwind IT" />
-          </SettingRow>
-          <SettingRow label="What you offer" htmlFor="offering" hint="What you sell or do." error={e("offering")}>
-            <Textarea
-              id="offering"
-              name="offering"
-              rows={3}
-              defaultValue={v("offering")}
-              invalid={!!e("offering")}
-              placeholder="Managed IT, cybersecurity and helpdesk for 20 to 200 seat businesses in the Midwest."
-            />
-          </SettingRow>
-          <SettingRow label="Ideal customer" htmlFor="idealCustomer" hint="Who's a great fit: size, industry, pain points." error={e("idealCustomer")}>
-            <Textarea
-              id="idealCustomer"
-              name="idealCustomer"
-              rows={3}
-              defaultValue={v("idealCustomer")}
-              invalid={!!e("idealCustomer")}
-              placeholder="25 to 150 employees, no in-house IT, in healthcare, finance or legal, frustrated with slow support."
-            />
-          </SettingRow>
-          <SettingRow label="Qualifying criteria" htmlFor="qualifyingCriteria" hint="What to confirm before handing a lead to a person.">
-            <Textarea
-              id="qualifyingCriteria"
-              name="qualifyingCriteria"
-              rows={3}
-              defaultValue={v("qualifyingCriteria")}
-              placeholder="Company size, current IT setup, timeline, and who owns the decision."
-            />
-          </SettingRow>
-          <SettingRow label="Disqualifiers" htmlFor="disqualifiers" hint="A lead that matches any of these is marked not a fit.">
-            <Textarea
-              id="disqualifiers"
-              name="disqualifiers"
-              rows={2}
-              defaultValue={v("disqualifiers")}
-              placeholder="Individuals or home users, under 10 seats, or outside our service region."
-            />
-          </SettingRow>
-          <SettingRow label="Tone and voice" htmlFor="tone">
-            <Input id="tone" name="tone" defaultValue={v("tone")} placeholder="Friendly, concise, no jargon." />
-          </SettingRow>
-          <SettingRow label="Sign off as" htmlFor="signoff">
-            <Input id="signoff" name="signoff" defaultValue={v("signoff")} placeholder="Sam from Northwind IT" />
           </SettingRow>
         </div>
       </Card>
@@ -200,14 +143,7 @@ export function QualifierForm({ initial }: { initial: ProfileValues }) {
             hint="Your Twilio number in E.164 format. The agent texts from it, and replies route back here."
             error={e("smsFromNumber")}
           >
-            <Input
-              id="smsFromNumber"
-              name="smsFromNumber"
-              defaultValue={v("smsFromNumber")}
-              invalid={!!e("smsFromNumber")}
-              placeholder="+15551234567"
-              className="font-mono"
-            />
+            <Input id="smsFromNumber" name="smsFromNumber" defaultValue={v("smsFromNumber")} invalid={!!e("smsFromNumber")} placeholder="+15551234567" className="font-mono" />
           </SettingRow>
           <SettingRow
             label="Cal.com event type ID"
@@ -231,13 +167,7 @@ export function QualifierForm({ initial }: { initial: ProfileValues }) {
             hint="The agent sends this for leads to book themselves. Cal.com takes precedence if both are set."
             error={e("calendlyUrl")}
           >
-            <Input
-              id="calendlyUrl"
-              name="calendlyUrl"
-              defaultValue={v("calendlyUrl")}
-              invalid={!!e("calendlyUrl")}
-              placeholder="https://calendly.com/your-team/30min"
-            />
+            <Input id="calendlyUrl" name="calendlyUrl" defaultValue={v("calendlyUrl")} invalid={!!e("calendlyUrl")} placeholder="https://calendly.com/your-team/30min" />
           </SettingRow>
         </div>
       </Card>
@@ -245,7 +175,7 @@ export function QualifierForm({ initial }: { initial: ProfileValues }) {
       <Card>
         <CardHeader
           title="Calendar booking"
-          hint="Used with a connected Google or Microsoft 365 calendar. The agent offers open weekday times inside this window, in the contact's timezone, and books with a video link. Cal.com uses its own availability rules instead."
+          hint="Used with a connected Google or Microsoft 365 calendar (below). The agent offers open weekday times inside this window, in the contact's timezone, and books with a video link. Cal.com uses its own availability rules instead."
         />
         <div className="mt-6">
           <SettingRow label="Meeting length" htmlFor="bookingLengthMin">
@@ -265,12 +195,7 @@ export function QualifierForm({ initial }: { initial: ProfileValues }) {
       </Card>
 
       <UnsavedBar visible={dirty} pending={pending} error={state.error} onDiscard={discard} />
-      <LeaveDialog
-        open={guard.pendingHref !== null}
-        what="your Qualifier changes"
-        onStay={guard.stay}
-        onLeave={guard.leave}
-      />
+      <LeaveDialog open={guard.pendingHref !== null} what="your agent changes" onStay={guard.stay} onLeave={guard.leave} />
     </form>
   );
 }
@@ -281,16 +206,10 @@ const PROVIDER_LABEL: Record<string, string> = {
 };
 
 /**
- * Connect / disconnect a booking calendar over OAuth. Lives outside the profile
+ * Connect / disconnect a booking calendar over OAuth. Lives outside the agent
  * form (it has its own action + the connect links are plain navigations).
  */
-export function CalendarConnection({
-  provider,
-  accountEmail,
-}: {
-  provider: BookingProvider | null;
-  accountEmail: string | null;
-}) {
+export function CalendarConnection({ provider, accountEmail }: { provider: BookingProvider | null; accountEmail: string | null }) {
   const [state, action, pending] = useActionState(disconnectCalendar, DISCONNECT_INITIAL);
   useActionToast(state, "Calendar disconnected.");
 
@@ -313,7 +232,7 @@ export function CalendarConnection({
             </p>
             <form action={action}>
               <ConfirmSubmit
-                disabled={pending}
+                loading={pending}
                 title="Disconnect this calendar?"
                 description="The agent stops booking on it and falls back to Cal.com, Calendly or a handoff. Existing meetings are not touched."
                 confirmLabel="Disconnect"

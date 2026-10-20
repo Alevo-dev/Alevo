@@ -40,7 +40,7 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </Button>
-          <Button variant={tone === "danger" ? "danger" : "primary"} onClick={onConfirm} disabled={busy}>
+          <Button variant={tone === "danger" ? "danger" : "primary"} onClick={onConfirm} loading={busy}>
             {busy ? "Working…" : confirmLabel}
           </Button>
         </>
@@ -57,6 +57,8 @@ type SubmitProps = {
   tone?: "danger" | "primary";
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** The action is in flight: spinner on the trigger, dialog buttons busy. */
+  loading?: boolean;
   disabled?: boolean;
   className?: string;
   children: ReactNode;
@@ -74,6 +76,7 @@ export function ConfirmSubmit({
   tone = "danger",
   variant = "danger",
   size,
+  loading = false,
   disabled,
   className,
   children,
@@ -88,6 +91,7 @@ export function ConfirmSubmit({
         type="button"
         variant={variant}
         size={size}
+        loading={loading}
         disabled={disabled}
         className={className}
         onClick={() => setOpen(true)}
@@ -101,7 +105,7 @@ export function ConfirmSubmit({
         confirmLabel={confirmLabel}
         cancelLabel={cancelLabel}
         tone={tone}
-        busy={disabled}
+        busy={loading}
         onCancel={() => setOpen(false)}
         onConfirm={() => {
           setOpen(false);

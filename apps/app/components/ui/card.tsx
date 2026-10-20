@@ -38,7 +38,7 @@ export function CardHeader({
   aside,
 }: {
   title: string;
-  hint?: string;
+  hint?: React.ReactNode;
   aside?: React.ReactNode;
 }) {
   return (

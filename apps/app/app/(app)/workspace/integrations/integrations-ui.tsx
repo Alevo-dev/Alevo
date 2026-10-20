@@ -63,7 +63,7 @@ export function SecretCard({ secretKey, label, help, placeholder, inputType, isS
             placeholder={isSet ? "Enter a new value to replace" : placeholder}
             className="font-mono text-label"
           />
-          <Button type="submit" variant={isSet ? "secondary" : "primary"} disabled={savePending}>
+          <Button type="submit" variant={isSet ? "secondary" : "primary"} loading={savePending}>
             {isSet ? "Replace" : "Save"}
           </Button>
         </div>
@@ -76,7 +76,7 @@ export function SecretCard({ secretKey, label, help, placeholder, inputType, isS
             <input type="hidden" name="key" value={secretKey} />
             <ConfirmSubmit
               size="sm"
-              disabled={clearPending}
+              loading={clearPending}
               title={`Clear ${label}?`}
               description="Anything that depends on it stops working until you save a new value."
               confirmLabel="Clear secret"
@@ -86,7 +86,7 @@ export function SecretCard({ secretKey, label, help, placeholder, inputType, isS
           </form>
           {testable && (
             <form action={testAction}>
-              <Button type="submit" size="sm" variant="ghost" disabled={testPending}>
+              <Button type="submit" size="sm" variant="ghost" loading={testPending}>
                 {testPending ? "Sending…" : "Send test"}
               </Button>
             </form>

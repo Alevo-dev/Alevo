@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { contacts, meetings } from "@alevo/db";
@@ -13,6 +14,8 @@ import { MEETING_STATUS, PROVIDER_LABEL } from "@/lib/ui/status";
 import { ManageControls, OutcomeControls } from "./meetings-ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Meetings" };
 
 export default async function MeetingsPage() {
   const tz = await getOrgTimezone();

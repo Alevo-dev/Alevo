@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KbDocStatus, KbSourceType } from "@alevo/db";
-import { Button, buttonClass } from "@/components/ui/button";
+import { Button, buttonClass, Spinner } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Field, Input, Textarea } from "@/components/ui/field";
@@ -102,7 +102,7 @@ export function AddDocumentForm() {
 
             <div className="flex flex-wrap items-center justify-end gap-3">
               {state.error && <p className="text-sm text-danger">{state.error}</p>}
-              <Button type="submit" variant="primary" disabled={pending}>
+              <Button type="submit" variant="primary" loading={pending}>
                 {pending ? "Adding…" : "Add to knowledge base"}
               </Button>
             </div>
@@ -132,6 +132,7 @@ function PdfUpload() {
           fileName: file.name,
           contentType: file.type || "application/pdf",
           sizeBytes: file.size,
+          purpose: "knowledge",
         }),
       });
       const presign = await presignRes.json();
@@ -162,7 +163,12 @@ function PdfUpload() {
   return (
     <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-control p-8 text-center">
       <p className="text-sm text-ink-muted">A PDF up to the plan limit. Text is extracted and indexed.</p>
-      <label htmlFor="kb-pdf" className={buttonClass("primary", "md", "cursor-pointer")}>
+      <label
+        htmlFor="kb-pdf"
+        aria-disabled={busy || undefined}
+        className={buttonClass("primary", "md", busy ? "pointer-events-none opacity-50" : "cursor-pointer")}
+      >
+        {busy && <Spinner />}
         {busy ? "Working…" : "Choose a PDF"}
       </label>
       <input
@@ -255,8 +261,8 @@ function DocumentRow({ doc }: { doc: DocView }) {
         {(doc.status === "failed" || doc.status === "ready") && (
           <form action={reAction}>
             <input type="hidden" name="id" value={doc.id} />
-            <Button type="submit" size="sm" variant="ghost" disabled={rePending}>
-              {rePending ? "…" : "Re-index"}
+            <Button type="submit" size="sm" variant="ghost" loading={rePending}>
+              Re-index
             </Button>
           </form>
         )}
@@ -264,7 +270,7 @@ function DocumentRow({ doc }: { doc: DocView }) {
           <input type="hidden" name="id" value={doc.id} />
           <ConfirmSubmit
             size="sm"
-            disabled={delPending}
+            loading={delPending}
             title={`Delete "${doc.title}"?`}
             description="The agent stops using it immediately. This can't be undone; add it again to bring it back."
             confirmLabel="Delete document"

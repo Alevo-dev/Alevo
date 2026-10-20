@@ -96,7 +96,7 @@ export function InviteForm() {
           onChange={() => setDirty(true)}
         />
       </Field>
-      <Button type="submit" variant="primary" disabled={pending} className="mb-[1px]">
+      <Button type="submit" variant="primary" loading={pending} className="mb-[1px]">
         {pending ? "Sending…" : "Send invite"}
       </Button>
       {formError && <p className="w-full text-sm text-danger">{formError}</p>}
@@ -130,7 +130,7 @@ export function MemberRow({ member }: { member: MemberView }) {
             onChange={() => setDirty(true)}
             aria-label={`Role for ${member.email ?? member.userId}`}
           />
-          <Button type="submit" size="sm" variant="ghost" disabled={rolePending}>
+          <Button type="submit" size="sm" variant="ghost" loading={rolePending}>
             Save
           </Button>
         </form>
@@ -142,7 +142,7 @@ export function MemberRow({ member }: { member: MemberView }) {
           <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
           <ConfirmSubmit
             size="sm"
-            disabled={rmPending}
+            loading={rmPending}
             title={`Remove ${member.name ?? member.email ?? "this member"}?`}
             description="They lose access to this workspace right away. Their past activity stays on the record."
             confirmLabel="Remove member"
@@ -172,7 +172,7 @@ export function PendingInviteRow({ invite }: { invite: InviteView }) {
           <input type="hidden" name="clerkInvitationId" value={invite.clerkInvitationId ?? ""} />
           <ConfirmSubmit
             size="sm"
-            disabled={pending || !invite.clerkInvitationId}
+            loading={pending} disabled={!invite.clerkInvitationId}
             title={`Revoke the invite for ${invite.email}?`}
             description="The link in their email stops working. You can send a new invite any time."
             confirmLabel="Revoke invite"

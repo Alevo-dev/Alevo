@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { and, eq, sql } from "drizzle-orm";
 import { memberships, orgInvitations, users } from "@alevo/db";
 import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
@@ -7,6 +8,8 @@ import { EmptyRow, Table, Th } from "@/components/ui/table";
 import { InviteForm, MemberRow, PendingInviteRow, type InviteView, type MemberView } from "./members-ui";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Members" };
 
 export default async function MembersPage() {
   try {

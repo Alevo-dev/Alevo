@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // "Settings" became "Workspace" (2026-10-20); keep old links and bookmarks alive.
+  async redirects() {
+    return [
+      { source: "/settings/qualifier", destination: "/workspace/agent", permanent: true },
+      { source: "/settings/secrets", destination: "/workspace/integrations", permanent: true },
+      { source: "/settings/:path*", destination: "/workspace/:path*", permanent: true },
+    ];
+  },
   // Shared workspace packages ship as raw TS (no build step); Next transpiles
   // them. @alevo/tokens ships CSS only and needs no transpile.
   transpilePackages: ["@alevo/db", "@alevo/auth"],

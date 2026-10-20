@@ -91,6 +91,30 @@ export function useLeaveGuard(dirty: boolean) {
   return { pendingHref, stay, leave };
 }
 
+/**
+ * Everything a "save bar" form needs in one call: dirty tracking, the leave
+ * guard, a Discard that remounts the fields (bump `formKey`), and a clean
+ * baseline after a successful action. Wire `formRef`, `formKey`, `recheck`
+ * to the <form>; `touch` to custom controls; render `UnsavedBar` + `LeaveDialog`.
+ */
+export function useUnsavedForm(state: { ok?: boolean }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [formKey, setFormKey] = useState(0);
+  const { dirty, recheck, touch, markClean } = useFormDirty(formRef);
+  const guard = useLeaveGuard(dirty);
+
+  useEffect(() => {
+    if (state.ok) queueMicrotask(markClean);
+  }, [state, markClean]);
+
+  const discard = useCallback(() => {
+    setFormKey((k) => k + 1);
+    setTimeout(markClean, 0);
+  }, [markClean]);
+
+  return { formRef, formKey, dirty, recheck, touch, discard, guard };
+}
+
 /** "Leave without saving?" — pair with `useLeaveGuard`. */
 export function LeaveDialog({
   open,
@@ -157,7 +181,7 @@ export function UnsavedBar({
         <Button variant="ghost" onClick={onDiscard} disabled={pending} tabIndex={visible ? 0 : -1}>
           Discard
         </Button>
-        <Button type="submit" variant="primary" disabled={pending} tabIndex={visible ? 0 : -1}>
+        <Button type="submit" variant="primary" loading={pending} tabIndex={visible ? 0 : -1}>
           {pending ? "Saving…" : saveLabel}
         </Button>
       </div>

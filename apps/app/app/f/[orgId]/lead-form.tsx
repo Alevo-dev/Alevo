@@ -67,7 +67,7 @@ export function LeadForm({ orgId }: { orgId: string }) {
 
       {state.error && <p className="text-sm text-danger">{state.error}</p>}
 
-      <Button type="submit" variant="primary" disabled={pending} className="w-full">
+      <Button type="submit" variant="primary" loading={pending} className="w-full">
         {pending ? "Sending…" : "Send"}
       </Button>
     </form>

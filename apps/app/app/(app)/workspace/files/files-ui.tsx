@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
-import { buttonClass } from "@/components/ui/button";
+import { buttonClass, Spinner } from "@/components/ui/button";
 
 /**
  * Uploads directly to R2: ask our API for a presigned PUT URL, PUT the file to
@@ -26,7 +26,7 @@ export function FileUpload() {
       const presignRes = await fetch("/api/files/presign", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, contentType, sizeBytes: file.size }),
+        body: JSON.stringify({ fileName: file.name, contentType, sizeBytes: file.size, purpose: "file" }),
       });
       const presign = await presignRes.json();
       if (!presignRes.ok) throw new Error(presign.error ?? "Presign failed");
@@ -63,7 +63,12 @@ export function FileUpload() {
     >
       <div className="text-base font-semibold text-ink">Upload a file</div>
       <p className="text-sm text-ink-muted">Stored in your private bucket. Any type, up to the plan limit.</p>
-      <label htmlFor="file-upload" className={buttonClass("primary", "md", "mt-2 cursor-pointer")}>
+      <label
+        htmlFor="file-upload"
+        aria-disabled={busy || undefined}
+        className={buttonClass("primary", "md", busy ? "mt-2 pointer-events-none opacity-50" : "mt-2 cursor-pointer")}
+      >
+        {busy && <Spinner />}
         {busy ? "Working…" : "Choose a file"}
       </label>
       <input id="file-upload" type="file" onChange={handleChange} disabled={busy} className="sr-only" />

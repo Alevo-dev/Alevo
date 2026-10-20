@@ -54,7 +54,7 @@ export function ReplyAsContact({
       <FieldError>{bodyError}</FieldError>
       <div className="flex flex-wrap items-center justify-end gap-3">
         {state.error && <p className="text-sm text-danger">{state.error}</p>}
-        <Button type="submit" variant="primary" disabled={pending}>
+        <Button type="submit" variant="primary" loading={pending}>
           {pending ? "Sending…" : "Send as contact"}
         </Button>
       </div>
