@@ -16,13 +16,13 @@
     "server-only": "^0.0.1"
   },
   "peerDependencies": {
-    "@clerk/nextjs": "^6",
+    "@clerk/nextjs": "^7",
     "next": "^16",
     "react": "^19"
   },
   "devDependencies": {
     "@alevo/tsconfig": "workspace:*",
-    "@clerk/nextjs": "^6",
+    "@clerk/nextjs": "^7",
     "typescript": "^5"
   }
 }

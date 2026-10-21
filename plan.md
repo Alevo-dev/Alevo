@@ -47,7 +47,11 @@ to — but not including — the SMS channel (platform foundation, CRM + hosted
 form, the Qualifier, email channel + compliance, cadence, KB/RAG) is **verified
 working in both dev and production**. Still pending in prod: Twilio SMS (env +
 per-org number; A2P registration is the gate) and the Google/M365 OAuth apps.
-Next build: PSA write-back (Sprint 5).
+**Clerk upgraded v6 → v7** (2026-10-21): the custom auth flows (sign-in, sign-up,
+forgot-password, invite) were rewritten onto v7's signals/"Future" API, and the
+`/sign-in` + `/sign-up` pages now redirect already-signed-in users into the app
+(fixes the marketing "Sign in" link showing the form to signed-in users). See new
+**rule 14** — always run the newest release of every package. Next build: PSA write-back (Sprint 5).
 
 Alevo is a multi-tenant AI SDR platform for MSPs. Tagline: *More conversations. More leads.*
 Starting from zero: nothing in the owner's partner deck or master plan is treated as built.
@@ -131,6 +135,11 @@ These go into `CLAUDE.md` in Sprint 1 so every coding session starts from the ar
     a single generic message). Form-level (non-field) errors render once near the
     submit. Submitted values are echoed back so fields keep their input on error.
     This applies to every form and action.
+14. **Always run the newest release of every package.** No deprecated or
+    end-of-life dependencies — pin each to its current major and keep it current
+    (e.g. `@clerk/nextjs` on v7's signals API, not v6). When a dependency ships a
+    new major, read its upgrade guide, migrate, and verify (typecheck + build)
+    rather than staying pinned to the old line.
 
 ### Roles (Option B: app roles in our DB)
 

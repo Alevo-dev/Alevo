@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useSignIn, useSignUp } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useClerk, useSignIn, useSignUp } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { cx } from "@/lib/cx";
-import { toFormErrors } from "./clerk-errors";
+import { nextPathAfterAuth } from "./after-auth";
 import { ForgotPasswordForm } from "./forgot-password-form";
 import { GoogleMark } from "./google-mark";
 import { InviteJoin, type Invite } from "./invite-join";
@@ -32,12 +33,22 @@ export function AuthScreen({ initialMode, invite }: { initialMode: AuthMode; inv
   const [oauthPending, setOauthPending] = useState(false);
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
+  const clerk = useClerk();
+  const router = useRouter();
   const mode: AuthMode = view === "up" ? "up" : "in";
 
   // Tabs switch without a navigation, so keep the browser tab title in step.
   useEffect(() => {
     document.title = `${mode === "up" ? "Create account" : "Sign in"} | Alevo`;
   }, [mode]);
+
+  // Already signed in and NOT redeeming an invite → don't show the auth form.
+  // The server guard on the page catches active sessions before render (no
+  // flash); this also handles pending (org-not-chosen) sessions, which the
+  // server treats as signed-out — route them on via nextPathAfterAuth.
+  useEffect(() => {
+    if (!invite && clerk.loaded && clerk.session) router.replace(nextPathAfterAuth(clerk));
+  }, [invite, clerk, router, clerk.loaded, clerk.session]);
 
   const go = (next: View) => {
     setView(next);
@@ -47,20 +58,25 @@ export function AuthScreen({ initialMode, invite }: { initialMode: AuthMode; inv
   };
 
   async function google() {
-    const params = {
-      strategy: "oauth_google" as const,
-      redirectUrl: mode === "up" ? "/sign-up/sso-callback" : "/sign-in/sso-callback",
-      redirectUrlComplete: "/dashboard",
-    };
     setOauthPending(true);
     setOauthError(null);
-    try {
-      if (mode === "up") await signUp?.authenticateWithRedirect(params);
-      else await signIn?.authenticateWithRedirect(params);
-      // On success the browser is navigating to Google; keep the spinner.
-    } catch (err) {
+    // v7 signals: sso() returns { error } (no throw). On success the browser
+    // navigates to Google, so keep the spinner; the sso-callback page finishes.
+    const { error } =
+      mode === "up"
+        ? await signUp.sso({
+            strategy: "oauth_google",
+            redirectUrl: "/dashboard",
+            redirectCallbackUrl: "/sign-up/sso-callback",
+          })
+        : await signIn.sso({
+            strategy: "oauth_google",
+            redirectUrl: "/dashboard",
+            redirectCallbackUrl: "/sign-in/sso-callback",
+          });
+    if (error) {
       setOauthPending(false);
-      setOauthError(toFormErrors(err).form ?? "Couldn't start Google sign-in.");
+      setOauthError(error.longMessage ?? "Couldn't start Google sign-in.");
     }
   }
 

@@ -5,19 +5,16 @@ import { useRouter } from "next/navigation";
 import { useClerk, useSignIn, useSignUp, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
-import { Notice } from "@/components/ui/notice";
 import { nextPathAfterAuth } from "./after-auth";
-import { toFormErrors, type FormErrors } from "./clerk-errors";
 import { GoogleMark } from "./google-mark";
 import { PasswordInput } from "./password-input";
-
-const NONE: FormErrors = { fields: {} };
 
 /** `__clerk_status` on the invite redirect: what Clerk needs from the invitee. */
 export type InviteStatus = "sign_up" | "sign_in" | "complete";
 export type Invite = { ticket: string; status: InviteStatus };
 
 type Clerk = ReturnType<typeof useClerk>;
+type Local = { name?: string; password?: string; form?: string };
 
 /**
  * Accepting the invite adds the membership; the session is still pending
@@ -42,67 +39,65 @@ async function enterInvitedWorkspace(clerk: Clerk): Promise<string> {
 export function InviteJoin({ invite }: { invite: Invite }) {
   const router = useRouter();
   const clerk = useClerk();
-  const { isLoaded: signInLoaded, signIn, setActive: setActiveFromSignIn } = useSignIn();
-  const { isLoaded: signUpLoaded, signUp, setActive: setActiveFromSignUp } = useSignUp();
-  const { isSignedIn } = useUser();
-  const [errors, setErrors] = useState<FormErrors>(NONE);
+  const { signIn, errors: signInErrors } = useSignIn();
+  const { signUp, errors: signUpErrors } = useSignUp();
+  const { isSignedIn, isLoaded: userLoaded } = useUser();
+  const [local, setLocal] = useState<Local>({});
   const [pending, setPending] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
   const completed = useRef(false);
 
-  // Already signed in when the invite was accepted: just open the workspace.
+  // Already signed in (active session): do NOT re-authenticate with the ticket —
+  // `signIn.create({ strategy: "ticket" })` errors "you're already signed in".
+  // The invitation is in this user's pending list, so send them to the
+  // org-selection step to accept it. Covers both `complete` and `sign_in`
+  // statuses whenever a session is already active.
   useEffect(() => {
-    if (invite.status !== "complete" || !isSignedIn || completed.current) return;
+    if (!isSignedIn || completed.current) return;
     completed.current = true;
-    enterInvitedWorkspace(clerk)
-      .then((path) => router.push(path))
-      .catch((err) => setErrors(toFormErrors(err)));
-  }, [invite.status, isSignedIn, clerk, router]);
+    router.replace("/onboarding/choose-organization");
+  }, [isSignedIn, router]);
 
   async function joinExisting() {
-    if (!signInLoaded) return;
     setPending(true);
-    setErrors(NONE);
-    try {
-      const res = await signIn.create({ strategy: "ticket", ticket: invite.ticket });
-      if (res.status !== "complete") throw new Error("This invite link can't be used to sign in. Ask for a new one.");
-      await setActiveFromSignIn({ session: res.createdSessionId });
-      router.push(await enterInvitedWorkspace(clerk));
-    } catch (err) {
-      setErrors(toFormErrors(err));
+    setLocal({});
+    const { error } = await signIn.create({ strategy: "ticket", ticket: invite.ticket });
+    if (error) return setPending(false);
+    if (signIn.status !== "complete") {
       setPending(false);
+      return setLocal({ form: "This invite link can't be used to sign in. Ask for a new one." });
     }
+    await signIn.finalize();
+    router.push(await enterInvitedWorkspace(clerk));
   }
 
   async function joinNew(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!signUpLoaded) return;
     const fd = new FormData(e.currentTarget);
     const name = String(fd.get("name") ?? "").trim();
     const password = String(fd.get("password") ?? "");
-    const fields: FormErrors["fields"] = {};
-    if (!name) fields.name = "Enter your name.";
-    if (!password) fields.password = "Choose a password.";
-    if (fields.name || fields.password) return setErrors({ fields });
+    const l: Local = {};
+    if (!name) l.name = "Enter your name.";
+    if (!password) l.password = "Choose a password.";
+    if (l.name || l.password) return setLocal(l);
 
     const [firstName, ...rest] = name.split(/\s+/);
     setPending(true);
-    setErrors(NONE);
-    try {
-      const res = await signUp.create({
-        strategy: "ticket",
-        ticket: invite.ticket,
-        firstName,
-        lastName: rest.join(" ") || undefined,
-        password,
-      });
-      if (res.status !== "complete") throw new Error("Couldn't finish creating your account from this invite. Ask for a new link.");
-      await setActiveFromSignUp({ session: res.createdSessionId });
-      router.push(await enterInvitedWorkspace(clerk));
-    } catch (err) {
-      setErrors(toFormErrors(err));
+    setLocal({});
+    const { error } = await signUp.create({
+      strategy: "ticket",
+      ticket: invite.ticket,
+      firstName,
+      lastName: rest.join(" ") || undefined,
+      password,
+    });
+    if (error) return setPending(false);
+    if (signUp.status !== "complete") {
       setPending(false);
+      return setLocal({ form: "Couldn't finish creating your account from this invite. Ask for a new link." });
     }
+    await signUp.finalize();
+    router.push(await enterInvitedWorkspace(clerk));
   }
 
   /**
@@ -111,40 +106,33 @@ export function InviteJoin({ invite }: { invite: Invite }) {
    * that email is listed to accept. Clerk matches invitations by email.
    */
   async function joinWithGoogle() {
-    if (!signUpLoaded) return;
     setGooglePending(true);
-    setErrors(NONE);
-    try {
-      await signUp.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/sign-up/sso-callback",
-        redirectUrlComplete: "/onboarding/choose-organization",
-      });
-    } catch (err) {
-      setGooglePending(false);
-      setErrors(toFormErrors(err));
-    }
+    setLocal({});
+    const { error } = await signUp.sso({
+      strategy: "oauth_google",
+      redirectUrl: "/onboarding/choose-organization",
+      redirectCallbackUrl: "/sign-up/sso-callback",
+    });
+    if (error) setGooglePending(false);
   }
 
-  if (invite.status === "complete") {
-    return (
-      <div className="flex flex-col gap-4">
-        {errors.form ? <Notice tone="danger">{errors.form}</Notice> : <p className="text-sm text-ink-muted">Opening your new workspace…</p>}
-        {errors.form && (
-          <Button variant="primary" onClick={() => router.push("/dashboard")} className="w-full">
-            Go to the dashboard
-          </Button>
-        )}
-      </div>
-    );
+  const nameError = local.name ?? signUpErrors.fields.firstName?.message ?? signUpErrors.fields.lastName?.message;
+  const passwordError = local.password ?? signUpErrors.fields.password?.message;
+  const formError =
+    local.form ?? signInErrors.global?.[0]?.message ?? signUpErrors.global?.[0]?.message;
+
+  // Don't flash the ticket UI before we know the session state; an active
+  // session is redirected to the org-selection step by the effect above.
+  if (!userLoaded || isSignedIn) {
+    return <p className="text-sm text-ink-muted">Opening your workspace…</p>;
   }
 
   if (invite.status === "sign_in") {
     return (
-      <div className="flex flex-col gap-[18px]">
+      <div className="flex flex-col gap-4.5">
         <p className="text-sm text-ink-muted">You already have an Alevo account. Join with it to accept the invitation.</p>
-        {errors.form && <p className="text-sm text-danger">{errors.form}</p>}
-        <Button variant="primary" onClick={joinExisting} loading={pending} disabled={!signInLoaded} className="w-full">
+        {formError && <p className="text-sm text-danger">{formError}</p>}
+        <Button variant="primary" onClick={joinExisting} loading={pending} className="w-full">
           {pending ? "Joining…" : "Join the workspace"}
         </Button>
       </div>
@@ -152,17 +140,17 @@ export function InviteJoin({ invite }: { invite: Invite }) {
   }
 
   return (
-    <form onSubmit={joinNew} noValidate className="flex flex-col gap-[18px]">
+    <form onSubmit={joinNew} noValidate className="flex flex-col gap-4.5">
       <p className="text-sm text-ink-muted">Your email is already verified by the invitation. Just add a name and a password.</p>
-      <Field label="Full name" htmlFor="inv-name" error={errors.fields.name}>
-        <Input id="inv-name" name="name" autoComplete="name" placeholder="Alex Morgan" invalid={!!errors.fields.name} />
+      <Field label="Full name" htmlFor="inv-name" error={nameError}>
+        <Input id="inv-name" name="name" autoComplete="name" placeholder="Alex Morgan" invalid={!!nameError} />
       </Field>
-      <Field label="Password" htmlFor="inv-password" hint="At least 8 characters." error={errors.fields.password}>
-        <PasswordInput id="inv-password" name="password" autoComplete="new-password" invalid={!!errors.fields.password} />
+      <Field label="Password" htmlFor="inv-password" hint="At least 8 characters." error={passwordError}>
+        <PasswordInput id="inv-password" name="password" autoComplete="new-password" invalid={!!passwordError} />
       </Field>
-      {errors.form && <p className="text-sm text-danger">{errors.form}</p>}
+      {formError && <p className="text-sm text-danger">{formError}</p>}
       <div id="clerk-captcha" />
-      <Button type="submit" variant="primary" loading={pending} disabled={!signUpLoaded || googlePending} className="w-full">
+      <Button type="submit" variant="primary" loading={pending} disabled={googlePending} className="w-full">
         {pending ? "Joining…" : "Create account and join"}
       </Button>
       <div className="flex items-center gap-3 text-label text-ink-muted">
@@ -170,7 +158,7 @@ export function InviteJoin({ invite }: { invite: Invite }) {
         or
         <span className="h-px flex-1 bg-hairline" />
       </div>
-      <Button variant="secondary" onClick={joinWithGoogle} loading={googlePending} disabled={!signUpLoaded || pending} className="w-full">
+      <Button variant="secondary" onClick={joinWithGoogle} loading={googlePending} disabled={pending} className="w-full">
         {!googlePending && <GoogleMark />}
         Continue with Google
       </Button>
