@@ -389,3 +389,159 @@ Clerk still provides the data + session; only the UI is ours.
 - [ ] Cancel / Escape / backdrop close the dialog; buttons disable while creating.
 - [ ] A member invited to a second org sees both and can hop between them; each shows only its own data (RLS spot-check).
 - [ ] Nothing in the app renders Clerk-hosted UI anymore (the only Clerk surfaces left are the invisible OAuth callback and the session itself).
+
+---
+
+## Twilio SMS loop (end-to-end)
+
+Tests the full inbound -> qualify -> outbound SMS cycle on a real phone.
+Dashboards: **Twilio Console** (Phone Numbers, Messaging logs, Monitor > Logs > Errors),
+**ngrok** terminal (shows each `POST /api/webhooks/twilio`), **Inngest** dev UI
+(`:8288`), **App** `/conversations`, **Supabase** (`conversations`, `messages`,
+`contacts`, `consents`, `usage_counters`).
+
+### Setup (once)
+- [ ] Platform creds in `.env.local`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`. Restart `pnpm dev:app`.
+- [ ] A Twilio number is bought/assigned (SMS-capable). In `/workspace/agent`, set the **SMS number (Twilio)** in E.164 (e.g. `+15551234567`) and Save. (DB: `org_profiles.sms_from_number` is set and unique to this org.)
+- [ ] The Qualifier is **enabled** (Agent on; Business profile complete).
+- [ ] Run the tunnel + event bus: `pnpm tunnel` (ngrok -> app :3001) and `pnpm inngest` (processes `conversation/message.received`). Both must stay running.
+- [ ] In Twilio Console, the number's **"A message comes in"** webhook = `https://<your-ngrok-domain>/api/webhooks/twilio`, method **POST**. (Prod uses the Vercel URL.)
+- [ ] (Trial accounts) your personal phone is a **Verified Caller ID**, and remember trial messages are prefixed by Twilio. Upgrade out of trial to text unverified numbers.
+
+### Inbound -> conversation
+- [ ] From your phone, text anything to the Twilio number. The ngrok terminal shows `POST /api/webhooks/twilio 200`; Inngest shows a `conversation/message.received` run.
+- [ ] A conversation appears in `/conversations` with channel **SMS**; opening it shows your inbound message. (DB: a `contacts` row matched/created by your `From` phone; a `messages` row, channel `sms`, `provider_ref` = Twilio `MessageSid`.)
+- [ ] A brand-new SMS conversation increments `usage_counters` (metered once).
+
+### Qualify -> outbound (the loop)
+- [ ] Within a few seconds the Qualifier replies and your phone receives an SMS **from the Twilio number**. The reply is short/human (SMS style: one question at a time, not a full email).
+- [ ] The reply is recorded in the thread as an outbound `assistant` `sms` message. Twilio Messaging logs show an outbound segment delivered.
+- [ ] Reply from your phone again -> it threads into the **same** conversation, the Qualifier answers again. The loop continues turn by turn.
+- [ ] Carry it to an end state: give qualifying info -> the Qualifier scores fit and either books / hands off / disqualifies (status pill updates), and texts a closing message.
+
+### Opt-out + edge cases
+- [ ] Text **STOP** to the number. Twilio blocks further messages at the carrier level; our side records the opt-out (a `consents` revoke + suppression). The Qualifier no longer texts that contact; the thread shows the suppression/opt-out state.
+- [ ] Text **START** (resubscribe) -> messaging resumes; a later inbound is handled normally again.
+- [ ] Idempotency: Twilio retries (or you re-point a second webhook) do **not** create duplicate `messages` rows (dedup on `MessageSid`).
+- [ ] Routing: if a second org has its own number, an inbound to that number opens a conversation in **that** org only (never cross-tenant).
+- [ ] Fallback when SMS isn't configured: with no `sms_from_number` (or Twilio keys unset), the Qualifier falls through to email, then in-app, and never crashes the turn.
+- [ ] Signature check: a `POST /api/webhooks/twilio` with a bad/missing `X-Twilio-Signature` is rejected (not processed).
+
+### Prod notes
+- [ ] A2P 10DLC registration is the gate for US SMS at volume - confirm the number/campaign is registered before real sends.
+- [ ] Vercel has `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`; the Twilio number's webhook points at the production `/api/webhooks/twilio`.
+
+---
+
+## Clerk v7 auth flows (2026-10-21)
+
+Tests the custom auth UI after upgrading @clerk/nextjs from v6 to v7 (signals API). All flows use the new v7 API: reactive `errors` signals, `signIn.password()` + `finalize()`, email code verification, Google OAuth via `sso()`, and error handling off the signals rather than try/catch.
+
+Dashboards: **App** (`http://localhost:3001`), **Clerk Dashboard** (Users, Sessions).
+
+### Setup
+- [ ] `pnpm dev:app` runs; Clerk instance is v7 (check `@clerk/nextjs` in `package.json` → `^7.x.x`).
+- [ ] `.env.local` has `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`.
+- [ ] Go to `/sign-in`.
+
+### Sign up → new workspace
+- [ ] Click "Create account".
+- [ ] **Details:** fill in First name, Last name, Email, Password, accept legal. Field errors appear inline under the input.
+- [ ] **Send code:** after submit, form says "We've sent a code to [email]"; code input appears.
+- [ ] **Enter code:** paste from email, submit. "Creating your workspace…" briefly shows.
+- [ ] **Success:** land on `/dashboard` showing empty conversations. Clerk created the org; your `memberships` row has role `owner`.
+
+### Sign in → existing user
+- [ ] Sign out (user menu → Sign out, lands on `/sign-in`).
+- [ ] Enter email + password. Wrong password shows error inline.
+- [ ] Correct password: land on `/dashboard` (no "already signed in" error).
+
+### Already signed in → no form flash
+- [ ] Signed in, visit `/sign-in` or `/sign-up` directly. Page redirects to `/dashboard` **instantly** (no sign-in form shown, even briefly). Same in both tabs.
+
+### Forgot password
+- [ ] On sign-in, click "Forgot password?".
+- [ ] Enter email, submit. "We've sent a code to [email]".
+- [ ] Enter code from email, enter new password. "Password updated; redirecting…" lands on `/sign-in`.
+
+### Google OAuth
+- [ ] On sign-in or sign-up, click "Sign in with Google".
+- [ ] Authenticate with Google.
+- [ ] **New user:** lands on `/dashboard` (auto-created account + org).
+- [ ] **Existing user:** lands on `/dashboard` directly.
+
+### Invite acceptance (already signed in)
+- [ ] Sign in as User A (admin).
+- [ ] In a **different browser**, click an invite link.
+  - **New user:** sign-up flow, then `/onboarding/choose-organization` → Accept → lands in User A's workspace.
+  - **Existing user (already signed in):** redirected straight to `/onboarding/choose-organization` (no "already signed in" error) → Accept.
+- [ ] User B is now in Members (with the invited role).
+
+### Edge cases
+- [ ] Invalid code: "Invalid code" appears inline; a "Send new code" button resends.
+- [ ] Code expired: "Code expired" with a "Send new code" button.
+- [ ] Empty fields: local validation only; "This field is required" inline.
+
+---
+
+## Manage workspace dialog (2026-10-21)
+
+Tests the new workspace picker "Manage" feature: org profile edit, member management, Leave/Delete with cascading deletion. All destructive actions are gated by confirm dialogs.
+
+Dashboards: **App** `/dashboard`, **Supabase** (orgs, memberships, conversations, messages).
+
+### Manage button → dialog
+- [ ] Click workspace name in sidebar, then the small **Manage** button (gear icon + text).
+- [ ] Modal opens, two-pane: left tabs (**General**, **Members**), right content. Close button (X). Escape closes it.
+
+### General tab: org profile
+- [ ] **Workspace profile:** shows org name + logo (or initials).
+- [ ] Click "Update profile" → editor: logo upload, name input.
+- [ ] Upload a logo. File > 10MB → "The logo must be 10MB or less."
+- [ ] Change name, click Save. Toast: "Workspace updated." Logo + name update in real-time in the header.
+
+### General tab: Leave workspace
+- [ ] **Leave workspace,** click the red link.
+- [ ] Confirm: "Leave this workspace?" Click the red button.
+- [ ] Toast/working state, then land on `/dashboard` and the workspace is gone from your picker. (Deleted in Clerk + our DB.)
+- [ ] **Sole owner:** confirm text changes to "You're the only owner…"; Leave is disabled.
+
+### General tab: Delete workspace
+- [ ] **Delete workspace,** click the red link.
+- [ ] Confirm: "Delete [Name]?" with a scary description. Click the red button.
+- [ ] Land on `/dashboard`. Workspace gone. Supabase: the org row is deleted (CASCADE wipes conversations/messages/members).
+
+### Members tab: list + invite
+- [ ] Members tab shows members with: name+email, joined date, role dropdown, red trash-can (remove).
+- [ ] Invitations tab shows pending with: email, "Invite pending" tag, role, red trash-can (revoke).
+- [ ] Both tabs have a search bar and **Invite** button.
+
+### Members tab: add invite
+- [ ] Click Invite. Form appears: email, role dropdown (default Rep), Send invite.
+- [ ] Fill email, pick role, Send. Toast: "Invitation sent."
+- [ ] Invitations tab shows the email (pending).
+
+### Members tab: change role
+- [ ] On a member, click role dropdown, pick a new role. **Save** button appears.
+- [ ] Click Save. Toast: "Role updated."
+
+### Members tab: remove member
+- [ ] Click red trash-can on a member.
+- [ ] Confirm dialog: "Remove [Name]?" Click red button.
+- [ ] Toast: "Member removed." Member disappears.
+
+### Members tab: revoke invite
+- [ ] On a pending invite, click red trash-can.
+- [ ] Confirm: "Revoke the invite for [email]?" Click red button.
+- [ ] Toast: "Invite revoked." Invite disappears.
+
+### Red trash-can across the app
+- [ ] Every remove/delete row button is a small red trash-can icon (no text).
+- [ ] Hover → light red tint. Click → confirm dialog, no banners.
+- [ ] Spot-check: Members remove/revoke (done above), account profile remove photo, Knowledge delete document, create-workspace remove logo.
+
+### Edge cases
+- [ ] Search: enter a name/email in Members/Invitations → real-time filter.
+- [ ] Non-admin viewing Members: "You need an admin role to manage members." (No invite button, no list.)
+- [ ] Multiple orgs: each workspace's Manage shows **only** that workspace's members + invites.
+- [ ] Dialog closes on Escape / backdrop / X. Unsaved profile edits are discarded (no warning).
