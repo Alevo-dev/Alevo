@@ -68,3 +68,17 @@ export async function removeFromActiveOrg(clerkUserId: string) {
     userId: clerkUserId,
   });
 }
+
+/** The caller leaves the active org (removes their own membership). */
+export async function leaveActiveOrg() {
+  const { userId, orgId } = await activeContext();
+  const client = await clerkClient();
+  await client.organizations.deleteOrganizationMembership({ organizationId: orgId, userId });
+}
+
+/** Delete the active org in Clerk (the `organization.deleted` lifecycle). */
+export async function deleteActiveOrg() {
+  const { orgId } = await activeContext();
+  const client = await clerkClient();
+  await client.organizations.deleteOrganization(orgId);
+}

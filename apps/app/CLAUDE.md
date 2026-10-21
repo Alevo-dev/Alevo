@@ -36,6 +36,9 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
     beneath it**; form-level errors render once near the submit. Echo submitted
     `values` back so fields keep their input on error. (`useActionState` pattern;
     see the lead / members / secrets forms.)
+14. **Newest release of every package.** No deprecated / EOL deps — each pinned to
+    its current major and kept current. On a new major, read the upgrade guide,
+    migrate, and verify (typecheck + build); don't stay on the old line.
 
 ## UI (design system)
 
@@ -75,22 +78,49 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
 - **Page transitions:** `components/page-transition.tsx` (React `ViewTransition`) via `(app)/template.tsx` + `workspace/template.tsx`
   (fade + rise by default). Tag list→detail links `transitionTypes={["nav-forward"]}` and
   back links `["nav-back"]` to slide; CSS is in globals.css under "View transitions".
-- **Auth screens** (`(auth)/`): custom UI over Clerk's custom flows (`useSignIn` /
-  `useSignUp`), not the hosted `<SignIn/>`: `components/auth/*` — tabs switch views in place
+- **Auth screens** (`(auth)/`): custom UI over Clerk **v7's signals ("Future") API**,
+  not the hosted `<SignIn/>`: `components/auth/*` — tabs switch views in place
   (URL updated via `history.replaceState`), email-code verification, forgot-password reset,
   Google OAuth via `/sign-(in|up)/sso-callback` (`AuthenticateWithRedirectCallback`). Sign-up
-  creates the org from the Company field. Clerk errors map to fields in `clerk-errors.ts`.
-  The Clerk instance **forces organization selection**: new sessions are *pending* with a
-  `choose-organization` task (pending = signed out for `auth.protect()`), so every flow
-  routes through `nextPathAfterAuth` → `/onboarding/choose-organization`
-  (`components/auth/choose-organization.tsx`, registered as `taskUrls`, public in proxy).
+  creates the org from the Company field.
+  - **v7 signals (not v6):** `useSignIn()` / `useSignUp()` return
+    `{ signIn|signUp, errors, fetchStatus }` (no `isLoaded`/`setActive`). Sign-in is
+    `signIn.password({ identifier, password })` then `signIn.finalize()`; sign-up is
+    `signUp.create({...})` → `signUp.verifications.sendEmailCode()` →
+    `verifyEmailCode({ code })` → `signUp.finalize()`; reset is
+    `signIn.resetPasswordEmailCode.sendCode()/verifyCode()/submitPassword()`; Google is
+    `signIn.sso()/signUp.sso({ strategy:"oauth_google", redirectUrl, redirectCallbackUrl })`.
+    Methods **return `{ error }`** (no throw) and field/global messages come off the reactive
+    `errors` signal (`errors.fields.identifier|emailAddress|password|code|legalAccepted`,
+    `errors.global[0]`) — forms read those directly and keep a little local state only for
+    empty-field checks. `toFormErrors` (`clerk-errors.ts`) is only for the throwing
+    `user.*` calls in the account dialog.
+  - **Already-signed-in guard:** the `/sign-in` + `/sign-up` pages redirect an **active**
+    session to `/dashboard` server-side (`auth()`, `userId && sessionStatus !== "pending"`
+    — zero flash), skipped when an invite ticket is present. `AuthScreen` also has a client
+    guard (`clerk.session` → `nextPathAfterAuth`) for **pending** (org-not-chosen) sessions,
+    which the server treats as signed-out.
+  - The Clerk instance **forces organization selection**: new sessions are *pending* with a
+    `choose-organization` task (pending = signed out for `auth.protect()`), so every flow
+    routes through `nextPathAfterAuth` → `/onboarding/choose-organization`
+    (`components/auth/choose-organization.tsx`, registered as `taskUrls`, public in proxy).
 - **Workspace (not "Settings"):** the org's setup lives under `/workspace/*` — Business
   profile (`profile/`: company, offering, ICP, criteria, disqualifiers, voice →
   `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, channels, booking, calendar →
   `saveAgentSettings`; enabling requires the profile's three required fields), Knowledge,
-  Members, Integrations. (No Files tab: the `files` table is a storage ledger behind the
+  Integrations. (No Files tab: the `files` table is a storage ledger behind the
   Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
   `/settings/*` redirects (next.config.ts).
+- **Manage workspace dialog:** the workspace picker (`components/workspace-switcher.tsx`)
+  has a **Manage** item opening `components/workspace/organization-dialog.tsx` — a two-pane
+  modal (mirrors the account dialog) with **General** (`general-tab.tsx`: org name/logo via
+  Clerk `organization.update`/`setLogo` — mirrored by the `organization.updated` webhook —
+  plus Leave / Delete) and **Members** (`members-tab.tsx`: load via the `loadMembers` server
+  action, search, Members/Invitations sub-tabs, invite + role/remove/revoke reusing
+  `workspace/members/actions.ts`). Leave/Delete run through guarded server actions
+  (`workspace/org-actions.ts` → `leaveActiveOrg`/`deleteActiveOrg`) that sync our DB (delete
+  cascades on the org row, since `organization.deleted` has no webhook). The old
+  `/workspace/members` page now redirects to `/workspace/profile`.
 - **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
   (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never
   render a raw enum value. Shared formatters live in `lib/format.ts`.

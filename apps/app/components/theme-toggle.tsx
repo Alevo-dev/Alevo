@@ -29,9 +29,9 @@ export function ThemeToggle({ className }: { className?: string }) {
   const viaSystem = mounted && theme === "system";
 
   return (
-    <div className={cx("flex items-center justify-between gap-3", className)}>
+    <div className={cx("flex items-center justify-between gap-0", className)}>
       <span className="text-label text-ink-muted" aria-live="polite">
-        <span className="font-medium text-ink">{applied}</span>
+        <span className="font-medium text-ink">Theme: {applied}</span>
         {viaSystem && " (system)"}
       </span>
       <div

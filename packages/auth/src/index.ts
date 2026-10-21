@@ -7,6 +7,8 @@ export {
   revokeActiveOrgInvitation,
   setActiveOrgMemberRole,
   removeFromActiveOrg,
+  leaveActiveOrg,
+  deleteActiveOrg,
   toClerkRole,
 } from "./org-admin";
 export { UnauthorizedError, ForbiddenError } from "./errors";

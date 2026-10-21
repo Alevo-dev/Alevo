@@ -3,12 +3,13 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { initials } from "@/lib/format";
 import { toFormErrors, type FormErrors } from "@/components/auth/clerk-errors";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { IconButton } from "@/components/ui/icon-button";
 import { Field, Input } from "@/components/ui/field";
 import { Pill } from "@/components/ui/pill";
 import { AccountRow, DotMenu, LinkButton, Pane } from "./rows";
@@ -133,9 +134,9 @@ function ProfileSection({ user }: { user: User }) {
             {user.hasImage ? "Change photo" : "Add photo"}
           </Button>
           {user.hasImage && (
-            <Button
-              size="sm"
-              variant="ghost"
+            <IconButton
+              tone="danger"
+              aria-label="Remove photo"
               disabled={uploading}
               onClick={async () => {
                 setUploading(true);
@@ -149,8 +150,8 @@ function ProfileSection({ user }: { user: User }) {
                 }
               }}
             >
-              Remove
-            </Button>
+              <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
+            </IconButton>
           )}
         </div>
       </div>

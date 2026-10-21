@@ -2,16 +2,17 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
-import { ChevronDown, Plus, Settings, Upload } from "lucide-react";
+import { ChevronDown, Plus, Settings, Trash2, Upload } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { initials } from "@/lib/format";
 import { toFormErrors, type FormErrors } from "@/components/auth/clerk-errors";
 import { Button, Spinner } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { IconButton } from "@/components/ui/icon-button";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
 import { Menu, type MenuItem } from "@/components/ui/menu";
+import { OrganizationDialog } from "@/components/workspace/organization-dialog";
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
@@ -19,18 +20,18 @@ const NONE: FormErrors = { fields: {} };
 
 /**
  * Our own workspace (organization) picker — Clerk data, Alevo surface, the
- * same shape as Clerk's switcher: active workspace on top, settings, the
- * other workspaces, create. Switching or creating resolves with a full
- * navigation to /dashboard so every server component re-reads the new org.
+ * same shape as Clerk's switcher: active workspace on top, the other
+ * workspaces, create. Switching or creating resolves with a full navigation
+ * to /dashboard so every server component re-reads the new org.
  */
 export function WorkspaceSwitcher() {
-  const router = useRouter();
   const { organization } = useOrganization();
   const { isLoaded, userMemberships, setActive, createOrganization } = useOrganizationList({
     userMemberships: { infinite: true },
   });
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErrors, setCreateErrors] = useState<FormErrors>(NONE);
@@ -149,7 +150,7 @@ export function WorkspaceSwitcher() {
             )}
           </>
         }
-        header={
+        header={(close) =>
           organization && (
             <div className="flex min-w-0 items-center gap-2.5 py-1">
               <WorkspaceAvatar
@@ -157,22 +158,25 @@ export function WorkspaceSwitcher() {
                 imageUrl={organization.hasImage ? organization.imageUrl : null}
                 size="lg"
               />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink">{organization.name}</div>
                 <div className="text-label text-ink-muted">Current workspace</div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  setManageOpen(true);
+                }}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1 text-label font-medium text-ink-muted transition-colors hover:bg-brand-soft hover:text-ink"
+              >
+                <Settings className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+                Manage
+              </button>
             </div>
           )
         }
         groups={[
-          [
-            {
-              key: "settings",
-              label: "Workspace settings",
-              icon: Settings,
-              onSelect: () => router.push("/workspace/profile"),
-            },
-          ],
           others,
           [
             {
@@ -190,6 +194,8 @@ export function WorkspaceSwitcher() {
         menuClassName="w-108 max-w-[calc(100vw-16px)]"
       />
       {error && <p className="mt-1 text-label text-danger">{error}</p>}
+
+      <OrganizationDialog open={manageOpen} onClose={() => setManageOpen(false)} />
 
       <Dialog open={createOpen} title="Create workspace" onClose={closeCreate} showClose>
         <form onSubmit={create} noValidate className="flex flex-col gap-5">
@@ -216,9 +222,9 @@ export function WorkspaceSwitcher() {
                     {logo ? "Change" : "Upload"}
                   </Button>
                   {logo && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <IconButton
+                      tone="danger"
+                      aria-label="Remove logo"
                       onClick={() => {
                         setLogo(null);
                         setLogoUrl((old) => {
@@ -227,8 +233,8 @@ export function WorkspaceSwitcher() {
                         });
                       }}
                     >
-                      Remove
-                    </Button>
+                      <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
+                    </IconButton>
                   )}
                 </div>
                 <Hint>Recommended size 1:1, up to 10MB.</Hint>

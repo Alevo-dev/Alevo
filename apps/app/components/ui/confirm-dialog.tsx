@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Button, type ButtonSize, type ButtonVariant } from "./button";
 import { Dialog } from "./dialog";
+import { IconButton } from "./icon-button";
 
 type DialogProps = {
   open: boolean;
@@ -61,12 +62,17 @@ type SubmitProps = {
   loading?: boolean;
   disabled?: boolean;
   className?: string;
-  children: ReactNode;
+  /** Render the trigger as an icon-only button (e.g. a red trash can for removes).
+   *  Pass the icon component; `aria-label` is required when used. */
+  icon?: ComponentType<{ className?: string; strokeWidth?: number; "aria-hidden"?: boolean }>;
+  "aria-label"?: string;
+  children?: ReactNode;
 };
 
 /**
  * A submit button for a destructive form action that asks first. Place it
- * inside the `<form action={…}>`; confirming submits that form.
+ * inside the `<form action={…}>`; confirming submits that form. Pass `icon`
+ * for the compact red trash-can trigger used on remove/delete rows.
  */
 export function ConfirmSubmit({
   title,
@@ -79,25 +85,41 @@ export function ConfirmSubmit({
   loading = false,
   disabled,
   className,
+  icon: Icon,
   children,
+  ...aria
 }: SubmitProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
 
   return (
     <>
-      <Button
-        ref={ref}
-        type="button"
-        variant={variant}
-        size={size}
-        loading={loading}
-        disabled={disabled}
-        className={className}
-        onClick={() => setOpen(true)}
-      >
-        {children}
-      </Button>
+      {Icon ? (
+        <IconButton
+          ref={ref}
+          tone={tone === "danger" ? "danger" : "default"}
+          loading={loading}
+          disabled={disabled}
+          className={className}
+          onClick={() => setOpen(true)}
+          aria-label={aria["aria-label"]}
+        >
+          <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+        </IconButton>
+      ) : (
+        <Button
+          ref={ref}
+          type="button"
+          variant={variant}
+          size={size}
+          loading={loading}
+          disabled={disabled}
+          className={className}
+          onClick={() => setOpen(true)}
+        >
+          {children}
+        </Button>
+      )}
       <ConfirmDialog
         open={open}
         title={title}

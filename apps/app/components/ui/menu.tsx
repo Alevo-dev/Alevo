@@ -23,8 +23,9 @@ type Props = {
   button: ReactNode;
   buttonClassName?: string;
   "aria-label": string;
-  /** Non-interactive block pinned above the items (identity, context). */
-  header?: ReactNode;
+  /** Block pinned above the items (identity, context). A function form receives
+   *  the menu's `close` so the header can hold an action (e.g. Manage). */
+  header?: ReactNode | ((close: () => void) => ReactNode);
   /** Items in groups; groups are divided by hairline rules. */
   groups: MenuItem[][];
   /** Which trigger edge the menu hugs. */
@@ -201,7 +202,10 @@ export function Menu({
             }}
             className={cx("fixed z-50 rounded-md border border-hairline bg-raised p-1 shadow-float", menuClassName)}
           >
-            {header && <div className="border-b border-hairline px-3 pb-2.5 pt-2">{header}</div>}
+            {(() => {
+              const resolved = typeof header === "function" ? header(close) : header;
+              return resolved && <div className="border-b border-hairline px-3 pb-2.5 pt-2">{resolved}</div>;
+            })()}
             {groups.map((group, g) => (
               <div key={g} className={g > 0 ? "mt-1 border-t border-hairline pt-1" : header ? "pt-1" : undefined}>
                 {group.map((item, inGroup) => {

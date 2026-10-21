@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KbDocStatus, KbSourceType } from "@alevo/db";
+import { Trash2 } from "lucide-react";
 import { Button, buttonClass, Spinner } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
@@ -275,14 +276,13 @@ function DocumentRow({ doc }: { doc: DocView }) {
         <form action={delAction}>
           <input type="hidden" name="id" value={doc.id} />
           <ConfirmSubmit
-            size="sm"
+            icon={Trash2}
+            aria-label={`Delete ${doc.title}`}
             loading={delPending}
             title={`Delete "${doc.title}"?`}
             description="The agent stops using it immediately, and the file and its indexed text are deleted. This can't be undone."
             confirmLabel="Delete document"
-          >
-            Delete
-          </ConfirmSubmit>
+          />
         </form>
       </div>
     </li>

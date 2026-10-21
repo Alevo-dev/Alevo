@@ -8,7 +8,6 @@ const TABS = [
   { href: "/workspace/profile", label: "Business profile" },
   { href: "/workspace/agent", label: "Agent" },
   { href: "/workspace/knowledge", label: "Knowledge" },
-  { href: "/workspace/members", label: "Members" },
   { href: "/workspace/integrations", label: "Integrations" },
 ] as const;
 
