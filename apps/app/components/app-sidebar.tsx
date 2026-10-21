@@ -1,12 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { OrganizationSwitcher } from "@clerk/nextjs";
 import { Building2, CalendarCheck, LayoutDashboard, MessagesSquare } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { ThemeToggle } from "./theme-toggle";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -22,11 +21,10 @@ export function AppSidebar({ plan }: { plan: PlanCard }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-6 border-b border-hairline px-4 py-4 md:sticky md:top-0 md:h-dvh md:w-[232px] md:border-b-0 md:border-r md:py-6">
-      <Link href="/dashboard" className="flex items-center gap-3 px-2 text-ink no-underline">
-        <Image src="/alevo-mark.png" alt="" width={28} height={28} priority className="size-7" />
-        <span className="font-display text-lg font-semibold tracking-tight">Alevo</span>
-      </Link>
+    <aside className="flex w-full shrink-0 flex-col gap-6 border-b border-hairline px-4 py-4 md:sticky md:top-0 md:h-dvh md:w-58 md:border-b-0 md:border-r md:py-6">
+      <div className="px-1">
+        <WorkspaceSwitcher />
+      </div>
 
       <nav aria-label="Primary" className="-mx-1 flex gap-1 overflow-x-auto px-1 md:flex-col">
         {NAV.map(({ href, label, icon: Icon, ...item }) => {
@@ -61,7 +59,6 @@ export function AppSidebar({ plan }: { plan: PlanCard }) {
 
       <div className="flex flex-col gap-4 px-1 md:mt-auto">
         <ThemeToggle />
-        <OrganizationSwitcher hidePersonal afterCreateOrganizationUrl="/dashboard" />
       </div>
     </aside>
   );

@@ -8,6 +8,8 @@ const PARAM_TO_FIELD: Record<string, string> = {
   identifier: "email",
   email_address: "email",
   password: "password",
+  current_password: "currentPassword",
+  new_password: "newPassword",
   first_name: "name",
   last_name: "name",
   code: "code",

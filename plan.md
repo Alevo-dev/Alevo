@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-20
+**Last updated:** 2026-10-21
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -33,6 +33,14 @@ manual QA** (Cal.com first; Google/M365 await their OAuth-app credentials for
 live testing). **App UI restyled** (2026-10-20) onto the Alevo design system from
 Claude Design (see §10): sidebar shell, Settings tabs, dark-default navy palette,
 Space Grotesk / Inter / JetBrains Mono, shared primitives in `apps/app/components/ui/`.
+The restyle + custom auth screens were **manually QA'd 2026-10-21**; the last
+embedded Clerk components (user button, org switcher) are now replaced by our
+own account menu + workspace picker (`components/ui/menu.tsx` primitive),
+matching Clerk's popovers 1:1 — incl. a two-pane Account modal
+(`components/account/`: profile + photo, email addresses with verification,
+connected accounts, password, active devices, delete account) and a
+create-workspace dialog with logo upload — Clerk supplies only data/session,
+all UI is ours (QA pending, see docs/manual-qa.md).
 **In production (2026-10-20):** deployed to Vercel against the prod stack
 (Supabase, Clerk, Resend, Voyage, R2, Inngest, Anthropic); everything built up
 to — but not including — the SMS channel (platform foundation, CRM + hosted

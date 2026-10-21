@@ -143,7 +143,7 @@ export function ChooseOrganization() {
         </section>
       )}
 
-      <form onSubmit={create} noValidate className="flex flex-col gap-[18px]">
+      <form onSubmit={create} noValidate className="flex flex-col gap-4.5">
         {(memberships.length > 0 || invitations.length > 0) && (
           <h2 className="text-sm font-semibold text-ink">Or create a new one</h2>
         )}
