@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     return [
       { source: "/settings/qualifier", destination: "/workspace/agent", permanent: true },
       { source: "/settings/secrets", destination: "/workspace/integrations", permanent: true },
+      // The Files tab folded into Knowledge (2026-10-20).
+      { source: "/settings/files", destination: "/workspace/knowledge", permanent: true },
+      { source: "/workspace/files", destination: "/workspace/knowledge", permanent: true },
       { source: "/settings/:path*", destination: "/workspace/:path*", permanent: true },
     ];
   },

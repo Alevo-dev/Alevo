@@ -199,6 +199,10 @@ export type DocView = {
   status: KbDocStatus;
   chunkCount: number;
   error: string | null;
+  /** Formatted for display (org timezone). */
+  added: string;
+  /** PDF size, formatted; null for text/url sources. */
+  size: string | null;
 };
 
 export function DocumentList({ docs }: { docs: DocView[] }) {
@@ -250,6 +254,8 @@ function DocumentRow({ doc }: { doc: DocView }) {
         <p className="truncate text-sm font-semibold text-ink">{doc.title}</p>
         <p className="truncate text-label text-ink-muted">
           {SOURCE_LABEL[doc.sourceType]}
+          {doc.size && `, ${doc.size}`}
+          {`, added ${doc.added}`}
           {doc.status === "ready" && `, ${doc.chunkCount} ${doc.chunkCount === 1 ? "chunk" : "chunks"}`}
           {doc.status === "failed" && doc.error && <span className="text-danger">, {doc.error}</span>}
         </p>
@@ -272,7 +278,7 @@ function DocumentRow({ doc }: { doc: DocView }) {
             size="sm"
             loading={delPending}
             title={`Delete "${doc.title}"?`}
-            description="The agent stops using it immediately. This can't be undone; add it again to bring it back."
+            description="The agent stops using it immediately, and the file and its indexed text are deleted. This can't be undone."
             confirmLabel="Delete document"
           >
             Delete

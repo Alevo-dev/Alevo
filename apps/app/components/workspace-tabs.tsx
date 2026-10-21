@@ -10,7 +10,6 @@ const TABS = [
   { href: "/workspace/knowledge", label: "Knowledge" },
   { href: "/workspace/members", label: "Members" },
   { href: "/workspace/integrations", label: "Integrations" },
-  { href: "/workspace/files", label: "Files" },
 ] as const;
 
 export function WorkspaceTabs() {

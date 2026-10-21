@@ -39,19 +39,6 @@ export const KB_STATUS: Record<KbDocStatus, StatusView> = {
   failed: { label: "Failed", tone: "danger" },
 };
 
-/** `files.status` is free text in the schema; map the known values. */
-export function fileStatus(status: string): StatusView {
-  switch (status) {
-    case "uploaded":
-    case "ready":
-      return { label: "Stored", tone: "success" };
-    case "failed":
-      return { label: "Failed", tone: "danger" };
-    default:
-      return { label: "Pending", tone: "muted" };
-  }
-}
-
 export const CHANNEL_LABEL: Record<Channel, string> = {
   form: "Web form",
   email: "Email",

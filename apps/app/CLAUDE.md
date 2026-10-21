@@ -88,7 +88,8 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   profile (`profile/`: company, offering, ICP, criteria, disqualifiers, voice →
   `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, channels, booking, calendar →
   `saveAgentSettings`; enabling requires the profile's three required fields), Knowledge,
-  Members, Integrations, Files. "Settings" is reserved for per-user app preferences.
+  Members, Integrations. (No Files tab: the `files` table is a storage ledger behind the
+  Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
   `/settings/*` redirects (next.config.ts).
 - **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
   (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never

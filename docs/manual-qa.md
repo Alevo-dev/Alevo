@@ -303,24 +303,23 @@ https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1). Hand-check each screen at de
 - [ ] **Knowledge**: segmented source tabs (Paste text / Web address / PDF), document rows with status pills ("Queued", "Indexing", "Indexed", "Failed"), Re-index + Delete.
 - [ ] **Members**: invite card (Email + Role + Send invite), one table with avatar initials, role select + Save, Remove; pending invites appear in the same table with an amber "Invite pending" line, a role pill and Revoke.
 - [ ] **Integrations**: one card per secret with a Set / Not set pill, Save/Replace, Clear, Send test (Slack).
-- [ ] **Files**: dashed upload card with **Choose a file**; table shows size/status/uploaded; header shows total count + size.
-- [ ] Non-admins see an amber notice on Qualifier / Knowledge / Members / Integrations / Files.
+- [ ] Non-admins see an amber notice on Business profile / Agent / Knowledge / Members / Integrations.
 
 ## Loading states (site-wide)
 - [ ] Every submit button shows a **spinner + "…ing" label and is disabled** while its request runs: Sign in, Create account, Send code, Set new password, Continue with Google (spins until Google loads), the lead form's Send, the test "Send as contact", Save changes (Qualifier bar), Send invite / Save role, Save / Replace / Send test (Integrations), Add to knowledge base / Re-index, Mark converted, Save new time, and every confirm-dialog action (Cancel meeting, Remove member, Revoke invite, Delete document, Clear secret, Disconnect). Choose a file / Choose a PDF show a spinner while uploading.
 - [ ] While spinning, a second click does nothing; Cancel / Keep / Discard beside a spinning button are disabled, not spinning.
 
 ## Workspace (was "Settings")
-- [ ] Sidebar item reads **Workspace** (building icon) and opens `/workspace/profile`; tabs are **Business profile · Agent · Knowledge · Members · Integrations · Files**.
+- [ ] Sidebar item reads **Workspace** (building icon) and opens `/workspace/profile`; tabs are **Business profile · Agent · Knowledge · Members · Integrations** (Files folded into Knowledge; `/workspace/files` redirects).
 - [ ] Old links redirect: `/settings/qualifier` → `/workspace/agent`, `/settings/secrets` → `/workspace/integrations`, `/settings/members` → `/workspace/members` (and the rest).
 - [ ] **Business profile** saves company, offering, ideal customer, criteria, disqualifiers, tone and sign-off on its own (toast "Business profile saved."). With the agent **on**, blanking company / offering / ideal customer shows a per-field "Required while the agent is on" error.
 - [ ] **Agent** saves on/off, timezone, send window, SMS number, Cal.com ID, Calendly link, meeting length and working hours (toast "Agent settings saved."). Turning it **on** with an incomplete Business profile shows an error under the switch linking to the profile; the hint under the switch also says so beforehand. The Booking calendar card sits below the form; connect / disconnect still work and return to `/workspace/agent`.
 - [ ] Both tabs have the floating Unsaved changes bar and the leave guard.
 
-## File storage layout + Files ledger
-- [ ] Upload on Workspace → Files: the object lands at `organizations/{orgId}/files/{uuid}-{name}` in R2 (check the bucket); the row shows Kind **File**, status **Stored**.
-- [ ] Add a PDF on Workspace → Knowledge: object at `organizations/{orgId}/knowledge/{uuid}-{name}`; the Files row shows Kind **Knowledge base** and **Stored** (not Pending) as soon as the document is registered.
-- [ ] A file name with spaces/odd characters uploads fine (the key is sanitised; the Files row keeps the original name).
+## Knowledge base files + storage
+- [ ] Add a PDF on Workspace → Knowledge: the object lands at `organizations/{orgId}/knowledge/{uuid}-{name}` in R2; the row reads "PDF, <size>, added <date>" and moves Queued → Indexing → Indexed.
+- [ ] **Delete** a PDF document (the confirm dialog says the file is deleted too): the row disappears, its `kb_chunks` are gone, the object is gone from the bucket, and its `files` ledger row is gone. Deleting a text/URL source removes the row + chunks only.
+- [ ] A file name with spaces/odd characters uploads fine (the key is sanitised; the title keeps the original name).
 
 ## Toasts (success feedback)
 - [ ] Saving the Qualifier, inviting / changing / removing a member, saving / clearing a secret, adding / deleting a knowledge document, uploading a file, recording a meeting outcome, rescheduling, cancelling, and the test "reply as contact" each show a **toast bottom-right** (dark surface, green check) that slides in, stacks if several fire, and **disappears after ~4s**; the **×** closes it early. No inline "Saved." text remains.

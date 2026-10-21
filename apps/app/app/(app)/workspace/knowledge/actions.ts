@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
-import { files, kbDocuments } from "@alevo/db";
+import { files, kbDocuments, withService } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import * as Sentry from "@sentry/nextjs";
 import { inngest } from "@/lib/inngest/client";
+import { deleteObject } from "@/lib/r2";
 import type { KbSourceType } from "@alevo/db";
 
 export type AddValues = { sourceType: KbSourceType; title: string; text: string; url: string };
@@ -110,11 +111,13 @@ export async function addPdfDocument(params: {
     );
     if (!doc) return { ok: false, error: "Could not save the document." };
     // The upload finished (we have the key), so the Files ledger row is stored.
-    await withOrg((tx) =>
+    // Tenants can only read `files` (RLS), so this goes through the service
+    // path, scoped to the org in code like the confirm route.
+    await withService((tx) =>
       tx
         .update(files)
         .set({ status: "uploaded", updatedAt: new Date() })
-        .where(and(eq(files.r2Key, params.r2Key), sql`${files.orgId} = (select app.current_org_id())`)),
+        .where(and(eq(files.r2Key, params.r2Key), eq(files.orgId, org))),
     );
     await fireIngest(org, doc.id);
     revalidatePath("/workspace/knowledge");
@@ -148,13 +151,25 @@ export async function reingestDocument(_prev: ActionState, formData: FormData): 
 export async function deleteDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     await requireRole("admin");
-    await orgId();
+    const org = await orgId();
     const id = String(formData.get("id") ?? "");
-    await withOrg((tx) =>
+    // Chunks cascade with the document row; a PDF also owns an R2 object and a
+    // Files ledger row, which go with it.
+    const [doc] = await withOrg((tx) =>
       tx
         .delete(kbDocuments)
-        .where(and(eq(kbDocuments.id, id), sql`${kbDocuments.orgId} = (select app.current_org_id())`)),
+        .where(and(eq(kbDocuments.id, id), sql`${kbDocuments.orgId} = (select app.current_org_id())`))
+        .returning({ sourceType: kbDocuments.sourceType, sourceRef: kbDocuments.sourceRef }),
     );
+    if (doc?.sourceType === "pdf" && doc.sourceRef) {
+      const key = doc.sourceRef;
+      try {
+        await deleteObject(key);
+      } catch (err) {
+        Sentry.captureException(err); // the row is gone; an orphaned object is a cleanup, not a failure
+      }
+      await withService((tx) => tx.delete(files).where(and(eq(files.r2Key, key), eq(files.orgId, org))));
+    }
     revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {

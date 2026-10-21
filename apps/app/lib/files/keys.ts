@@ -2,7 +2,7 @@
  * R2 object-key layout. One folder per organization, one subfolder per kind of
  * upload, flat inside:
  *
- *   organizations/{orgId}/files/{uuid}-{filename}      general uploads (Files tab)
+ *   organizations/{orgId}/files/{uuid}-{filename}      general uploads (reserved)
  *   organizations/{orgId}/knowledge/{uuid}-{filename}  knowledge-base PDFs
  *   organizations/{orgId}/images/…  avatars/…  logos/…  reserved for later
  *
@@ -21,14 +21,6 @@ const FOLDER: Record<UploadPurpose, string> = {
   logo: "logos",
 };
 
-const LABEL: Record<UploadPurpose, string> = {
-  file: "File",
-  knowledge: "Knowledge base",
-  image: "Image",
-  avatar: "Avatar",
-  logo: "Logo",
-};
-
 export function isUploadPurpose(value: unknown): value is UploadPurpose {
   return typeof value === "string" && (UPLOAD_PURPOSES as readonly string[]).includes(value);
 }
@@ -42,12 +34,4 @@ export function safeFileName(name: string): string {
 
 export function buildObjectKey(orgId: string, purpose: UploadPurpose, fileName: string, id: string): string {
   return `organizations/${orgId}/${FOLDER[purpose]}/${id}-${safeFileName(fileName)}`;
-}
-
-/** Human label for the Files ledger, derived from the key's folder. */
-export function purposeLabelFromKey(key: string): string {
-  const m = /^organizations\/[^/]+\/([^/]+)\//.exec(key);
-  const folder = m?.[1];
-  const purpose = (Object.keys(FOLDER) as UploadPurpose[]).find((p) => FOLDER[p] === folder);
-  return purpose ? LABEL[purpose] : LABEL.file;
 }

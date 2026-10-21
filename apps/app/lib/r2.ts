@@ -41,6 +41,18 @@ export async function presignPutUrl(
   return signed.url;
 }
 
+/** Delete an object (server-side, signed request). A missing object is not an error. */
+export async function deleteObject(key: string): Promise<void> {
+  const { accountId, accessKeyId, secretAccessKey, bucket } = r2Config();
+  const client = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" });
+  const endpoint = `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${key
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+  const res = await client.fetch(endpoint, { method: "DELETE" });
+  if (!res.ok && res.status !== 404) throw new Error(`R2 delete failed (${res.status})`);
+}
+
 /** A presigned GET URL for server-side reads (e.g. the KB ingestor fetching a PDF). */
 export async function presignGetUrl(key: string, expiresIn = 300): Promise<string> {
   const { accountId, accessKeyId, secretAccessKey, bucket } = r2Config();
