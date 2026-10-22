@@ -38,3 +38,20 @@ export type ConversationAwaitingReplyData = { orgId: string; conversationId: str
  * extracts → chunks → embeds → stores. Carries `orgId` for the concurrency key.
  */
 export type KbDocumentIngestData = { orgId: string; documentId: string };
+
+/**
+ * Fired when Vapi reports an inbound voice call has ended. Carries the fields
+ * the webhook already extracted; the recording is fetched by the function.
+ */
+export type VoiceCallEndedData = {
+  orgId: string;
+  callRef: string;
+  endedReason: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  durationSec: number | null;
+  summary: string | null;
+  transcript: string | null;
+  customerNumber: string | null;
+  toNumber: string | null;
+};

@@ -58,6 +58,9 @@ type SubmitProps = {
   tone?: "danger" | "primary";
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** Submit the enclosing form to THIS action instead of the form's own
+   *  (a destructive secondary action inside a settings form, e.g. Disconnect). */
+  formAction?: string | ((formData: FormData) => void | Promise<void>);
   /** The action is in flight: spinner on the trigger, dialog buttons busy. */
   loading?: boolean;
   disabled?: boolean;
@@ -86,11 +89,14 @@ export function ConfirmSubmit({
   disabled,
   className,
   icon: Icon,
+  formAction,
   children,
   ...aria
 }: SubmitProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
+  // Hidden real submit button carrying `formAction`; confirming submits via it.
+  const submitRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -120,6 +126,7 @@ export function ConfirmSubmit({
           {children}
         </Button>
       )}
+      {formAction && <button ref={submitRef} type="submit" formAction={formAction} hidden tabIndex={-1} aria-hidden />}
       <ConfirmDialog
         open={open}
         title={title}
@@ -131,7 +138,7 @@ export function ConfirmSubmit({
         onCancel={() => setOpen(false)}
         onConfirm={() => {
           setOpen(false);
-          ref.current?.form?.requestSubmit();
+          ref.current?.form?.requestSubmit(submitRef.current ?? undefined);
         }}
       />
     </>

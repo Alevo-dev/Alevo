@@ -17,10 +17,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Conversations" };
 
 export default async function ConversationsPage() {
-  const [org, tz] = await Promise.all([getCurrentOrg(), getOrgTimezone()]);
-
-  // Explicit active-org scope (platform admins bypass RLS).
-  const rows = await withOrg((tx) =>
+  // All three are independent: one round trip. (Explicit active-org scope on
+  // the list — platform admins bypass RLS.)
+  const [org, tz, rows] = await Promise.all([
+    getCurrentOrg(),
+    getOrgTimezone(),
+    withOrg((tx) =>
     tx
       .select({
         id: conversations.id,
@@ -37,7 +39,8 @@ export default async function ConversationsPage() {
       .innerJoin(contacts, eq(contacts.id, conversations.contactId))
       .where(sql`${conversations.orgId} = (select app.current_org_id())`)
       .orderBy(desc(conversations.createdAt)),
-  );
+    ),
+  ]);
 
   return (
     <div className="space-y-8">

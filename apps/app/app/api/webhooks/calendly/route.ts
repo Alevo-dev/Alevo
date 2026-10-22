@@ -1,13 +1,15 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
   conversations,
   getOrgSecret,
   meetings,
-  webhookEvents,
+  claimWebhookEvent,
+  releaseWebhookEvent,
   withService,
 } from "@alevo/db";
+import { safeEqual } from "@/lib/crypto/safe-equal";
 import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
@@ -43,10 +45,7 @@ function verify(raw: string, secret: string, header: string | null): boolean {
   // Reject stale deliveries (5-minute tolerance).
   const ts = Number(t);
   if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
-  const expected = createHmac("sha256", secret).update(`${t}.${raw}`, "utf8").digest("hex");
-  const a = Buffer.from(v1);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return safeEqual(v1, createHmac("sha256", secret).update(`${t}.${raw}`, "utf8").digest("hex"));
 }
 
 export const POST = trackDeliveries("calendly", async (req, track) => {
@@ -107,14 +106,7 @@ export const POST = trackDeliveries("calendly", async (req, track) => {
   }
 
   const dedupeKey = `${event}:${scheduledUri ?? convId ?? ""}`;
-  const fresh = await withService((tx) =>
-    tx
-      .insert(webhookEvents)
-      .values({ provider: "calendly", eventId: dedupeKey, eventType: event })
-      .onConflictDoNothing()
-      .returning({ id: webhookEvents.id }),
-  );
-  if (fresh.length === 0) return new Response("ok (duplicate)", { status: 200 });
+  if (!(await claimWebhookEvent("calendly", dedupeKey, event))) return new Response("ok (duplicate)", { status: 200 });
 
   try {
     if (event === "invitee.canceled") {
@@ -163,11 +155,7 @@ export const POST = trackDeliveries("calendly", async (req, track) => {
     return new Response("ok", { status: 200 });
   } catch (err) {
     Sentry.captureException(err);
-    await withService((tx) =>
-      tx
-        .delete(webhookEvents)
-        .where(and(eq(webhookEvents.provider, "calendly"), eq(webhookEvents.eventId, dedupeKey))),
-    );
+    await releaseWebhookEvent("calendly", dedupeKey);
     return new Response("processing error", { status: 500 });
   }
 });

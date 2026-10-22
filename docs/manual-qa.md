@@ -597,3 +597,105 @@ Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx sup
 - [ ] Mobile: the two cards stack, Connection health first, Needs attention below, with no horizontal scroll.
 - [ ] With nothing needing attention, the right card reads "Nothing needs attention. Every connected service is set up."
 - [ ] With an issue, each row shows a Warning dot and a **Review** button that opens that service's dialog.
+
+## Inbound voice — Sprint 4 (2026-10-22)
+
+Built, but **not yet verified against a live call**. The Vapi API details that the research could not confirm are listed below; check each one on the first test call and fix the code if the payload differs.
+
+Setup (once per environment):
+- [ ] Migration `0018_voice.sql` applied (`npx supabase db push`).
+- [ ] `VAPI_API_KEY` and `VOICE_WEBHOOK_SECRET` set; `NEXT_PUBLIC_APP_URL` points at a public URL Vapi can reach (use an ngrok or the Vercel URL, not localhost).
+- [ ] The org has a Twilio number (Agent → phone number), and its business profile is filled in.
+- [ ] Inngest dev server running (`npx inngest-cli dev`) so `process-voice-call` runs.
+
+Turning calls on:
+- [ ] Agent → Phone calls: turn on "Answer calls" → Save. Save appears only once something changed; Cancel sits beside it.
+- [ ] With no phone number set, turning calls on shows the error under the switch; nothing is sent to Vapi.
+- [ ] In Vapi's dashboard: the assistant exists, and the number is attached to it.
+
+Live call (dial the number from a phone):
+- [ ] Greeting plays and says "This call may be recorded."
+- [ ] Ask a question covered by the knowledge base. The agent answers from it (or says it'll follow up if nothing matches).
+- [ ] Ask for a meeting. Agent offers times from the connected calendar, takes your email, books. A calendar invite arrives and the thread shows "booked".
+- [ ] Ask for a person. Slack gets "Call escalated: …", and the thread is handed off.
+- [ ] Hang up. Within a minute: a `calls` row exists, the thread has a call summary, Slack gets "Call ended (…)", and the org's voice minutes go up.
+- [ ] The recording plays back: check the R2 object at `organizations/<org>/calls/<callRef>.<ext>`.
+- [ ] Duplicate end-of-call report (replay it from Vapi): nothing is double-counted or double-posted.
+
+After hours (outside booking hours, weekday):
+- [ ] The greeting changes to the "we're closed" version and the agent takes a message, then calls take_message (Slack shows it).
+
+Off:
+- [ ] Turn calls off → Save. A call now gets "we're not taking calls right now, please text this number."
+
+**Unverified against Vapi's docs, check on the first call:**
+- [ ] Tool definitions: `model.tools` as `{ type: "function", function: { name, description, parameters } }`, routed to the assistant's server URL. Look at a real `tool-calls` body.
+- [ ] Tool results come back as `{ results: [{ name, toolCallId, result }] }` and the agent speaks them.
+- [ ] The secret arrives in the `x-alevo-secret` header (we set it through `server.headers`). If Vapi rejects the assistant, check the `server` field name.
+- [ ] `assistant-request`: the response `{ assistant: {...} }` is honoured per call, so after-hours and off-mode take effect. If calls always get the open greeting, this shape is wrong.
+- [ ] `end-of-call-report` field paths: `message.call.id`, `message.call.phoneNumberId`, `message.call.customer.number`, `message.endedReason`, `message.summary`, `message.durationSeconds`, `message.artifact.transcript`. Log one raw payload and compare.
+- [ ] Recording download: `GET /call/{id}/mono-recording` returns audio (it redirects to a signed URL).
+- [ ] The model id `claude-sonnet-5` is accepted by Vapi's Anthropic provider.
+
+Not built yet (say if you want them now): buying a new Twilio number from inside Alevo, new-vs-existing client routing, warm transfer, and a Calls list page (calls appear in the thread for now).
+
+### Voice: fit score and lead status
+- [ ] After a call where the caller qualifies, the conversation shows a fit score and reasons (same fields as the Qualifier).
+- [ ] A call that ends with the caller wanting a person: conversation status is "Handed to a rep" and Slack shows the handoff note.
+- [ ] A call with a clear non-fit: status is "Not a fit" (this is the "dismissed" state).
+- [ ] A call that books: status is "booked". Afterwards no later set_status changes it.
+- [ ] The call's outcome in the Calls record matches the conversation status.
+
+## Page transitions re-enabled for testing (2026-10-22)
+
+`components/page-transition.tsx` wraps the app and workspace templates in React's `ViewTransition` again (it was switched off in commit 95129cf). Timings are in `globals.css` under "View transitions" (~120ms).
+
+- [ ] Click between sidebar pages (Dashboard → Conversations → Meetings): the old page fades out and the new one rises in.
+- [ ] Open a conversation from a list, then press the back link: the list slides in from the left, the conversation slides out to the right.
+- [ ] Switch Workspace tabs (Profile → Agent → Integrations): content fades and rises; the title and tabs stay still.
+- [ ] Time a navigation with and without the transition (for example by commenting the wrapper out). Note whether it feels slower; the earlier reason for switching it off was that it did.
+- [ ] `prefers-reduced-motion` on: transitions are off.
+
+## Booking in one place (2026-10-22)
+
+Requires migration `0019_booking_tool.sql` applied (`npx supabase db push`). It backfills each org's current tool from the old precedence (Cal.com → connected calendar → Calendly), so nothing should change for an org that already booked.
+
+Workspace → Agent → **Booking** card:
+- [ ] "Book meetings" switch off: nothing beneath it. On: four tool cards (Cal.com, Google Calendar, Microsoft 365, Calendly) with their marks; exactly one selected.
+- [ ] Only the chosen tool's fields show beneath the cards. Switching tools swaps the fields; nothing from another tool is visible.
+- [ ] One Save bar for the whole card (appears once anything changed, with Discard). No per-field Save buttons anywhere on the page.
+- [ ] Cal.com: event type ID + API key + webhook secret all here, with Set/Not set pills. Save with the key blank when "Not set" → red error under the key field. Enter a key + a numeric event type → saved; Integrations shows Cal.com "Connected".
+- [ ] Google Calendar / Microsoft 365 chosen, nothing connected: "Connect …" button. Click → booking settings are saved first (toast), then the Google/Microsoft consent screen opens; on return the card shows the connected account + Disconnect.
+- [ ] Connected provider differs from the chosen one (e.g. Google connected, Microsoft chosen): the card says to disconnect first; Disconnect asks for confirmation, then the Connect Microsoft button appears.
+- [ ] Meeting length + working hours only show for Google/Microsoft (Cal.com uses its own rules).
+- [ ] Calendly chosen with no link saved: Save shows "Add the Calendly scheduling link under Integrations first." The card links to Integrations.
+- [ ] Turn booking off → Save. Integrations shows every booking tool "Not chosen". Turn it back on: the previous tool and its details are still there.
+- [ ] The old "Channels and booking" card is now "Channels" with only the SMS number. No event-type or Calendly fields on it.
+
+Workspace → Integrations:
+- [ ] Cal.com and Calendar cards: Manage opens a dialog that points to Agent → Booking (no keys here any more).
+- [ ] Calendly card → Manage: scheduling link + webhook signing key in ONE form with one Save/Cancel (appear once something changed). An invalid link shows a red error under it.
+- [ ] Status words match the choice: "Not chosen" (another tool chosen), "Needs setup" + a Needs attention row (chosen but missing details), "Connected" (chosen and configured).
+- [ ] Qualifier end to end: with the chosen tool configured, a qualified lead gets `check_availability` / `book_meeting` (or the Calendly link). With booking off, the agent hands off instead — even if a Cal.com key is still stored.
+
+## Code + performance pass (2026-10-22)
+
+Behaviour should be unchanged; these checks catch regressions from the cleanup.
+
+App:
+- [ ] Navigate Dashboard → Conversations → Meetings → Workspace: a skeleton (title, three stat tiles, a five-row table) shows instantly in the content column while each page loads (new `(app)/loading.tsx`); the sidebar/top bar stay put.
+- [ ] The skeleton blocks shimmer — a soft highlight sweeps left→right, staggered down the page. With "reduce motion" on in the OS they sit still.
+- [ ] Account menu → Manage account: the dialog opens (it is now loaded on demand). Same for the workspace picker's Manage.
+- [ ] Phone width: open the burger drawer — the workspace picker inside it works; close it; the desktop picker is unaffected.
+- [ ] Agent page: clicking the "Agent is on", "Book meetings" and "Answer calls" labels toggles the RIGHT switch each time (they had duplicate ids).
+- [ ] Conversations + Meetings lists still show the org timezone in the "Received"/time column.
+- [ ] Email unsubscribe, a Cal.com/Calendly webhook with a bad signature (401), and a replayed webhook (duplicate → 200) all behave as before.
+- [ ] Bounce/complaint on an address shared by two contacts revokes email consent for both (now one UPDATE).
+- [ ] Knowledge → add a long PDF: ingestion completes (embedding batches now run 4 at a time).
+- [ ] Integrations + Agent → Booking: Set/Not set pills and key fields unchanged (shared `keyField`).
+
+Marketing site:
+- [ ] Every page renders with the same fonts as before (DM Sans was downloaded but never displayed; body is Geist, headings Fraunces).
+- [ ] Theme toggle still works (next-themes used directly).
+- [ ] The landing page demos still animate; with "reduce motion" on in the OS they stop.
+- [ ] Six removed packages (`@base-ui/react`, `class-variance-authority`, `cn`, `lucide-react`, `shadcn`, `tw-animate-css`, `motion`) — nothing visibly missing.

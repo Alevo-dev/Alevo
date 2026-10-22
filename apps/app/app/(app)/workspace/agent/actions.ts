@@ -13,15 +13,8 @@ export type AgentValues = {
   sendWindowStartHour: number;
   sendWindowEndHour: number;
   smsFromNumber: string;
-  calcomEventTypeId: string;
-  calendlyUrl: string;
-  bookingLengthMin: number;
-  bookingHoursStart: number;
-  bookingHoursEnd: number;
 };
-export type AgentErrors = Partial<
-  Record<"enabled" | "timezone" | "sendWindow" | "smsFromNumber" | "calcomEventTypeId" | "calendlyUrl" | "bookingHours", string>
->;
+export type AgentErrors = Partial<Record<"enabled" | "timezone" | "sendWindow" | "smsFromNumber", string>>;
 export type ActionState = {
   ok?: boolean;
   error?: string;
@@ -32,23 +25,9 @@ export type ActionState = {
 /** E.164: a leading + and 8–15 digits (first digit 1–9). */
 const E164 = /^\+[1-9]\d{7,14}$/;
 
-function isHttpsUrl(v: string): boolean {
-  try {
-    return new URL(v).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function hour(formData: FormData, key: string, fallback: number): number {
   const n = Number.parseInt(String(formData.get(key) ?? ""), 10);
   return Number.isInteger(n) && n >= 0 && n <= 24 ? n : fallback;
-}
-
-/** Meeting length in minutes; clamp to a sane 10–240 range. */
-function length(formData: FormData, key: string, fallback: number): number {
-  const n = Number.parseInt(String(formData.get(key) ?? ""), 10);
-  return Number.isInteger(n) && n >= 10 && n <= 240 ? n : fallback;
 }
 
 function readValues(formData: FormData): AgentValues {
@@ -59,11 +38,6 @@ function readValues(formData: FormData): AgentValues {
     sendWindowStartHour: hour(formData, "sendWindowStartHour", 8),
     sendWindowEndHour: hour(formData, "sendWindowEndHour", 20),
     smsFromNumber: s("smsFromNumber"),
-    calcomEventTypeId: s("calcomEventTypeId"),
-    calendlyUrl: s("calendlyUrl"),
-    bookingLengthMin: length(formData, "bookingLengthMin", 30),
-    bookingHoursStart: hour(formData, "bookingHoursStart", 9),
-    bookingHoursEnd: hour(formData, "bookingHoursEnd", 17),
   };
 }
 
@@ -81,15 +55,6 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
     }
     if (values.smsFromNumber && !E164.test(values.smsFromNumber)) {
       errors.smsFromNumber = "Use E.164 format, e.g. +15551234567.";
-    }
-    if (values.calcomEventTypeId && !/^\d+$/.test(values.calcomEventTypeId)) {
-      errors.calcomEventTypeId = "Enter the numeric Cal.com event type ID.";
-    }
-    if (values.calendlyUrl && !isHttpsUrl(values.calendlyUrl)) {
-      errors.calendlyUrl = "Enter a valid https Calendly link.";
-    }
-    if (values.bookingHoursStart >= values.bookingHoursEnd) {
-      errors.bookingHours = "The earliest time must be before the latest.";
     }
     // Turning the agent on needs the business profile it reasons from.
     if (values.enabled) {
@@ -113,11 +78,6 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
       sendWindowStartHour: values.sendWindowStartHour,
       sendWindowEndHour: values.sendWindowEndHour,
       smsFromNumber: nullable(values.smsFromNumber),
-      calcomEventTypeId: values.calcomEventTypeId ? Number.parseInt(values.calcomEventTypeId, 10) : null,
-      calendlyUrl: nullable(values.calendlyUrl),
-      bookingLengthMin: values.bookingLengthMin,
-      bookingHoursStart: values.bookingHoursStart,
-      bookingHoursEnd: values.bookingHoursEnd,
     };
     await withOrg((tx) =>
       tx

@@ -1,4 +1,5 @@
 import "server-only";
+import { refreshTokenKey } from "@/lib/booking/oauth";
 import Anthropic from "@anthropic-ai/sdk";
 import { and, asc, eq, sql } from "drizzle-orm";
 import {
@@ -122,16 +123,17 @@ export async function loadQualifierContext(
         .limit(1);
       return Boolean(row);
     };
+    // The org chose one tool (Workspace → Agent → Booking). It only counts
+    // once that tool is actually configured; otherwise the agent hands off.
     let bookingMode: BookingMode = null;
-    if (profile.calcomEventTypeId && (await hasSecret("calcom_api_key"))) bookingMode = "calcom";
-    if (!bookingMode && profile.calendarProvider && profile.calendarId) {
-      const tokenKey =
-        profile.calendarProvider === "google"
-          ? "google_calendar_refresh_token"
-          : "m365_calendar_refresh_token";
-      if (await hasSecret(tokenKey)) bookingMode = profile.calendarProvider as BookingMode;
+    const tool = profile.bookingTool;
+    if (tool === "calcom") {
+      if (profile.calcomEventTypeId && (await hasSecret("calcom_api_key"))) bookingMode = "calcom";
+    } else if (tool === "google" || tool === "m365") {
+      if (profile.calendarProvider === tool && profile.calendarId && (await hasSecret(refreshTokenKey(tool)))) bookingMode = tool;
+    } else if (tool === "calendly" && profile.calendlyUrl) {
+      bookingMode = "calendly";
     }
-    if (!bookingMode && profile.calendlyUrl) bookingMode = "calendly";
 
     return {
       orgId,

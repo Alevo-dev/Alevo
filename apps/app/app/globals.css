@@ -21,7 +21,6 @@
   --color-brand-soft: var(--ds-brand-soft);
   --color-violet: var(--ds-accent);
   --color-violet-light: var(--ds-accent-light);
-  --color-violet-deep: var(--ds-accent-deep);
   --color-violet-soft: var(--ds-accent-soft);
   --color-on-brand: var(--ds-on-brand);
   --color-success: var(--ds-success);
@@ -33,27 +32,6 @@
   --color-vivid-warning: var(--ds-vivid-warning);
   --color-vivid-danger: var(--ds-vivid-danger);
   --color-on-vivid: var(--ds-on-vivid);
-
-  /* shadcn-style aliases, mapped onto the same tokens so legacy markup
-     (lead form, Clerk pages) stays consistent. */
-  --color-background: var(--ds-canvas);
-  --color-foreground: var(--ds-ink);
-  --color-card: var(--ds-surface);
-  --color-card-foreground: var(--ds-ink);
-  --color-popover: var(--ds-surface-raised);
-  --color-popover-foreground: var(--ds-ink);
-  --color-primary: var(--ds-brand);
-  --color-primary-foreground: var(--ds-on-brand);
-  --color-secondary: var(--ds-surface-raised);
-  --color-secondary-foreground: var(--ds-ink);
-  --color-muted: var(--ds-surface-raised);
-  --color-muted-foreground: var(--ds-ink-muted);
-  --color-accent: var(--ds-surface-raised);
-  --color-accent-foreground: var(--ds-ink);
-  --color-destructive: var(--ds-danger);
-  --color-border: var(--ds-hairline);
-  --color-input: var(--ds-control);
-  --color-ring: var(--ds-brand);
 
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
@@ -123,9 +101,6 @@
   .dark {
     color-scheme: dark;
   }
-  input[type="range"] {
-    accent-color: var(--ds-brand);
-  }
 }
 
 @layer utilities {
@@ -155,12 +130,34 @@
   .animate-bob {
     animation: ds-bob 6s ease-in-out infinite;
   }
+  /* Loading skeleton block ((app)/loading.tsx): a soft highlight sweeps across
+     it. Stagger blocks with `style={{ animationDelay }}` on the element. */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--ds-surface-raised);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--ds-ink) 7%, transparent) 50%,
+      transparent 100%
+    );
+    animation: ds-shimmer 1.6s ease-in-out infinite;
+    animation-delay: inherit;
+  }
   @media (prefers-reduced-motion: reduce) {
     .animate-grow-x,
     .animate-grow-y,
     .animate-draw,
     .animate-rise,
-    .animate-bob {
+    .animate-bob,
+    .skeleton::after {
       animation: none;
     }
   }
@@ -174,6 +171,11 @@
 @keyframes ds-grow-y {
   from {
     transform: scaleY(0);
+  }
+}
+@keyframes ds-shimmer {
+  to {
+    transform: translateX(100%);
   }
 }
 @keyframes ds-draw {

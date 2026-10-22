@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { users, withService } from "@alevo/db";
@@ -10,12 +11,15 @@ import { users, withService } from "@alevo/db";
  * Uses the service path because it runs before an org is necessarily active
  * (RLS needs an org to scope by). This is safe: it only ever reads the caller's
  * OWN row, keyed by their verified Clerk id.
+ *
+ * `cache()`: one lookup per request however many layouts, pages and actions
+ * ask (React dedupes per server request).
  */
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   const { userId } = await auth();
   if (!userId) return null;
   const row = await withService((tx) =>
     tx.query.users.findFirst({ where: eq(users.clerkId, userId) }),
   );
   return row ?? null;
-}
+});

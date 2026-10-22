@@ -4,7 +4,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/pill";
 import type { ServiceView } from "@/lib/integrations/services";
-import { BrandMark } from "./brand-mark";
+import { BrandMark } from "@/components/workspace/brand-mark";
 import { ManageDialog } from "./manage-dialog";
 
 /** One connected service: brand mark, name, state, and a Manage dialog with its keys. */

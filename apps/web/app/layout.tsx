@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, DM_Sans, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme/theme-provider";
 import { siteConfig } from "@/lib/site";
 
-// Editorial serif + humanist sans — used by the /features, /pricing, etc. pages.
+// Editorial serif for h1–h4 (a base rule applies it). Body text is Geist everywhere:
+// every page sits inside `.alevo`, so a separate body face would download unused.
 const fontDisplay = Fraunces({ variable: "--font-display", subsets: ["latin"], display: "swap" });
-const fontBody = DM_Sans({ variable: "--font-body", subsets: ["latin"], display: "swap" });
 
 // Geist — used by the landing page (self-hosted, replaces the design's <link>).
 const fontGeist = Geist({ variable: "--font-geist", subsets: ["latin"], display: "swap" });
@@ -111,7 +111,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${fontDisplay.variable} ${fontBody.variable} ${fontGeist.variable} ${fontGeistMono.variable} h-full`}
+      className={`${fontDisplay.variable} ${fontGeist.variable} ${fontGeistMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
         <script

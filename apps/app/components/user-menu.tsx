@@ -1,11 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { LogOut, Settings } from "lucide-react";
 import { initials } from "@/lib/format";
-import { AccountDialog } from "@/components/account/account-dialog";
+
+// The account dialog (profile + security tabs) is a large client subtree that
+// most page views never open — load it on demand, not in the shell bundle.
+const AccountDialog = dynamic(() => import("@/components/account/account-dialog").then((m) => m.AccountDialog), {
+  ssr: false,
+});
 import { Spinner } from "@/components/ui/button";
 import { Menu } from "@/components/ui/menu";
 
@@ -67,7 +73,7 @@ export function UserMenu() {
         ]}
         menuClassName="w-108 max-w-[calc(100vw-16px)]"
       />
-      <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
+      {accountOpen && <AccountDialog open onClose={() => setAccountOpen(false)} />}
     </>
   );
 }

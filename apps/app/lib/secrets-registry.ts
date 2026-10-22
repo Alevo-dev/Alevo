@@ -81,3 +81,16 @@ export function getSecretSpec(key: SecretKey): SecretSpec {
   if (!spec) throw new Error(`Unknown secret: ${key}`);
   return spec;
 }
+
+/** A secret as a settings form shows it: the registry's copy plus its stored state. */
+export type KeyField = Pick<SecretSpec, "label" | "help" | "placeholder" | "inputType"> & {
+  secretKey: SecretKey;
+  isSet: boolean;
+  /** Shows a "Send test" action once saved (Slack). */
+  testable: boolean;
+};
+
+export function keyField(key: SecretKey, isSet: boolean, testable = false): KeyField {
+  const { label, help, placeholder, inputType } = getSecretSpec(key);
+  return { secretKey: key, label, help, placeholder, inputType, isSet, testable };
+}

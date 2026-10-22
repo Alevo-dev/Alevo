@@ -1,29 +1,15 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
-import { FieldError, Input } from "@/components/ui/field";
-import { Pill } from "@/components/ui/pill";
-import { cx } from "@/lib/cx";
-import { FIELD_PREFIX, type SecretKey } from "@/lib/secrets-registry";
+import { SecretField, type KeyField } from "@/components/workspace/secret-field";
+import type { SecretKey } from "@/lib/secrets-registry";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { clearSecret, saveSecrets, sendTestSlack, type ActionState, type SaveSecretsState } from "./actions";
 
 const INITIAL_SAVE: SaveSecretsState = {};
 const INITIAL: ActionState = {};
-
-export type KeyField = {
-  secretKey: SecretKey;
-  label: string;
-  help: string;
-  placeholder: string;
-  inputType: "url" | "password";
-  isSet: boolean;
-  /** Shows a "Send test" action once saved (Slack). */
-  testable: boolean;
-};
 
 type ServiceKeysFormProps = {
   fields: KeyField[];
@@ -87,67 +73,8 @@ export function ServiceKeysForm({ fields, canReveal, canModify }: ServiceKeysFor
   );
 }
 
-function SecretField({
-  field,
-  value,
-  error,
-  canReveal,
-  canModify,
-  onChange,
-}: {
-  field: KeyField;
-  value: string;
-  error?: string;
-  canReveal: boolean;
-  canModify: boolean;
-  onChange: (next: string) => void;
-}) {
-  const [showValue, setShowValue] = useState(false);
-  const id = `secret-${field.secretKey}`;
-  const isPassword = field.inputType === "password";
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <label htmlFor={id} className="text-sm font-semibold text-ink">
-            {field.label}
-          </label>
-          <p className="mt-1 text-label text-ink-muted">{field.help}</p>
-        </div>
-        <Pill tone={field.isSet ? "success" : "muted"}>{field.isSet ? "Set" : "Not set"}</Pill>
-      </div>
-      <div className="relative">
-        <Input
-          id={id}
-          name={`${FIELD_PREFIX}${field.secretKey}`}
-          type={isPassword && !showValue ? "password" : "text"}
-          autoComplete="off"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          invalid={!!error}
-          disabled={!canModify}
-          placeholder={field.isSet ? "Enter a new value to replace" : field.placeholder}
-          className={cx("font-mono text-label", isPassword && canReveal && "pr-11")}
-        />
-        {isPassword && canReveal && (
-          <button
-            type="button"
-            onClick={() => setShowValue((s) => !s)}
-            aria-label={showValue ? "Hide value" : "Show value"}
-            aria-pressed={showValue}
-            className="absolute right-1 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-sm text-ink-muted hover:text-ink"
-          >
-            {showValue ? <EyeOff className="size-4" strokeWidth={1.75} /> : <Eye className="size-4" strokeWidth={1.75} />}
-          </button>
-        )}
-      </div>
-      <FieldError>{error}</FieldError>
-    </div>
-  );
-}
-
-function SavedKeys({ fields, canModify }: { fields: KeyField[]; canModify: boolean }) {
+/** Clear / Send test rows for keys that are already stored. */
+export function SavedKeys({ fields, canModify }: { fields: KeyField[]; canModify: boolean }) {
   if (!canModify || fields.length === 0) return null;
   return (
     <div className="space-y-2 border-t border-hairline pt-5">

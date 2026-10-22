@@ -9,8 +9,9 @@ import { isEmailConfigured } from "@/lib/email/resend";
 import { isSmsConfigured } from "@/lib/sms/twilio";
 import { buildServices, type ServiceView } from "@/lib/integrations/services";
 import { getConnectionHealth } from "@/lib/integrations/health";
+import { keyField } from "@/lib/secrets-registry";
+import { CalendlyForm } from "./calendly-form";
 import { ConnectionHealthCard, PAIR_CARD_CLASS } from "./connection-health";
-import { getSecretSpec } from "@/lib/secrets-registry";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceCard } from "./service-card";
 import { ManageDialog } from "./manage-dialog";
@@ -49,33 +50,40 @@ export default async function SecretsPage() {
     smsFromNumber: profile?.smsFromNumber ?? null,
     smsConfigured: isSmsConfigured(),
     emailConfigured: isEmailConfigured(),
+    booking: {
+      tool: profile?.bookingTool ?? null,
+      calcomEventTypeId: profile?.calcomEventTypeId ?? null,
+      calendarProvider: profile?.calendarProvider ?? null,
+      calendarId: profile?.calendarId ?? null,
+      calendlyUrl: profile?.calendlyUrl ?? null,
+    },
   });
   const attention = services.filter((s) => s.issue);
 
-  /** The contents of one service's Manage dialog: its keys in one form, or a pointer elsewhere. */
-  const manageContent = (service: ServiceView) => (
-    <>
-      {service.keys.length > 0 && (
-        <ServiceKeysForm
-          canReveal={canReveal}
+  /** The contents of one service's Manage dialog: its own form, or a pointer elsewhere. */
+  function manageContent(service: ServiceView) {
+    if (service.id === "calendly") {
+      return (
+        <CalendlyForm
+          link={profile?.calendlyUrl ?? ""}
+          signingKeySet={isSet.has("calendly_webhook_secret")}
           canModify={canReveal}
-          fields={service.keys.map((key) => {
-            const spec = getSecretSpec(key);
-            return {
-              secretKey: key,
-              label: spec.label,
-              help: spec.help,
-              placeholder: spec.placeholder,
-              inputType: spec.inputType,
-              isSet: isSet.has(key),
-              testable: key === "slack_webhook_url",
-            };
-          })}
         />
-      )}
-      <ElsewhereNote service={service} />
-    </>
-  );
+      );
+    }
+    return (
+      <>
+        {service.keys.length > 0 && (
+          <ServiceKeysForm
+            canReveal={canReveal}
+            canModify={canReveal}
+            fields={service.keys.map((key) => keyField(key, isSet.has(key), key === "slack_webhook_url"))}
+          />
+        )}
+        <ElsewhereNote service={service} />
+      </>
+    );
+  }
 
   return (
     <div className="space-y-10">

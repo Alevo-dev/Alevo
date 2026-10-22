@@ -1,5 +1,6 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
+import { safeEqual } from "@/lib/crypto/safe-equal";
 
 /**
  * Stateless, tamper-proof unsubscribe tokens: base64url(payload).hmac. Lets the
@@ -24,9 +25,7 @@ export function verifyUnsubscribeToken(token: string): { orgId: string; email: s
   const [payload, sig] = token.split(".");
   if (!payload || !sig) return null;
   const expected = createHmac("sha256", secret()).update(payload).digest("base64url");
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  if (!safeEqual(sig, expected)) return null;
   try {
     const obj = JSON.parse(Buffer.from(payload, "base64url").toString()) as { o?: string; e?: string };
     if (!obj.o || !obj.e) return null;

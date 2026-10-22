@@ -1,14 +1,16 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
   conversations,
   getOrgSecret,
   meetings,
-  webhookEvents,
+  claimWebhookEvent,
+  releaseWebhookEvent,
   withService,
   type MeetingStatus,
 } from "@alevo/db";
+import { safeEqual } from "@/lib/crypto/safe-equal";
 import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
@@ -28,10 +30,7 @@ type CalPayload = {
 
 function verify(raw: string, secret: string, signature: string | null): boolean {
   if (!signature) return false;
-  const expected = createHmac("sha256", secret).update(raw, "utf8").digest("hex");
-  const a = Buffer.from(signature);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return safeEqual(signature, createHmac("sha256", secret).update(raw, "utf8").digest("hex"));
 }
 
 export const POST = trackDeliveries("calcom", async (req, track) => {
@@ -69,14 +68,7 @@ export const POST = trackDeliveries("calcom", async (req, track) => {
   }
 
   // Idempotency per (event, booking).
-  const fresh = await withService((tx) =>
-    tx
-      .insert(webhookEvents)
-      .values({ provider: "calcom", eventId: `${trigger}:${uid}`, eventType: trigger })
-      .onConflictDoNothing()
-      .returning({ id: webhookEvents.id }),
-  );
-  if (fresh.length === 0) return new Response("ok (duplicate)", { status: 200 });
+  if (!(await claimWebhookEvent("calcom", `${trigger}:${uid}`, trigger))) return new Response("ok (duplicate)", { status: 200 });
 
   try {
     const convId = payload.metadata?.alevoConversationId ?? existing?.conversationId ?? null;
@@ -144,11 +136,7 @@ export const POST = trackDeliveries("calcom", async (req, track) => {
     return new Response("ok", { status: 200 });
   } catch (err) {
     Sentry.captureException(err);
-    await withService((tx) =>
-      tx
-        .delete(webhookEvents)
-        .where(and(eq(webhookEvents.provider, "calcom"), eq(webhookEvents.eventId, `${trigger}:${uid}`))),
-    );
+    await releaseWebhookEvent("calcom", `${trigger}:${uid}`);
     return new Response("processing error", { status: 500 });
   }
 });

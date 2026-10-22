@@ -18,11 +18,13 @@
   "peerDependencies": {
     "@clerk/nextjs": "^7",
     "next": "^16",
-    "react": "^19"
+    "react": ">=19"
   },
   "devDependencies": {
     "@alevo/tsconfig": "workspace:*",
     "@clerk/nextjs": "^7",
-    "typescript": "^5"
+    "typescript": "^5",
+    "react": "19.2.8",
+    "@types/react": "^19"
   }
 }

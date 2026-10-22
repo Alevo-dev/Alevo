@@ -1,4 +1,5 @@
 import "server-only";
+import { appUrl, requestOrigin } from "@/lib/app-url";
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { orgProfiles, setOrgSecret, withService } from "@alevo/db";
@@ -19,22 +20,9 @@ import {
 
 const SETTINGS = "/workspace/agent";
 
-function base(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001").replace(/\/$/, "");
-}
-
-/**
- * The origin the admin's browser is actually on (forwarded headers first, so
- * it is the ngrok host when tunnelled and `localhost:3001` when not). The
- * callback returns here so the admin lands where their session cookie lives.
- */
-function requestOrigin(req: Request): string {
-  const proto = req.headers.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).host;
-  return `${proto}://${host}`;
-}
-
-function back(params: string, origin: string = base()): NextResponse {
+// The callback returns to the origin the admin's browser is actually on
+// (`requestOrigin`), so they land where their session cookie lives.
+function back(params: string, origin: string = appUrl()): NextResponse {
   return NextResponse.redirect(`${origin}${SETTINGS}?${params}`);
 }
 
@@ -66,7 +54,7 @@ export async function handleCallback(
 
   const parsed = verifyState(state);
   if (!parsed || parsed.provider !== provider) return back("calendar_error=bad_state");
-  const origin = parsed.returnTo ?? base();
+  const origin = parsed.returnTo ?? appUrl();
 
   try {
     const { refreshToken, accountEmail } = await exchangeCode(provider, code);

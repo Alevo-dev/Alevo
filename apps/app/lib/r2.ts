@@ -64,3 +64,19 @@ export async function presignGetUrl(key: string, expiresIn = 300): Promise<strin
   const signed = await client.sign(endpoint, { method: "GET", aws: { signQuery: true } });
   return signed.url;
 }
+
+/** Store an object server-side (signed PUT). Used for call recordings, which Vapi hands us as a URL. */
+export async function putObject(key: string, body: ArrayBuffer, contentType: string): Promise<void> {
+  const { accountId, accessKeyId, secretAccessKey, bucket } = r2Config();
+  const client = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" });
+  const endpoint = `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${key
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}`;
+  const res = await client.fetch(endpoint, {
+    method: "PUT",
+    headers: { "content-type": contentType },
+    body,
+  });
+  if (!res.ok) throw new Error(`R2 put failed (${res.status})`);
+}

@@ -1,6 +1,5 @@
-import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { webhookEvents, withService } from "@alevo/db";
+import { claimWebhookEvent, releaseWebhookEvent } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
 import { verifyClerkWebhook } from "@/lib/webhooks/verify";
 import {
@@ -27,14 +26,7 @@ export async function POST(req: Request) {
   const { event, id } = verified;
 
   // 2. Idempotency: first writer wins. A replay (Clerk retries) is a no-op.
-  const fresh = await withService((tx) =>
-    tx
-      .insert(webhookEvents)
-      .values({ provider: "clerk", eventId: id, eventType: event.type })
-      .onConflictDoNothing()
-      .returning({ id: webhookEvents.id }),
-  );
-  if (fresh.length === 0) return new Response("ok (duplicate)", { status: 200 });
+  if (!(await claimWebhookEvent("clerk", id, event.type))) return new Response("ok (duplicate)", { status: 200 });
 
   // 3. Apply. On failure, drop the idempotency row so Clerk's retry reprocesses.
   try {
@@ -84,11 +76,7 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     Sentry.captureException(err);
-    await withService((tx) =>
-      tx
-        .delete(webhookEvents)
-        .where(and(eq(webhookEvents.provider, "clerk"), eq(webhookEvents.eventId, id))),
-    );
+    await releaseWebhookEvent("clerk", id);
     return new Response("Processing error", { status: 500 });
   }
 

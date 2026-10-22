@@ -39,18 +39,6 @@ export function Section({ children, id, muted, style }: { children: ReactNode; i
   );
 }
 
-export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return <div style={{ borderRadius: 22, border: "1px solid rgba(var(--ink),.08)", background: "rgba(var(--ink),.025)", padding: 28, ...style }}>{children}</div>;
-}
-
-const Check = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38b6ff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 3 }}><polyline points="20 6 9 17 4 12" /></svg>
-);
-
-export function Bullet({ children }: { children: ReactNode }) {
-  return <li style={{ display: "flex", gap: 12, fontSize: 15, lineHeight: 1.5, color: "var(--text2)", padding: "6px 0", listStyle: "none" }}><Check />{children}</li>;
-}
-
 /** Long-form prose block (legal pages). */
 export function Prose({ children }: { children: ReactNode }) {
   return (

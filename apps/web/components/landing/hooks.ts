@@ -1,7 +1,23 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
-import { useReducedMotion } from "motion/react";
+import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
+
+const REDUCE = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCE);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/** The visitor's reduced-motion preference, live (false during SSR). The platform's own query — no animation library needed. */
+export function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCE).matches,
+    () => false,
+  );
+}
 
 /** Global animation heartbeat — drives all the demo sequences (design: 1150ms). */
 export function useTick(intervalMs = 1150) {

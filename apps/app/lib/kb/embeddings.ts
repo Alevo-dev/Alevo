@@ -9,8 +9,8 @@ const VOYAGE_URL = "https://api.voyageai.com/v1/embeddings";
 const MODEL = "voyage-3.5-lite";
 /** Max inputs per request; we batch larger sets. */
 const BATCH = 96;
-
-export const EMBEDDING_DIM = 1024;
+/** Batches in flight at once — enough to overlap network time without tripping rate limits. */
+const CONCURRENCY = 4;
 
 export function isEmbeddingsConfigured(): boolean {
   return Boolean(process.env.VOYAGE_API_KEY);
@@ -33,11 +33,14 @@ async function embed(texts: string[], inputType: "document" | "query"): Promise<
   return [...json.data].sort((a, b) => a.index - b.index).map((d) => d.embedding);
 }
 
-/** Embed KB chunks (document input type), batched. */
+/** Embed KB chunks (document input type), batched, a few batches at a time. */
 export async function embedDocuments(texts: string[]): Promise<number[][]> {
+  const batches: string[][] = [];
+  for (let i = 0; i < texts.length; i += BATCH) batches.push(texts.slice(i, i + BATCH));
   const out: number[][] = [];
-  for (let i = 0; i < texts.length; i += BATCH) {
-    out.push(...(await embed(texts.slice(i, i + BATCH), "document")));
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const results = await Promise.all(batches.slice(i, i + CONCURRENCY).map((b) => embed(b, "document")));
+    for (const r of results) out.push(...r);
   }
   return out;
 }

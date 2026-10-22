@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { sql } from "drizzle-orm";
 import { organizations } from "@alevo/db";
 import { withOrg } from "./session";
@@ -10,8 +11,10 @@ import { withOrg } from "./session";
  * single row. A platform admin can read every org (RLS allows it for the assist
  * view), so an unfiltered `findFirst` would return an arbitrary org. Scope to
  * `app.current_org_id()` so switching orgs always resolves the right one.
+ *
+ * `cache()`: deduped per server request (layout + page + action all share it).
  */
-export async function getCurrentOrg() {
+export const getCurrentOrg = cache(async () => {
   return withOrg(async (tx) => {
     const [org] = await tx
       .select()
@@ -20,4 +23,4 @@ export async function getCurrentOrg() {
       .limit(1);
     return org ?? null;
   });
-}
+});

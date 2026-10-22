@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
   addSuppression,
@@ -7,7 +7,8 @@ import {
   messages,
   recordConsent,
   revokeConsentForEmail,
-  webhookEvents,
+  claimWebhookEvent,
+  releaseWebhookEvent,
   withService,
 } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
@@ -98,14 +99,7 @@ export const POST = trackDeliveries("resend", async (req, track) => {
   if (!emailId) return new Response("ok (no email id)", { status: 200 });
 
   // Idempotency: first writer wins (Resend/svix retries are a no-op).
-  const fresh = await withService((tx) =>
-    tx
-      .insert(webhookEvents)
-      .values({ provider: "resend", eventId: emailId, eventType: event.type })
-      .onConflictDoNothing()
-      .returning({ id: webhookEvents.id }),
-  );
-  if (fresh.length === 0) return new Response("ok (duplicate)", { status: 200 });
+  if (!(await claimWebhookEvent("resend", emailId, event.type))) return new Response("ok (duplicate)", { status: 200 });
 
   try {
     // Which conversation is this a reply to?
@@ -151,31 +145,23 @@ export const POST = trackDeliveries("resend", async (req, track) => {
     // Same email delivered twice (providerRef dupe) → don't re-trigger the agent.
     if (inserted.length === 0) return new Response("ok (duplicate message)", { status: 200 });
 
-    // The contact replied by email → consent on the email channel (idempotent).
-    await recordConsent(conv.orgId, conv.contactId, "email", "inbound_reply", {
-      source: "email",
-    }).catch((e) => Sentry.captureException(e));
-
-    // Hand to the Qualifier. Side effect — a send failure must not fail the
-    // webhook (the message is already recorded; Resend would retry otherwise).
-    try {
-      await inngest.send({
-        name: "conversation/message.received",
-        data: { orgId: conv.orgId, conversationId },
-      });
-    } catch (sendError) {
-      Sentry.captureException(sendError);
-    }
+    // Independent side effects, run together: consent on the email channel
+    // (idempotent) and the hand-off to the Qualifier. Neither may fail the
+    // webhook — the message is already recorded (Resend would retry otherwise).
+    await Promise.all([
+      recordConsent(conv.orgId, conv.contactId, "email", "inbound_reply", { source: "email" }).catch((e) =>
+        Sentry.captureException(e),
+      ),
+      inngest
+        .send({ name: "conversation/message.received", data: { orgId: conv.orgId, conversationId } })
+        .catch((e) => Sentry.captureException(e)),
+    ]);
 
     return new Response("ok", { status: 200 });
   } catch (err) {
     Sentry.captureException(err);
     // Drop the idempotency row so Resend's retry reprocesses.
-    await withService((tx) =>
-      tx
-        .delete(webhookEvents)
-        .where(and(eq(webhookEvents.provider, "resend"), eq(webhookEvents.eventId, emailId))),
-    );
+    await releaseWebhookEvent("resend", emailId);
     return new Response("Processing error", { status: 500 });
   }
 });

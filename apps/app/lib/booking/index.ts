@@ -8,11 +8,13 @@ import type { BookingAdapter } from "./types";
 export type { BookingAdapter, BookParams, BookResult, Slot } from "./types";
 
 /**
- * Everything the factory needs to resolve an org's booking adapter. Precedence:
- * Cal.com (API key + event type) → a connected calendar (Google / M365). Link
- * mode (Calendly) has no adapter — it's handled by the Qualifier directly.
+ * Everything the factory needs to resolve an org's booking adapter. The org
+ * chooses ONE tool (`bookingTool`, Workspace → Agent → Booking); the adapter
+ * is built only for that tool, and only when it is configured. Link mode
+ * (Calendly) has no adapter — it's handled by the Qualifier directly.
  */
 export type BookingConfig = {
+  bookingTool: BookingProvider | null; // null = booking off
   calcomEventTypeId: number | null;
   calendarProvider: BookingProvider | null; // 'google' | 'm365' when connected
   calendarId: string | null;
@@ -24,6 +26,7 @@ export type BookingConfig = {
 
 export function bookingConfigFromProfile(profile: OrgProfile): BookingConfig {
   return {
+    bookingTool: profile.bookingTool,
     calcomEventTypeId: profile.calcomEventTypeId,
     calendarProvider: profile.calendarProvider,
     calendarId: profile.calendarId,
@@ -35,19 +38,20 @@ export function bookingConfigFromProfile(profile: OrgProfile): BookingConfig {
 }
 
 /**
- * Resolve the org's API booking adapter, or null if none is connected. Cal.com
- * wins when its key + event type are set; otherwise a connected Google / M365
- * calendar. (Calendly link mode returns null here by design.)
+ * Resolve the org's API booking adapter for its chosen tool, or null when
+ * booking is off or the tool isn't configured yet. (Calendly link mode returns
+ * null here by design.)
  */
 export async function getBookingAdapter(
   orgId: string,
   cfg: BookingConfig,
 ): Promise<BookingAdapter | null> {
-  if (cfg.calcomEventTypeId) {
-    const calcom = await makeCalcomAdapter(orgId, cfg.calcomEventTypeId);
-    if (calcom) return calcom;
+  if (cfg.bookingTool === "calcom") {
+    if (!cfg.calcomEventTypeId) return null;
+    return makeCalcomAdapter(orgId, cfg.calcomEventTypeId);
   }
-  if (cfg.calendarProvider && cfg.calendarId) {
+  const calendarChosen = cfg.bookingTool === "google" || cfg.bookingTool === "m365";
+  if (calendarChosen && cfg.calendarProvider === cfg.bookingTool && cfg.calendarId) {
     const calendar: CalendarConfig = {
       calendarId: cfg.calendarId,
       lengthMin: cfg.bookingLengthMin,

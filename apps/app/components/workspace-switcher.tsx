@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { ChevronDown, Plus, Settings, Trash2, Upload } from "lucide-react";
@@ -12,7 +13,12 @@ import { Dialog } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
 import { Menu, type MenuItem } from "@/components/ui/menu";
-import { OrganizationDialog } from "@/components/workspace/organization-dialog";
+// The Manage dialog (General + Members tabs) is a large client subtree opened
+// rarely — load it on demand rather than shipping it with the sidebar.
+const OrganizationDialog = dynamic(
+  () => import("@/components/workspace/organization-dialog").then((m) => m.OrganizationDialog),
+  { ssr: false },
+);
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
@@ -195,7 +201,7 @@ export function WorkspaceSwitcher() {
       />
       {error && <p className="mt-1 text-label text-danger">{error}</p>}
 
-      <OrganizationDialog open={manageOpen} onClose={() => setManageOpen(false)} />
+      {manageOpen && <OrganizationDialog open onClose={() => setManageOpen(false)} />}
 
       <Dialog open={createOpen} title="Create workspace" onClose={closeCreate} showClose>
         <form onSubmit={create} noValidate className="flex flex-col gap-5">

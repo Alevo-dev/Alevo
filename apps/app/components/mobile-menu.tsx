@@ -55,7 +55,10 @@ export function MobileMenu({ plan }: { plan: PlanCard }) {
       >
         <div className="flex items-center justify-between gap-2 border-b border-hairline px-4 py-4 shrink-0">
           <div className="min-w-0 flex-1">
-            <WorkspaceSwitcher />
+            {/* Mounted only while open: the switcher runs Clerk's org list fetch
+                and carries the Manage/Create dialogs — the desktop sidebar has
+                its own copy, so a closed drawer must not run a second one. */}
+            {isOpen && <WorkspaceSwitcher />}
           </div>
           <button
             onClick={closeMenu}

@@ -5,12 +5,14 @@ import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/li
 import { FOLLOWUPS } from "@/lib/cadence/schedule";
 import { nextSendTime } from "@/lib/cadence/send-window";
 import { ingestDocument } from "@/lib/kb/ingest";
+import { recordCall, storeRecording } from "@/lib/voice/process-call";
 import {
   inngest,
   type ConversationAwaitingReplyData,
   type ConversationMessageReceivedData,
   type KbDocumentIngestData,
   type OrgProvisionedData,
+  type VoiceCallEndedData,
 } from "./client";
 
 /**
@@ -194,10 +196,30 @@ export const ingestKbDocument = inngest.createFunction(
   },
 );
 
+/**
+ * Runs once per finished inbound call (from the Vapi end-of-call report). The
+ * recording download is its own step, since it calls a vendor and can retry on
+ * its own; the database writes and alerts are one step after it.
+ */
+export const processVoiceCall = inngest.createFunction(
+  {
+    id: "process-voice-call",
+    concurrency: { key: "event.data.orgId", limit: 4 },
+    retries: 2,
+    triggers: [{ event: "voice/call.ended" }],
+  },
+  async ({ event, step }) => {
+    const data = event.data as VoiceCallEndedData;
+    const recordingKey = await step.run("store-recording", () => storeRecording(data));
+    return step.run("record-call", () => recordCall(data, recordingKey));
+  },
+);
+
 /** Every Inngest function must be registered in the serve route. */
 export const functions = [
   orgProvisioned,
   qualifyConversation,
   conversationCadence,
   ingestKbDocument,
+  processVoiceCall,
 ];

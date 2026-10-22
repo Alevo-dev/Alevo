@@ -18,9 +18,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Meetings" };
 
 export default async function MeetingsPage() {
-  const tz = await getOrgTimezone();
-  // Explicit active-org scope (platform admins bypass RLS).
-  const rows = await withOrg((tx) =>
+  // Timezone + list are independent: one round trip. (Explicit active-org
+  // scope on the list — platform admins bypass RLS.)
+  const [tz, rows] = await Promise.all([
+    getOrgTimezone(),
+    withOrg((tx) =>
     tx
       .select({
         id: meetings.id,
@@ -39,7 +41,8 @@ export default async function MeetingsPage() {
       .leftJoin(contacts, eq(contacts.id, meetings.contactId))
       .where(sql`${meetings.orgId} = (select app.current_org_id())`)
       .orderBy(desc(meetings.startAt)),
-  );
+    ),
+  ]);
 
   // Outcome figures from the same rows (plan.md §11 KPIs).
   const booked = rows.filter((m) => m.status !== "cancelled").length;

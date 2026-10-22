@@ -1,5 +1,7 @@
 import "server-only";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { appUrl } from "@/lib/app-url";
+import { safeEqual } from "@/lib/crypto/safe-equal";
+import { createHmac } from "node:crypto";
 
 /**
  * OAuth plumbing for the direct calendar adapters (Google Calendar, Microsoft
@@ -22,10 +24,6 @@ function env(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`${name} is not set`);
   return v;
-}
-
-function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
 const microsoftTenant = () => process.env.MICROSOFT_OAUTH_TENANT ?? "common";
@@ -111,9 +109,7 @@ export function verifyState(
   const [payload, sig] = state.split(".");
   if (!payload || !sig) return null;
   const expected = createHmac("sha256", masterKey()).update(payload).digest("base64url");
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  if (!safeEqual(sig, expected)) return null;
   try {
     const obj = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
       o?: string;

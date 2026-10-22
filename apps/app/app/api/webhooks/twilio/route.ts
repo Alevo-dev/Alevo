@@ -133,27 +133,22 @@ export const POST = trackDeliveries("twilio", async (req, track) => {
       return { conversationId, contactId, createdConversation, isNewMessage: inserted.length > 0 };
     });
 
-    // Meter a brand-new SMS conversation (parity with the hosted form, rule 11).
-    if (result.createdConversation) await recordUsage(orgId, "inbound_conversations");
-
-    // The contact texted in → consent on the SMS channel (idempotent).
-    if (result.isNewMessage) {
-      await recordConsent(orgId, result.contactId, "sms", "inbound_message", {
-        source: "sms",
-      }).catch((e) => Sentry.captureException(e));
-    }
-
-    // Only hand to the Qualifier when we actually recorded a new message.
-    if (result.isNewMessage) {
-      try {
-        await inngest.send({
-          name: "conversation/message.received",
-          data: { orgId, conversationId: result.conversationId },
-        });
-      } catch (sendError) {
-        Sentry.captureException(sendError);
-      }
-    }
+    // Independent side effects, run together. Metering is for a brand-new
+    // conversation (rule 11); consent + the Qualifier hand-off only when we
+    // actually recorded a new message. The best-effort ones never fail the webhook.
+    await Promise.all([
+      result.createdConversation ? recordUsage(orgId, "inbound_conversations") : null,
+      result.isNewMessage
+        ? recordConsent(orgId, result.contactId, "sms", "inbound_message", { source: "sms" }).catch((e) =>
+            Sentry.captureException(e),
+          )
+        : null,
+      result.isNewMessage
+        ? inngest
+            .send({ name: "conversation/message.received", data: { orgId, conversationId: result.conversationId } })
+            .catch((e) => Sentry.captureException(e))
+        : null,
+    ]);
     return twiml();
   } catch (err) {
     Sentry.captureException(err);

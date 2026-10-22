@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "@alevo/tokens/tokens.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -52,7 +50,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Fonts (provided by next/font in layout.tsx) */
-  --font-sans: var(--font-body);
+  --font-sans: var(--font-geist);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
 

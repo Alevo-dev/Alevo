@@ -2,28 +2,16 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import type { BookingProvider } from "@alevo/db";
-import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
-import { FieldError, Input } from "@/components/ui/field";
-import { Pill } from "@/components/ui/pill";
+import { Input } from "@/components/ui/field";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
 import { Switch } from "@/components/ui/switch";
 import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
 import { useActionToast } from "@/lib/ui/use-action-toast";
-import {
-  disconnectCalendar,
-  saveAgentSettings,
-  type ActionState,
-  type AgentErrors,
-  type AgentValues,
-  type DisconnectState,
-} from "./actions";
+import { saveAgentSettings, type ActionState, type AgentErrors, type AgentValues } from "./actions";
 
 const INITIAL: ActionState = {};
-const DISCONNECT_INITIAL: DisconnectState = {};
 
 /** Common US/Canada timezones (empty = fall back to the app default). */
 const TIMEZONES = [
@@ -50,10 +38,10 @@ function hourOptions(from: number, to: number): SelectOption[] {
 const HOURS_START = hourOptions(0, 23);
 const HOURS_END = hourOptions(1, 24);
 const TIMEZONE_OPTIONS: SelectOption[] = TIMEZONES.map(([value, label]) => ({ value, label }));
-const LENGTH_OPTIONS: SelectOption[] = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} minutes` }));
+export const LENGTH_OPTIONS: SelectOption[] = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} minutes` }));
 
 /** Two hour selects side by side (send window, booking hours). */
-function HourRange({
+export function HourRange({
   startId,
   endId,
   startValue,
@@ -135,61 +123,15 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
       </Card>
 
       <Card>
-        <CardHeader title="Channels and booking" hint="Leave a field blank to leave that channel or booking mode off." />
+        <CardHeader title="Channels" hint="Leave the number blank to keep SMS off. Booking has its own section below." />
         <div className="mt-6">
           <SettingRow
             label="SMS number"
             htmlFor="smsFromNumber"
-            hint="Your Twilio number in E.164 format. The agent texts from it, and replies route back here."
+            hint="Your Twilio number in E.164 format. The agent texts from it, replies route back here, and calls to it are answered when phone calls are on."
             error={e("smsFromNumber")}
           >
             <Input id="smsFromNumber" name="smsFromNumber" defaultValue={v("smsFromNumber")} invalid={!!e("smsFromNumber")} placeholder="+15551234567" className="font-mono" />
-          </SettingRow>
-          <SettingRow
-            label="Cal.com event type ID"
-            htmlFor="calcomEventTypeId"
-            hint="With a Cal.com API key set in Integrations, this turns on the booking tools."
-            error={e("calcomEventTypeId")}
-          >
-            <Input
-              id="calcomEventTypeId"
-              name="calcomEventTypeId"
-              inputMode="numeric"
-              defaultValue={v("calcomEventTypeId")}
-              invalid={!!e("calcomEventTypeId")}
-              placeholder="123456"
-              className="font-mono"
-            />
-          </SettingRow>
-          <SettingRow
-            label="Calendly scheduling link"
-            htmlFor="calendlyUrl"
-            hint="The agent sends this for leads to book themselves. Cal.com takes precedence if both are set."
-            error={e("calendlyUrl")}
-          >
-            <Input id="calendlyUrl" name="calendlyUrl" defaultValue={v("calendlyUrl")} invalid={!!e("calendlyUrl")} placeholder="https://calendly.com/your-team/30min" />
-          </SettingRow>
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Calendar booking"
-          hint="Used with a connected Google or Microsoft 365 calendar (below). The agent offers open weekday times inside this window, in the contact's timezone, and books with a video link. Cal.com uses its own availability rules instead."
-        />
-        <div className="mt-6">
-          <SettingRow label="Meeting length" htmlFor="bookingLengthMin">
-            <Select id="bookingLengthMin" name="bookingLengthMin" options={LENGTH_OPTIONS} defaultValue={String(v("bookingLengthMin"))} onChange={touch} />
-          </SettingRow>
-          <SettingRow label="Working hours" hint="Earliest and latest start for a booked meeting." error={e("bookingHours")}>
-            <HourRange
-              startId="bookingHoursStart"
-              endId="bookingHoursEnd"
-              startValue={v("bookingHoursStart")}
-              endValue={v("bookingHoursEnd")}
-              invalid={!!e("bookingHours")}
-              onChange={touch}
-            />
           </SettingRow>
         </div>
       </Card>
@@ -200,59 +142,3 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
   );
 }
 
-const PROVIDER_LABEL: Record<string, string> = {
-  google: "Google Calendar",
-  m365: "Microsoft 365",
-};
-
-/**
- * Connect / disconnect a booking calendar over OAuth. Lives outside the agent
- * form (it has its own action + the connect links are plain navigations).
- */
-export function CalendarConnection({ provider, accountEmail }: { provider: BookingProvider | null; accountEmail: string | null }) {
-  const [state, action, pending] = useActionState(disconnectCalendar, DISCONNECT_INITIAL);
-  useActionToast(state, "Calendar disconnected.");
-
-  const connected = provider === "google" || provider === "m365";
-
-  return (
-    <Card>
-      <CardHeader
-        title="Booking calendar"
-        hint="Connect the calendar the agent should book on. It reads your free/busy and creates events with a Google Meet or Teams link. One calendar per workspace."
-        aside={connected ? <Pill tone="success">Connected</Pill> : <Pill tone="muted">Not connected</Pill>}
-      />
-
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        {connected ? (
-          <>
-            <p className="text-sm">
-              <span className="font-semibold">{PROVIDER_LABEL[provider] ?? provider}</span>
-              {accountEmail && <span className="text-ink-muted">, {accountEmail}</span>}
-            </p>
-            <form action={action}>
-              <ConfirmSubmit
-                loading={pending}
-                title="Disconnect this calendar?"
-                description="The agent stops booking on it and falls back to Cal.com, Calendly or a handoff. Existing meetings are not touched."
-                confirmLabel="Disconnect"
-              >
-                {pending ? "Disconnecting…" : "Disconnect"}
-              </ConfirmSubmit>
-            </form>
-          </>
-        ) : (
-          <div className="flex flex-wrap gap-3">
-            <a href="/api/oauth/google/start" className={buttonClass("secondary")}>
-              Connect Google Calendar
-            </a>
-            <a href="/api/oauth/microsoft/start" className={buttonClass("secondary")}>
-              Connect Microsoft 365
-            </a>
-          </div>
-        )}
-      </div>
-      <FieldError>{state.error}</FieldError>
-    </Card>
-  );
-}

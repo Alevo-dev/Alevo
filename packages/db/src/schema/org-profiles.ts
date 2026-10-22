@@ -49,6 +49,18 @@ export const orgProfiles = pgTable(
     bookingLengthMin: integer("booking_length_min").notNull().default(30),
     bookingHoursStart: integer("booking_hours_start").notNull().default(9),
     bookingHoursEnd: integer("booking_hours_end").notNull().default(17),
+    // The one booking tool the org chose (migration 0019); null = booking off.
+    // The chosen tool must also be configured (Cal.com key + event type, a
+    // connected calendar, or a Calendly link) before the agent books through it.
+    bookingTool: bookingProvider("booking_tool"),
+    // Inbound voice (migration 0018). Calls arrive on `smsFromNumber`, imported
+    // into Vapi, which runs the assistant built from this profile.
+    voiceEnabled: boolean("voice_enabled").notNull().default(false),
+    voiceAfterHours: text("voice_after_hours", { enum: ["voicemail", "take_message"] })
+      .notNull()
+      .default("voicemail"),
+    vapiAssistantId: text("vapi_assistant_id"),
+    vapiPhoneNumberId: text("vapi_phone_number_id"),
     ...timestamps,
   },
   (t) => [index("org_profiles_org_id_idx").on(t.orgId)],

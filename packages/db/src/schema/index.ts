@@ -10,6 +10,7 @@ export * from "./knowledge";
 export * from "./suppressions";
 export * from "./meetings";
 export * from "./webhook-deliveries";
+export * from "./calls";
 
 import * as identity from "./identity";
 import * as billing from "./billing";
@@ -23,6 +24,7 @@ import * as knowledge from "./knowledge";
 import * as suppressions from "./suppressions";
 import * as meetings from "./meetings";
 import * as webhookDeliveries from "./webhook-deliveries";
+import * as calls from "./calls";
 
 /** Aggregate passed to drizzle() so `tx.query.*` is available for every table. */
 export const schema = {
@@ -38,4 +40,5 @@ export const schema = {
   ...suppressions,
   ...meetings,
   ...webhookDeliveries,
+  ...calls,
 };

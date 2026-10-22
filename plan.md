@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-21
+**Last updated:** 2026-10-22
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -238,7 +238,7 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 - [x] Conversation counted in `usage_counters` (`recordUsage` on inbound capture)
 - [x] Conversation view (thread, score + reasons, status) + "reply as contact" tester
 
-### Sprint 3 — Booking + consent (21–29h) — ✅ Cal.com + Calendly + Google/M365 booking, consent, outcomes all built (Google/M365 pending live OAuth-app setup); PSA write-back is Sprint 5
+### Sprint 3 — Booking + consent (21–29h) — ✅ Cal.com + Calendly + Google/M365 booking, consent, outcomes all built (Google/M365 connections live 2026-10-22; Calendly paused). Booking is now ONE explicit tool per org (migration 0019, Workspace → Agent → Booking) instead of field precedence; PSA write-back is Sprint 5
 
 Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are set up on Cal.com; Google/M365 users get basic booking, and if they later want round-robin or self-serve rescheduling, they move to Cal.com.
 
@@ -270,13 +270,13 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [x] Qualifier sends the MSP's Calendly link (`send_booking_link`, with `utm_source`/`utm_content` tags); on voice, the agent says it will text the link and sends it after the call
 - [x] Meeting counted when detected via the Calendly `invitee.created` webhook (`/api/webhooks/calendly`, signature-verified) → `meetings` row (`provider = calendly`) + conversation `booked`; `invitee.canceled` reopens it. Reschedule/cancel handled by Calendly's own links.
 
-### Sprint 4 — Inbound voice (25–35h)
-- [ ] Per-org Twilio number provisioning
-- [ ] Vapi assistant from org profile + KB, same Qualifier logic
-- [ ] Recording-consent disclosure at call start
-- [ ] Flow: greet → new business vs existing client → qualify → book on call or warm-transfer → voicemail fallback
-- [ ] Post-call webhook: recording to R2, transcript stored, records updated, voice minutes metered, Slack alert
-- [ ] Per-org after-hours behaviour
+### Sprint 4 — Inbound voice (25–35h) — 🟡 built, awaiting one live test call (Vapi key + number); not yet verified against a real call
+- [~] Per-org Twilio number provisioning — the org's existing number (Agent → phone number) is imported into Vapi; buying a new number is not built
+- [x] Vapi assistant from org profile + KB — profile-built prompt; KB via the `lookup_knowledge` tool (same retrieval as the Qualifier)
+- [x] Recording-consent disclosure at call start (in the greeting, every mode); caller consent recorded on the voice channel
+- [~] Flow: greet → qualify → book on call → take a message / escalate. Built. Not built: new business vs existing client split, warm-transfer
+- [x] Post-call webhook: recording to R2, transcript stored, call record + summary in the thread, voice minutes metered, Slack alert (via Inngest `process-voice-call`)
+- [x] Per-org after-hours behaviour: outside booking hours (weekdays, org timezone) the agent takes a message (voicemail-style or detailed)
 
 ### Sprint 5 — PSA write-back, dashboard, notifications (20–25h)
 - [ ] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking

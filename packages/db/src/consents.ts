@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { consents, contacts, type Channel } from "./schema/conversations";
 import { withService } from "./with-tenant";
 
@@ -59,27 +59,27 @@ export async function revokeConsentForContact(
   );
 }
 
-/** Revoke email consent for every contact in the org with this email address. */
+/** Revoke email consent for every contact in the org with this email address (one statement). */
 export async function revokeConsentForEmail(orgId: string, email: string): Promise<void> {
   const e = email.trim().toLowerCase();
   if (!e) return;
-  await withService(async (tx) => {
-    const rows = await tx
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(and(eq(contacts.orgId, orgId), sql`lower(${contacts.email}) = ${e}`));
-    for (const c of rows) {
-      await tx
-        .update(consents)
-        .set({ revokedAt: new Date() })
-        .where(
-          and(
-            eq(consents.orgId, orgId),
-            eq(consents.contactId, c.id),
-            eq(consents.channel, "email"),
-            isNull(consents.revokedAt),
+  await withService((tx) =>
+    tx
+      .update(consents)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(consents.orgId, orgId),
+          eq(consents.channel, "email"),
+          isNull(consents.revokedAt),
+          inArray(
+            consents.contactId,
+            tx
+              .select({ id: contacts.id })
+              .from(contacts)
+              .where(and(eq(contacts.orgId, orgId), sql`lower(${contacts.email}) = ${e}`)),
           ),
-        );
-    }
-  });
+        ),
+      ),
+  );
 }

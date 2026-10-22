@@ -1,14 +1,15 @@
+import { cache } from "react";
 import { sql } from "drizzle-orm";
 import { orgProfiles } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
 import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/cadence/send-window";
 
 /**
- * The active org's display timezone (Settings → Qualifier → Default timezone),
+ * The active org's display timezone (Workspace → Agent → Default timezone),
  * falling back to the app default. Server-only; scoped explicitly to the
- * current org (platform admins bypass RLS).
+ * current org (platform admins bypass RLS). Deduped per request.
  */
-export async function getOrgTimezone(): Promise<string> {
+export const getOrgTimezone = cache(async (): Promise<string> => {
   const [row] = await withOrg((tx) =>
     tx
       .select({ timezone: orgProfiles.timezone })
@@ -18,4 +19,4 @@ export async function getOrgTimezone(): Promise<string> {
   );
   const tz = row?.timezone;
   return tz && isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;
-}
+});

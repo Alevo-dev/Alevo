@@ -23,8 +23,12 @@ marketing site is `apps/web`. Full product plan: [`/plan.md`](../../plan.md).
 4. **App roles in our DB.** enum `app_role ('viewer','rep','admin','owner')`.
    Clerk's two free roles only gate "can manage membership". `requireRole()`
    checks the hierarchy.
-7. **Verify every webhook.** Signature-verify (svix for Clerk); handlers are
-   idempotent on the provider event id via `webhook_events`.
+7. **Verify every webhook.** Signature-verify (svix for Clerk/Resend via
+   `lib/webhooks/verify.ts`; HMAC compares through `lib/crypto/safe-equal.ts`);
+   handlers are idempotent on the provider event id via `webhook_events` —
+   `claimWebhookEvent()` first-writer-wins, `releaseWebhookEvent()` on a processing
+   failure so the provider's retry reprocesses. Provider routes are wrapped in
+   `trackDeliveries()` (feeds the Integrations health card).
 9. **Heavy AI work runs as Inngest steps** in Next.js functions (not Supabase
    Edge Functions). _(Inngest baseline lands in a later phase.)_
 12. **Per-org secrets are encrypted** and never returned to the client.
@@ -51,8 +55,8 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   `bg-raised`, `border-hairline` (dividers) / `border-control` (inputs), `text-ink` /
   `text-ink-muted`, `bg-brand` + `text-on-brand` (never white on brand), `bg-violet`,
   `text-success|warning|danger`, `text-title|heading|metric|label`, `font-display|mono`.
-  The shadcn aliases (`bg-background`, `text-muted-foreground`, …) still resolve to
-  the same tokens for legacy markup. No raw hex in components.
+  There are no shadcn alias colours (`bg-background`, `text-muted-foreground`, …)
+  any more — only the design-system names above. No raw hex in components.
 - **Primitives** (`components/ui/`): `Button`/`buttonClass` (primary · accent ·
   secondary · ghost · danger; sm/md), `Card`/`CardHeader`, `Field`/`Input`/`Textarea`/
   `Select`/`FieldError` (red border + message beneath — rule 13), `SettingRow`
@@ -106,9 +110,12 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
     (`components/auth/choose-organization.tsx`, registered as `taskUrls`, public in proxy).
 - **Workspace (not "Settings"):** the org's setup lives under `/workspace/*` — Business
   profile (`profile/`: company, offering, ICP, criteria, disqualifiers, voice →
-  `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, channels, booking, calendar →
-  `saveAgentSettings`; enabling requires the profile's three required fields), Knowledge,
-  Integrations. (No Files tab: the `files` table is a storage ledger behind the
+  `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, SMS number →
+  `saveAgentSettings`; **Booking** = one switch + ONE chosen tool with only that tool's
+  fields beneath it → `booking-actions.ts`; **Phone calls** → `voice-actions.ts`;
+  enabling the agent requires the profile's three required fields), Knowledge,
+  Integrations (per-service status cards; Manage dialogs hold Slack's webhook and
+  Calendly's link + signing key, and point booking tools back to Agent → Booking). (No Files tab: the `files` table is a storage ledger behind the
   Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
   `/settings/*` redirects (next.config.ts).
 - **Manage workspace dialog:** the workspace picker (`components/workspace-switcher.tsx`)
@@ -139,6 +146,12 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
     No safety net: scope every write by our ids in code. Server-only.
 - **`@alevo/auth`** — `withOrg(fn)` wraps `withTenant` with the verified Clerk
   session. Use it for all tenant reads/writes in server components/actions.
+  `getCurrentUser`, `getCurrentOrg`, `requireRole`'s role lookup and
+  `lib/org-timezone.ts` are wrapped in React `cache()`: call them wherever needed
+  (layout, page, action) — each runs once per request.
+- **Public origin:** `lib/app-url.ts` — `appUrl()` (`NEXT_PUBLIC_APP_URL`, dev
+  fallback `:3001`) and `requestOrigin(req)` (forwarded headers). Never inline the
+  fallback again (the OAuth files once disagreed on the port).
 - SQL migrations in `/supabase/migrations/` are the **single source of truth**
   (schema + RLS + `app.*` functions + grants). `packages/db/src/schema/*` mirrors
   them for types; regenerate with `pnpm --filter @alevo/db db:pull`.
@@ -193,6 +206,13 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   (`google`/`m365`) + `calendar_id` + `calendar_account_email` +
   `booking_length_min` / `booking_hours_start` / `booking_hours_end`. OAuth
   refresh tokens live in `org_secrets`, not here.
+- **0017** `webhook_deliveries` (one row per inbound provider webhook, `ok`/`failed`;
+  feeds the Integrations "Connection health" card; written via `trackDeliveries`).
+- **0018** inbound voice: `calls` (one row per Vapi call: transcript, summary,
+  recording key, outcome) + `org_profiles.voice_enabled` / `voice_after_hours` /
+  `vapi_assistant_id` / `vapi_phone_number_id`.
+- **0019** `org_profiles.booking_tool` — the ONE chosen booking tool (null = off),
+  backfilled from the old precedence. See Booking below.
 
 ## The Qualifier (Claude agent)
 
@@ -291,22 +311,27 @@ each org sets its own number in Workspace → Agent (`org_profiles.sms_from_numb
 
 ## Booking (Cal.com + Calendly + Google/M365)
 
-Lets the Qualifier book meetings instead of only handing off. The context loader
-computes a per-org **`bookingMode`**, in precedence order: **`calcom`** (Cal.com
-key + event type), else **`google`** / **`m365`** (a connected calendar — OAuth
-refresh token + `calendar_id`), else **`calendly`** (link mode, a Calendly URL),
-else `null` (hand off). Cal.com, Google, and M365 are all *API booking* and share
+Lets the Qualifier book meetings instead of only handing off. The org picks ONE
+tool (`org_profiles.booking_tool`, migration 0019; null = booking off) and the
+context loader computes **`bookingMode`** from it: **`calcom`** (needs key + event
+type), **`google`** / **`m365`** (needs that calendar connected — refresh token +
+`calendar_id`), **`calendly`** (needs a Calendly URL), else `null` (hand off). A
+chosen tool that isn't configured yet also yields `null` — there is no longer any
+precedence over whichever fields happen to be filled in. Cal.com, Google, and M365 are all *API booking* and share
 the same tools (`check_availability` + `book_meeting`); Calendly is *link mode*
 (`send_booking_link`). `lib/booking/` is a provider-agnostic adapter
 (`BookingAdapter`: `availableSlots` + `book` + `cancel` + `reschedule`), resolved
 by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
 
-- **Connect (per org):** Cal.com API key + webhook secret in Settings →
-  Integrations (`org_secrets`); the event-type ID in Workspace → Agent
-  (`org_profiles.calcom_event_type_id`). Or a Calendly scheduling link in
-  Workspace → Agent (`org_profiles.calendly_url`) + its webhook signing key
-  (`calendly_webhook_secret`) in Integrations. Or a Google / Microsoft 365
-  calendar via OAuth (the "Booking calendar" block in Workspace → Agent).
+- **Connect (per org):** Workspace → Agent → **Booking** (`booking-ui.tsx` /
+  `booking-actions.ts`): a switch, then one tool. Cal.com: API key + webhook
+  secret (`org_secrets`) + event-type ID, all in that section (one Save). Google /
+  Microsoft 365: a Connect button there (`connectCalendar` saves the form, then
+  redirects into the OAuth start route) plus meeting length / working hours;
+  Disconnect is a `ConfirmSubmit formAction` inside the same form. Calendly: the
+  scheduling link (`org_profiles.calendly_url`) + webhook signing key live in
+  Integrations → Calendly → Manage (`calendly-form.tsx`); Booking only points there.
+  Turning booking off clears only the choice — each tool's details stay stored.
 - **Book (Cal.com):** `check_availability` → `GET /v2/slots`
   (`cal-api-version: 2024-09-04`); `book_meeting` → `POST /v2/bookings`
   (`cal-api-version: 2026-02-25`) with `metadata.alevoOrgId`/`alevoConversationId`.
