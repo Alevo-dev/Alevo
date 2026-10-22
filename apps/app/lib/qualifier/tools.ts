@@ -136,6 +136,11 @@ const clampScore = (n: unknown) =>
   typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : null;
 
 /** Scope every write to this org + conversation (service path has no RLS). */
+/** Guard for status writes: the agent never overwrites a booking. */
+function notBooked() {
+  return sql`${conversations.status} <> 'booked'`;
+}
+
 function scoped(target: DispatchTarget) {
   return and(
     eq(conversations.id, target.conversationId),
@@ -308,11 +313,14 @@ export async function dispatchTool(
       if (!SETTABLE_STATUS.includes(status as SettableStatus)) {
         return `Error: status must be one of ${SETTABLE_STATUS.join(", ")}.`;
       }
+      // A booking is final: "booked" means the meeting is on the calendar, while
+      // "handed_off" means a person still has to reach out to get one booked.
+      if (effects.booked) return "The meeting is already booked — status unchanged. You're done.";
       await withService((tx) =>
         tx
           .update(conversations)
           .set({ status: status as SettableStatus, updatedAt: new Date() })
-          .where(scoped(target)),
+          .where(and(scoped(target), notBooked())),
       );
       effects.status = status as SettableStatus;
       // Alert the org the moment a lead is handed to a human (best-effort Slack).
@@ -322,14 +330,15 @@ export async function dispatchTool(
 
     case "escalate_to_human": {
       const reason = String(input.reason ?? "").trim() || undefined;
+      // Still alert the team, but never downgrade a booked conversation.
       await withService((tx) =>
         tx
           .update(conversations)
           .set({ status: "handed_off", updatedAt: new Date() })
-          .where(scoped(target)),
+          .where(and(scoped(target), notBooked())),
       );
       await notifyHandoff(target, { urgent: true, reason });
-      effects.status = "handed_off";
+      if (!effects.booked) effects.status = "handed_off";
       effects.escalated = true;
       return "Escalated to a human and notified the team.";
     }
@@ -378,6 +387,7 @@ export async function dispatchTool(
         attendeeTimeZone: target.contactTimezone ?? "UTC",
         conversationId: target.conversationId,
         orgId: target.orgId,
+        orgName: target.orgName,
       });
       if (!result.ok) return `Booking failed (${result.error}). Offer another time or hand off.`;
 

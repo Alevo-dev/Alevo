@@ -132,7 +132,7 @@ export function WorkspaceSwitcher() {
         aria-label="Switch workspace"
         size="lg"
         disabled={!isLoaded || switching}
-        buttonClassName="flex w-full items-center gap-2.5 rounded-sm bg-transparent px-2.5 py-1.5 text-left transition-colors hover:bg-raised"
+        buttonClassName="flex w-full items-center gap-2.5 rounded-sm bg-transparent px-0 py-1.5 text-left transition-colors hover:bg-raised"
         button={
           <>
             <WorkspaceAvatar

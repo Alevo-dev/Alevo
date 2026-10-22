@@ -46,8 +46,12 @@ const PROVIDERS: Record<CalendarOAuthProvider, ProviderSpec> = {
     clientSecret: () => env("GOOGLE_OAUTH_CLIENT_SECRET"),
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: () => "https://oauth2.googleapis.com/token",
-    // `calendar` covers free/busy + event write; openid+email names the account.
-    scope: "openid email https://www.googleapis.com/auth/calendar",
+    // Least privilege: `calendar.events` (create/patch/delete the booking) +
+    // `calendar.freebusy` (availability). Both are "sensitive" scopes, so the
+    // Cloud project needs OAuth verification before non-test users can connect
+    // without the unverified-app warning. openid+email names the account.
+    scope:
+      "openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy",
     async accountEmail(accessToken) {
       const res = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
         headers: { authorization: `Bearer ${accessToken}` },
@@ -85,19 +89,25 @@ export function redirectUri(provider: CalendarOAuthProvider): string {
   return `${appUrl()}/api/oauth/${path}/callback`;
 }
 
-// ── Signed state (CSRF + carries the org through the round-trip) ─────────────
+// ── Signed state (CSRF + carries the org + return origin through the round-trip) ──
 
-export function signState(orgId: string, provider: CalendarOAuthProvider): string {
-  const payload = Buffer.from(JSON.stringify({ o: orgId, p: provider, t: Date.now() })).toString(
-    "base64url",
-  );
+/**
+ * `returnTo` is the origin the admin started from (e.g. `http://localhost:3001`
+ * in dev, where their session cookie lives). The callback lands on the public
+ * app URL, which in dev is the ngrok host — a different cookie jar — so without
+ * this the admin would be bounced to sign-in after a successful connect.
+ */
+export function signState(orgId: string, provider: CalendarOAuthProvider, returnTo: string): string {
+  const payload = Buffer.from(
+    JSON.stringify({ o: orgId, p: provider, t: Date.now(), r: returnTo }),
+  ).toString("base64url");
   const sig = createHmac("sha256", masterKey()).update(payload).digest("base64url");
   return `${payload}.${sig}`;
 }
 
 export function verifyState(
   state: string,
-): { orgId: string; provider: CalendarOAuthProvider } | null {
+): { orgId: string; provider: CalendarOAuthProvider; returnTo: string | null } | null {
   const [payload, sig] = state.split(".");
   if (!payload || !sig) return null;
   const expected = createHmac("sha256", masterKey()).update(payload).digest("base64url");
@@ -109,10 +119,11 @@ export function verifyState(
       o?: string;
       p?: string;
       t?: number;
+      r?: string;
     };
     if (!obj.o || (obj.p !== "google" && obj.p !== "m365") || !obj.t) return null;
     if (Date.now() - obj.t > STATE_TTL_MS) return null;
-    return { orgId: obj.o, provider: obj.p };
+    return { orgId: obj.o, provider: obj.p, returnTo: typeof obj.r === "string" ? obj.r : null };
   } catch {
     return null;
   }
@@ -120,14 +131,18 @@ export function verifyState(
 
 // ── Auth URL + token exchange ────────────────────────────────────────────────
 
-export function buildAuthUrl(provider: CalendarOAuthProvider, orgId: string): string {
+export function buildAuthUrl(
+  provider: CalendarOAuthProvider,
+  orgId: string,
+  returnTo: string,
+): string {
   const spec = PROVIDERS[provider];
   const qs = new URLSearchParams({
     client_id: spec.clientId(),
     redirect_uri: redirectUri(provider),
     response_type: "code",
     scope: spec.scope,
-    state: signState(orgId, provider),
+    state: signState(orgId, provider, returnTo),
     access_type: "offline", // Google: get a refresh token
     prompt: "consent", // force a refresh token on re-consent
   });

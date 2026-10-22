@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { deleteOrgSecret, recordAudit, setOrgSecret } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole } from "@alevo/auth";
-import { getSecretSpec, isSecretKey } from "@/lib/secrets-registry";
+import { FIELD_PREFIX, getSecretSpec, isSecretKey, type SecretKey } from "@/lib/secrets-registry";
 import { notifySlack } from "@/lib/notifications/slack";
 
 export type ActionState = {
@@ -25,29 +25,50 @@ function fail(error: unknown): ActionState {
   return { error: error instanceof Error ? error.message : "Something went wrong" };
 }
 
-export async function saveSecret(
-  _prev: ActionState,
+export type SaveSecretsState = {
+  ok?: boolean;
+  error?: string; // form-level (non-field) error
+  /** Per-field errors, keyed by secret. Nothing is saved while any exist. */
+  errors?: Partial<Record<SecretKey, string>>;
+};
+
+/** Saves every filled-in key in one submit. Blank fields keep their stored value. */
+export async function saveSecrets(
+  _prev: SaveSecretsState,
   formData: FormData,
-): Promise<ActionState> {
-  const value = String(formData.get("value") ?? "").trim();
+): Promise<SaveSecretsState> {
   try {
     const { org, actorId } = await adminContext();
-    const key = String(formData.get("key") ?? "");
-    if (!isSecretKey(key)) return { error: "Unknown secret", value };
-    if (!value) return { errors: { value: "Value is required." }, value };
-    const formatError = getSecretSpec(key).validate?.(value);
-    if (formatError) return { errors: { value: formatError }, value };
-    await setOrgSecret(org.id, key, value);
-    await recordAudit({
-      orgId: org.id,
-      actorUserId: actorId,
-      action: "secret.set",
-      target: key,
-    });
+    const entries: { key: SecretKey; value: string }[] = [];
+    for (const [name, raw] of formData.entries()) {
+      if (typeof raw !== "string" || !name.startsWith(FIELD_PREFIX)) continue;
+      const key = name.slice(FIELD_PREFIX.length);
+      if (!isSecretKey(key)) return { error: "Unknown secret" };
+      const value = raw.trim();
+      if (value) entries.push({ key, value });
+    }
+    if (entries.length === 0) return { error: "Enter a value to save." };
+
+    const errors: Partial<Record<SecretKey, string>> = {};
+    for (const { key, value } of entries) {
+      const formatError = getSecretSpec(key).validate?.(value);
+      if (formatError) errors[key] = formatError;
+    }
+    if (Object.keys(errors).length > 0) return { errors };
+
+    for (const { key, value } of entries) {
+      await setOrgSecret(org.id, key, value);
+      await recordAudit({
+        orgId: org.id,
+        actorUserId: actorId,
+        action: "secret.set",
+        target: key,
+      });
+    }
     revalidatePath("/workspace/integrations");
     return { ok: true };
   } catch (error) {
-    return { ...fail(error), value };
+    return { error: error instanceof Error ? error.message : "Something went wrong" };
   }
 }
 

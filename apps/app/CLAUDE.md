@@ -314,7 +314,8 @@ by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
   = the adapter's) and sets the conversation to `booked` (terminal → the Qualifier
   won't re-run and the cadence stops).
 - **Book (Google / M365 — OAuth direct):** `lib/booking/oauth.ts` runs the
-  consent flow (`/api/oauth/{google,microsoft}/start` → `…/callback`, CSRF via a
+  consent flow (`/api/oauth/{google,microsoft}/start` → `…/callback` — the callback is
+  public in `proxy.ts` and returns to the origin the start leg ran on; CSRF via a
   signed `state`); only the **refresh token** is stored (encrypted, in
   `org_secrets` as `{google,m365}_calendar_refresh_token`), exchanged for a
   short-lived access token per adapter build. `availableSlots` reads free/busy
@@ -350,7 +351,8 @@ by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
   `GOOGLE_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_CLIENT_ID` /
   `MICROSOFT_OAUTH_CLIENT_SECRET` (+ optional `MICROSOFT_OAUTH_TENANT`, default
   `common`); redirect URIs are `${NEXT_PUBLIC_APP_URL}/api/oauth/{google,
-  microsoft}/callback`. Google calendar scopes need app verification before
+  microsoft}/callback`. Google scopes are `calendar.events` + `calendar.freebusy`
+  (least privilege; both sensitive) and need app verification before
   external tenants connect without warnings (plan.md Sprint 3 note — submit early).
 - **Deferred:** contact-initiated reschedule *through the Qualifier* (contacts
   can already self-serve via Cal.com/Calendly invite links, synced by our

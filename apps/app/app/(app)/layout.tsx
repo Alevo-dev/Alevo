@@ -6,6 +6,7 @@ import { orgSubscriptions, plans } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
 import { AppSidebar, type PlanCard } from "@/components/app-sidebar";
 import { UserMenu } from "@/components/user-menu";
+import { MobileMenu } from "@/components/mobile-menu";
 
 /** The org's plan for the sidebar card (explicitly scoped to the active org). */
 async function loadPlan(): Promise<PlanCard> {
@@ -31,14 +32,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
-      <AppSidebar plan={plan} />
+      <div className="hidden md:flex">
+        <AppSidebar plan={plan} />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar: the logo on the left, the account menu on the right. */}
+        {/* Top bar: burger menu + logo on mobile, logo on desktop, account menu on the right. */}
         <div className="flex h-14 shrink-0 items-center justify-between px-4 md:px-10">
-          <Link href="/dashboard" className="flex items-center gap-3 text-ink no-underline">
-            <Image src="/alevo-mark.png" alt="" width={28} height={28} priority className="size-7" />
-            <span className="font-display text-lg font-semibold tracking-tight">Alevo</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <MobileMenu plan={plan} />
+            <Link href="/dashboard" className="flex items-center gap-3 text-ink no-underline">
+              <Image src="/alevo-mark.png" alt="" width={28} height={28} priority className="size-7" />
+              <span className="font-display text-lg font-semibold tracking-tight">Alevo</span>
+            </Link>
+          </div>
           <UserMenu />
         </div>
         <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">{children}</main>

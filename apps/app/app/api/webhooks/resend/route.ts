@@ -13,6 +13,7 @@ import {
 import { inngest } from "@/lib/inngest/client";
 import { verifyResendWebhook, type ResendWebhookEvent } from "@/lib/webhooks/verify";
 import { fetchReceivedEmail, findConversationId } from "@/lib/email/resend";
+import { trackDeliveries, type DeliveryTracker } from "@/lib/webhooks/track";
 
 /** Read a value from Resend `tags` (array of {name,value} or a plain object). */
 function tagValue(tags: unknown, name: string): string | null {
@@ -46,7 +47,7 @@ async function resolveOrgByEmail(email: string): Promise<string | null> {
  * Bounce / spam complaint → add the recipient to the org's suppression list so
  * the Qualifier stops emailing them (compliance). Best-effort; idempotent.
  */
-async function handleSuppression(event: ResendWebhookEvent): Promise<Response> {
+async function handleSuppression(event: ResendWebhookEvent, track: DeliveryTracker): Promise<Response> {
   const data = event.data as { to?: string[] | string; tags?: unknown };
   const toList = Array.isArray(data.to) ? data.to : data.to ? [data.to] : [];
   const email = (toList[0] ?? "").toString().trim();
@@ -54,6 +55,7 @@ async function handleSuppression(event: ResendWebhookEvent): Promise<Response> {
 
   const orgId = tagValue(data.tags, "org_id") ?? (await resolveOrgByEmail(email));
   if (!orgId) return new Response("ok (org unresolved)", { status: 200 });
+  track.setOrg(orgId);
 
   const reason = event.type === "email.complained" ? "complaint" : "bounce";
   await addSuppression(orgId, email, reason).catch((err) => Sentry.captureException(err));
@@ -70,7 +72,7 @@ async function handleSuppression(event: ResendWebhookEvent): Promise<Response> {
  * The webhook is metadata-only (rule 7: svix-verified, idempotent on the
  * received email id); the body is fetched separately by id.
  */
-export async function POST(req: Request) {
+export const POST = trackDeliveries("resend", async (req, track) => {
   let verified: Awaited<ReturnType<typeof verifyResendWebhook>>;
   try {
     verified = await verifyResendWebhook(req);
@@ -80,7 +82,7 @@ export async function POST(req: Request) {
   const { event } = verified;
 
   if (event.type === "email.bounced" || event.type === "email.complained") {
-    return handleSuppression(event);
+    return handleSuppression(event, track);
   }
   if (event.type !== "email.received") {
     return new Response("ok (ignored)", { status: 200 });
@@ -125,6 +127,7 @@ export async function POST(req: Request) {
         .limit(1),
     );
     if (!conv) return new Response("ok (no conversation)", { status: 200 });
+    track.setOrg(conv.orgId);
 
     // The webhook has no body — fetch the full content by id.
     const content = await fetchReceivedEmail(emailId);
@@ -175,4 +178,4 @@ export async function POST(req: Request) {
     );
     return new Response("Processing error", { status: 500 });
   }
-}
+});

@@ -9,8 +9,11 @@ export function AuthArt() {
   return (
     <section
       aria-hidden="true"
-      className="relative h-[260px] w-full overflow-hidden bg-[linear-gradient(160deg,var(--ds-canvas)_0%,var(--ds-brand-soft)_55%,var(--ds-accent-soft)_100%)] md:absolute md:inset-y-0 md:left-0 md:h-auto md:w-1/2 md:[clip-path:url(#auth-curve)]"
+      className="absolute inset-0 h-dvh w-full overflow-hidden bg-[linear-gradient(160deg,var(--ds-canvas)_0%,var(--ds-brand-soft)_55%,var(--ds-accent-soft)_100%)] md:inset-y-0 md:left-0 md:h-auto md:w-1/2 md:[clip-path:url(#auth-curve)]"
     >
+      <div className="absolute inset-0 md:hidden" style={{
+        background: 'radial-gradient(circle at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)'
+      }} />
       <svg width="0" height="0" className="absolute" aria-hidden="true" focusable="false">
         <defs>
           <clipPath id="auth-curve" clipPathUnits="objectBoundingBox">
@@ -39,7 +42,7 @@ export function AuthArt() {
         width={460}
         height={460}
         priority
-        className="absolute left-1/2 top-1/2 w-[200px] max-w-[80%] -translate-x-1/2 -translate-y-1/2 opacity-95 md:w-[460px]"
+        className="absolute left-1/2 top-1/2 hidden w-[200px] max-w-[80%] -translate-x-1/2 -translate-y-1/2 opacity-95 md:block md:w-[460px]"
       />
 
       <FloatCard className="left-12 top-[120px]">

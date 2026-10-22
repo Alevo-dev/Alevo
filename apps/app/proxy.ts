@@ -13,6 +13,11 @@ const isPublicRoute = createRouteMatcher([
   "/onboarding(.*)", // Clerk session-task pages (pending sessions count as signed out)
   "/api/webhooks(.*)",
   "/api/inngest(.*)",
+  // Calendar OAuth callbacks: the provider redirects the browser here, and the
+  // session cookie may not exist on this origin (e.g. started from localhost,
+  // returned to the ngrok URL). The route is stateless and CSRF-protected by a
+  // signed `state` that carries the org; the /start leg is what requires admin.
+  "/api/oauth/(.*)/callback",
   "/api/unsubscribe(.*)", // public one-click unsubscribe (signed token)
   "/f/(.*)", // public hosted lead forms
 ]);

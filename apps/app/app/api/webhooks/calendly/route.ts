@@ -8,6 +8,7 @@ import {
   webhookEvents,
   withService,
 } from "@alevo/db";
+import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
  * Calendly webhooks (link mode) → record/sync meetings. The scheduling link the
@@ -48,7 +49,7 @@ function verify(raw: string, secret: string, header: string | null): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function POST(req: Request) {
+export const POST = trackDeliveries("calendly", async (req, track) => {
   const raw = await req.text();
   let body: { event?: string; payload?: CalendlyPayload };
   try {
@@ -98,6 +99,7 @@ export async function POST(req: Request) {
     }
   }
   if (!orgId) return new Response("ok (unresolved)", { status: 200 });
+  track.setOrg(orgId);
 
   const secret = await getOrgSecret(orgId, "calendly_webhook_secret").catch(() => null);
   if (secret && !verify(raw, secret, req.headers.get("calendly-webhook-signature"))) {
@@ -168,4 +170,4 @@ export async function POST(req: Request) {
     );
     return new Response("processing error", { status: 500 });
   }
-}
+});

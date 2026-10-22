@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-canvas text-ink">
       <AuthArt />
-      <section className="flex min-h-0 items-center justify-center px-5 py-10 md:ml-[50%] md:min-h-dvh md:px-16">
+      <section className="relative z-10 flex min-h-dvh items-center justify-center px-5 py-10 md:z-auto md:ml-[50%] md:min-h-dvh md:px-16">
         {children}
       </section>
     </main>

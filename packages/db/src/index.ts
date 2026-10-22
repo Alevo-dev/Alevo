@@ -8,6 +8,7 @@ export {
   listOrgSecretKeys,
 } from "./secrets";
 export { recordAudit, type AuditEntry } from "./audit";
+export { recordWebhookDelivery, type WebhookProvider, type WebhookOutcome } from "./webhook-deliveries";
 export { recordUsage } from "./usage";
 export { isSuppressed, addSuppression } from "./suppressions";
 export { recordConsent, revokeConsentForContact, revokeConsentForEmail } from "./consents";

@@ -20,23 +20,35 @@ import {
 const SETTINGS = "/workspace/agent";
 
 function base(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3001").replace(/\/$/, "");
 }
 
-function back(params: string): NextResponse {
-  return NextResponse.redirect(`${base()}${SETTINGS}?${params}`);
+/**
+ * The origin the admin's browser is actually on (forwarded headers first, so
+ * it is the ngrok host when tunnelled and `localhost:3001` when not). The
+ * callback returns here so the admin lands where their session cookie lives.
+ */
+function requestOrigin(req: Request): string {
+  const proto = req.headers.get("x-forwarded-proto") ?? new URL(req.url).protocol.replace(":", "");
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).host;
+  return `${proto}://${host}`;
+}
+
+function back(params: string, origin: string = base()): NextResponse {
+  return NextResponse.redirect(`${origin}${SETTINGS}?${params}`);
 }
 
 /** Admin kicks off the OAuth consent flow for a provider. */
-export async function handleStart(provider: CalendarOAuthProvider): Promise<Response> {
+export async function handleStart(provider: CalendarOAuthProvider, req: Request): Promise<Response> {
+  const origin = requestOrigin(req);
   try {
     await requireRole("admin");
   } catch {
-    return back("calendar_error=forbidden");
+    return back("calendar_error=forbidden", origin);
   }
   const org = await getCurrentOrg();
-  if (!org) return back("calendar_error=no_org");
-  return NextResponse.redirect(buildAuthUrl(provider, org.id));
+  if (!org) return back("calendar_error=no_org", origin);
+  return NextResponse.redirect(buildAuthUrl(provider, org.id, origin));
 }
 
 /** Provider redirects back here with a code; exchange it and store the grant. */
@@ -54,13 +66,14 @@ export async function handleCallback(
 
   const parsed = verifyState(state);
   if (!parsed || parsed.provider !== provider) return back("calendar_error=bad_state");
+  const origin = parsed.returnTo ?? base();
 
   try {
     const { refreshToken, accountEmail } = await exchangeCode(provider, code);
     // Google books on a named calendar (default to the primary one); M365 uses
     // the mailbox address for both getSchedule and /me/events.
     const calendarId = provider === "google" ? "primary" : accountEmail;
-    if (!calendarId) return back("calendar_error=no_account_email");
+    if (!calendarId) return back("calendar_error=no_account_email", origin);
 
     await setOrgSecret(parsed.orgId, refreshTokenKey(provider), refreshToken);
     await withService((tx) =>
@@ -82,10 +95,10 @@ export async function handleCallback(
           },
         }),
     );
-    return back(`calendar_connected=${provider}`);
+    return back(`calendar_connected=${provider}`, origin);
   } catch (e) {
     Sentry.captureException(e);
     const message = e instanceof Error ? e.message : "connect_failed";
-    return back(`calendar_error=${encodeURIComponent(message)}`);
+    return back(`calendar_error=${encodeURIComponent(message)}`, origin);
   }
 }

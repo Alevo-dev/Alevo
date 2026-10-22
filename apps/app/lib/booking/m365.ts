@@ -3,8 +3,9 @@ import { getOrgSecret } from "@alevo/db";
 import { refreshAccessToken, refreshTokenKey } from "./oauth";
 import { generateSlots, isBusy, type BusyInterval } from "./slots";
 import type { CalendarConfig } from "./google";
-import type {
-  BookingAdapter,
+import {
+  inviteText,
+  type BookingAdapter,
   BookParams,
   BookResult,
   CancelResult,
@@ -14,8 +15,9 @@ import type {
 /**
  * Microsoft 365 (Graph) booking adapter (raw HTTP). Books on the signed-in
  * user's default calendar with an auto-generated Teams link. `getSchedule`
- * drives free/busy. `calendarId` carries the authorized mailbox address (used
- * for getSchedule); events are created on `/me/events`.
+ * drives free/busy (falling back to `calendarView` on personal accounts, which
+ * also can't create Teams links → plain event). `calendarId` carries the
+ * authorized mailbox address (used for getSchedule); events go on `/me/events`.
  */
 const GRAPH = "https://graph.microsoft.com/v1.0";
 
@@ -23,6 +25,26 @@ const GRAPH = "https://graph.microsoft.com/v1.0";
 const toGraph = (iso: string) => new Date(iso).toISOString().slice(0, 19);
 /** Graph returns tz-less UTC (we ask for UTC via Prefer); make it parseable. */
 const fromGraph = (dt: string) => new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(dt) ? dt : `${dt}Z`);
+
+/** Free/busy from the user's own calendar view (works for every account type). */
+async function calendarViewBusy(token: string, fromIso: string, toIso: string): Promise<BusyInterval[]> {
+  const qs = new URLSearchParams({
+    startDateTime: new Date(fromIso).toISOString(),
+    endDateTime: new Date(toIso).toISOString(),
+    $select: "start,end,showAs",
+    $top: "250",
+  });
+  const res = await fetch(`${GRAPH}/me/calendarView?${qs}`, {
+    headers: { authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
+  });
+  if (!res.ok) throw new Error(`Graph calendarView failed (${res.status})`);
+  const json = (await res.json()) as {
+    value?: { showAs?: string; start: { dateTime: string }; end: { dateTime: string } }[];
+  };
+  return (json.value ?? [])
+    .filter((e) => e.showAs !== "free")
+    .map((e) => ({ start: fromGraph(e.start.dateTime), end: fromGraph(e.end.dateTime) }));
+}
 
 async function getScheduleBusy(
   token: string,
@@ -44,7 +66,9 @@ async function getScheduleBusy(
       availabilityViewInterval: 30,
     }),
   });
-  if (!res.ok) throw new Error(`Graph getSchedule failed (${res.status})`);
+  // getSchedule is a work/school (Exchange Online) feature; personal Microsoft
+  // accounts reject it. Fall back to reading the calendar view directly.
+  if (!res.ok) return calendarViewBusy(token, fromIso, toIso);
   const json = (await res.json()) as {
     value?: {
       scheduleItems?: { status?: string; start: { dateTime: string }; end: { dateTime: string } }[];
@@ -90,35 +114,45 @@ export async function makeM365Adapter(
         if (isBusy(params.startIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time was just taken" };
         }
-        const res = await fetch(`${GRAPH}/me/events`, {
-          method: "POST",
-          headers: {
-            authorization: `Bearer ${token}`,
-            "content-type": "application/json",
-            Prefer: 'outlook.timezone="UTC"',
-          },
-          body: JSON.stringify({
-            subject: `Meeting with ${params.attendeeName}`,
-            start: { dateTime: toGraph(params.startIso), timeZone: "UTC" },
-            end: { dateTime: toGraph(endIso), timeZone: "UTC" },
-            attendees: [
-              {
-                emailAddress: { address: params.attendeeEmail, name: params.attendeeName },
-                type: "required",
-              },
-            ],
-            isOnlineMeeting: true,
-            onlineMeetingProvider: "teamsForBusiness",
-            transactionId: `alevo-${params.conversationId}-${Date.parse(params.startIso)}`,
-          }),
-        });
-        const json = (await res.json()) as {
+        const event = {
+          subject: inviteText(params).title,
+          body: { contentType: "text", content: inviteText(params).body },
+          start: { dateTime: toGraph(params.startIso), timeZone: "UTC" },
+          end: { dateTime: toGraph(endIso), timeZone: "UTC" },
+          attendees: [
+            {
+              emailAddress: { address: params.attendeeEmail, name: params.attendeeName },
+              type: "required",
+            },
+          ],
+          transactionId: `alevo-${params.conversationId}-${Date.parse(params.startIso)}`,
+        };
+        const create = (body: Record<string, unknown>) =>
+          fetch(`${GRAPH}/me/events`, {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${token}`,
+              "content-type": "application/json",
+              Prefer: 'outlook.timezone="UTC"',
+            },
+            body: JSON.stringify(body),
+          });
+        type EventJson = {
           id?: string;
           start?: { dateTime?: string };
           end?: { dateTime?: string };
           onlineMeeting?: { joinUrl?: string } | null;
           error?: { message?: string };
         };
+        // Ask for a Teams link first. Personal Microsoft accounts and tenants
+        // without Teams reject `teamsForBusiness`; fall back to a plain event so
+        // the booking still lands (the invite itself is the confirmation).
+        let res = await create({ ...event, isOnlineMeeting: true, onlineMeetingProvider: "teamsForBusiness" });
+        let json = (await res.json()) as EventJson;
+        if (!res.ok && /online ?meeting|teams/i.test(json.error?.message ?? "")) {
+          res = await create(event);
+          json = (await res.json()) as EventJson;
+        }
         if (!res.ok || !json.id) {
           return { ok: false, error: json.error?.message ?? `Graph booking failed (${res.status})` };
         }

@@ -9,6 +9,7 @@ import {
   withService,
   type MeetingStatus,
 } from "@alevo/db";
+import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
  * Cal.com booking webhooks → keep `meetings` + conversation status in sync.
@@ -33,7 +34,7 @@ function verify(raw: string, secret: string, signature: string | null): boolean 
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export async function POST(req: Request) {
+export const POST = trackDeliveries("calcom", async (req, track) => {
   const raw = await req.text();
   let event: { triggerEvent?: string; payload?: CalPayload };
   try {
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
   const existing = rows[0];
   if (!orgId && existing) orgId = existing.orgId;
   if (!orgId) return new Response("ok (org unresolved)", { status: 200 });
+  track.setOrg(orgId);
 
   // Verify signature when a secret is configured (else proceed, best-effort MVP).
   const secret = await getOrgSecret(orgId, "calcom_webhook_secret").catch(() => null);
@@ -149,4 +151,4 @@ export async function POST(req: Request) {
     );
     return new Response("processing error", { status: 500 });
   }
-}
+});

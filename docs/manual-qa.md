@@ -236,11 +236,14 @@ Dashboards: **Cal.com** (Bookings), **Calendly** (Scheduled events + Webhooks), 
 - [ ] (Precedence) With **both** a Cal.com event-type and a Calendly URL set, the Qualifier uses **Cal.com** (API booking), not the link.
 
 ### Google Calendar / Microsoft 365 booking (OAuth direct)
-Prereq: a Google Cloud OAuth app (Calendar scope) and/or an Azure app registration (`Calendars.ReadWrite`, `User.Read`), with client id/secret in env (`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `MICROSOFT_OAUTH_CLIENT_ID/SECRET`) and the redirect URIs `${NEXT_PUBLIC_APP_URL}/api/oauth/{google,microsoft}/callback` registered.
-- [ ] Workspace â†’ Agent â†’ **Booking calendar** â†’ **Connect Google Calendar** (or Microsoft 365). You're sent to the provider's consent screen; approving returns to Settings with a green "Connected â€¦" banner showing the account email.
+Prereq: a Google Cloud OAuth app (`calendar.events` + `calendar.freebusy` scopes; see DEVELOPMENT.md → "Google Calendar OAuth app") and/or an Azure app registration (`Calendars.ReadWrite`, `User.Read`), with client id/secret in env (`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `MICROSOFT_OAUTH_CLIENT_ID/SECRET`) and the redirect URIs `${NEXT_PUBLIC_APP_URL}/api/oauth/{google,microsoft}/callback` registered.
+- [ ] Workspace â†’ Agent â†’ **Booking calendar** â†’ **Connect Google Calendar** (or Microsoft 365). Works from **localhost:3001 and from the ngrok URL**: the callback (public in the proxy) stores the grant and sends you back to the origin you started on, so there is no sign-in bounce. You're sent to the provider's consent screen; approving returns to Settings with a green "Connected â€¦" banner showing the account email.
 - [ ] Leave Cal.com event-type blank. Set a **Meeting length** + **Earliest/Latest** working hours and Save.
 - [ ] As a lead, ask to book. The Qualifier calls `check_availability` and offers open times â€” only weekday slots inside your window, in the contact's timezone, with your calendar's busy blocks removed.
 - [ ] Accept a time. A `/meetings` row appears (source `google`/`m365`, status `scheduled`) with a **Join** link (Google Meet / Teams), the event shows on your real calendar with the lead invited, the lead gets a confirmation message, and the conversation flips to **`booked`**.
+- [ ] **Booked is final.** After a successful booking the conversation reads **Booked**, never "Handed to a rep" — even if the agent also tries to route it. `handed_off` is reserved for qualified leads a person still has to reach out to and book (no offered time worked, they'd rather be called, pricing/contract questions).
+- [ ] A personal Outlook account books a plain event (no Teams link; Join is empty); a work account gets a Teams link. Free/busy works for both.
+- [ ] The invite is titled "<Company>: intro call with <Lead>" with a body naming the company; the organizer is the connected account's own mailbox name.
 - [ ] Double-booking guard: block the chosen time on your calendar between the offer and the booking â†’ `book_meeting` declines and the Qualifier offers another time.
 - [ ] From `/meetings`, **Reschedule** and **Cancel** both update the real calendar event; cancel reopens the conversation.
 - [ ] **Disconnect** (Booking calendar block) â†’ the connection clears; the Qualifier falls back to Cal.com / Calendly / handoff.
@@ -545,3 +548,52 @@ Dashboards: **App** `/dashboard`, **Supabase** (orgs, memberships, conversations
 - [ ] Non-admin viewing Members: "You need an admin role to manage members." (No invite button, no list.)
 - [ ] Multiple orgs: each workspace's Manage shows **only** that workspace's members + invites.
 - [ ] Dialog closes on Escape / backdrop / X. Unsaved profile edits are discarded (no warning).
+
+## Integrations page matches the Claude Design mockup (2026-10-22)
+
+Workspace → Integrations (`/workspace/integrations`).
+
+### Layout
+- [ ] Heading "Connected services" then a grid of cards: Cal.com, Calendar, Calendly, Twilio, Resend, Slack. 3 columns on desktop, 2 on tablet, 1 on phone (no horizontal scroll).
+- [ ] Each card: dashed logo tile, name, one-line hint, status dot + label, and a button on the right.
+- [ ] Each card shows the brand's own mark in its colours on a white tile: Cal.com, Google Calendar + Microsoft squares (Calendar), Calendly, Twilio red, Resend, Slack. Marks are sharp at 40px.
+- [ ] No API keys section below the grid. The keys live in the Manage dialogs.
+
+### Status is derived from real state
+- [ ] Fresh org: every service shows "Not connected" (grey dot). Resend and Twilio show "Not set up" when their platform env vars are missing.
+- [ ] Save a Slack webhook URL. Slack card turns green "Connected". Clear it: back to "Not connected".
+- [ ] Save a Cal.com API key without a webhook secret. Cal.com shows "Connected" and **Needs attention** lists "Cal.com webhook secret missing" with a Review link. Save the webhook secret: the Needs attention block disappears.
+- [ ] Twilio with platform keys set but no SMS number: "No number" in amber, listed under Needs attention. Set the number in Workspace → Agent, come back: "Connected".
+
+### Buttons
+- [ ] Cal.com, Calendly, Slack "Manage" opens a dialog titled with the service name, holding its key cards. Esc, backdrop and X close it; the page does not scroll.
+- [ ] Calendar and Twilio "Manage" opens a dialog with a note and an **Open Agent** button that goes to Workspace → Agent.
+- [ ] Resend has no Manage button (platform-level).
+- [ ] A "Needs attention" row's **Review** opens the same dialog as that service's Manage.
+- [ ] A dialog has one **Save** and one **Cancel**, and no Save on each key. Both are hidden until a field has text in it.
+- [ ] Type in one key: Save and Cancel appear beside each other. Cancel empties the fields and hides both.
+- [ ] Type in two keys, leave one blank: Save stores only the filled one(s). Toast "Keys saved." Fields empty, buttons hide, and the Set/Not set pills update.
+- [ ] Enter an invalid Slack URL with a valid Cal.com key: nothing saves, the Slack field shows its error in red beneath it.
+- [ ] Clearing and Send test sit under "Saved keys", each with its own action, not inside the form.
+- [ ] Non-admin: the key cards are read-only (inputs disabled), but the service cards still show status.
+
+### Stays as it was
+- [ ] Saving or clearing a key still shows the toast and per-field errors (Slack URL format, required value).
+- [ ] Values are never shown again after saving (no reveal buttons in the mockup were added, by design).
+
+## Connection health card (2026-10-22)
+
+Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx supabase db push`).
+
+- [ ] Workspace → Integrations: "Connection health" card sits at the top. Subtitle: "Last 24 hours across all connected services".
+- [ ] Fresh org: body reads "No webhooks in the last 24 hours…", no line, no stat tiles.
+- [ ] Send a Cal.com test webhook or a booking through Calendly. Reload: the card shows "Webhooks ok" with a percentage and "Failed" with a count. The line draws in once.
+- [ ] A webhook with a bad signature (e.g. Twilio with a wrong token) counts as failed. Failed goes up by one; the percentage drops.
+- [ ] Another workspace's deliveries don't change this workspace's card.
+- [ ] Phone width: the card and both tiles stack with no horizontal scroll.
+
+### Health and Needs attention layout
+- [ ] Desktop: Connection health (left, narrower) and Needs attention (right) sit side by side at the same height.
+- [ ] Mobile: the two cards stack, Connection health first, Needs attention below, with no horizontal scroll.
+- [ ] With nothing needing attention, the right card reads "Nothing needs attention. Every connected service is set up."
+- [ ] With an issue, each row shows a Warning dot and a **Review** button that opens that service's dialog.

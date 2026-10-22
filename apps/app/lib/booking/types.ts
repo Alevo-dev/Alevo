@@ -10,7 +10,17 @@ export type BookParams = {
   attendeeTimeZone: string;
   conversationId: string;
   orgId: string;
+  /** The tenant's company name — the invite's title/body are branded with it. */
+  orgName: string;
 };
+
+/** Invite title + body. The organizer (From) is always the connected calendar's owner. */
+export function inviteText(p: Pick<BookParams, "attendeeName" | "orgName">) {
+  return {
+    title: `${p.orgName}: intro call with ${p.attendeeName}`,
+    body: `Intro call between ${p.attendeeName} and ${p.orgName}, booked by ${p.orgName}'s assistant. Need a different time? Just reply to the message thread.`,
+  };
+}
 
 export type BookResult =
   | { ok: true; uid: string; startIso: string; endIso: string | null; joinUrl: string | null }

@@ -12,6 +12,7 @@ import {
 } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
 import { isOptOutMessage, verifyTwilioSignature } from "@/lib/sms/twilio";
+import { trackDeliveries } from "@/lib/webhooks/track";
 
 /** Empty TwiML — we reply asynchronously via the API, not in this response. */
 function twiml() {
@@ -27,7 +28,7 @@ function twiml() {
  * phone. Records an inbound `sms` message and fires `conversation/message.received`
  * — the same event the form / email / tester fire. Signature-verified (rule 7).
  */
-export async function POST(req: Request) {
+export const POST = trackDeliveries("twilio", async (req, track) => {
   const raw = await req.text();
   const params = Object.fromEntries(new URLSearchParams(raw)) as Record<string, string>;
 
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
     );
     if (!org) return twiml(); // unknown number — ack and ignore
     const orgId = org.orgId;
+    track.setOrg(orgId);
 
     // Carrier opt-out: Twilio blocks future sends; we don't engage, and we
     // revoke the contact's SMS consent.
@@ -155,6 +157,7 @@ export async function POST(req: Request) {
     return twiml();
   } catch (err) {
     Sentry.captureException(err);
+    track.markFailed(); // acknowledged so Twilio does not retry, but counted as failed
     return twiml(); // ack so Twilio doesn't retry-storm; the error is logged
   }
-}
+});

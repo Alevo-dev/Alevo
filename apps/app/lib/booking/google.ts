@@ -2,8 +2,9 @@ import "server-only";
 import { getOrgSecret } from "@alevo/db";
 import { refreshAccessToken, refreshTokenKey } from "./oauth";
 import { generateSlots, isBusy, type BusyInterval } from "./slots";
-import type {
-  BookingAdapter,
+import {
+  inviteText,
+  type BookingAdapter,
   BookParams,
   BookResult,
   CancelResult,
@@ -85,7 +86,8 @@ export async function makeGoogleAdapter(
           method: "POST",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify({
-            summary: `Meeting with ${params.attendeeName}`,
+            summary: inviteText(params).title,
+            description: inviteText(params).body,
             start: { dateTime: params.startIso, timeZone: "UTC" },
             end: { dateTime: endIso, timeZone: "UTC" },
             attendees: [{ email: params.attendeeEmail, displayName: params.attendeeName }],

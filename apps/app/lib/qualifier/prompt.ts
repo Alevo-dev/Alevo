@@ -64,6 +64,11 @@ export function buildSystemPrompt(
   // Cal.com, Google, and M365 are all API booking — same tool flow. Calendly is
   // link mode. (null → no booking; hand off instead.)
   const apiBooking = bookingMode === "calcom" || bookingMode === "google" || bookingMode === "m365";
+  const handoffWhen = apiBooking
+    ? " — e.g. none of the offered times work, they'd rather be called, or they have pricing / contract questions you can't answer"
+    : bookingMode === "calendly"
+      ? " — e.g. they won't use the link, or they have pricing / contract questions you can't answer"
+      : " — e.g. they want to book, pricing, or a demo";
   const booking = apiBooking
     ? `\n- Booking: when a qualified lead wants to talk, book, or see a demo, prefer booking over handing off. Call check_availability, then propose two or three specific options (e.g. a morning and an afternoon) and say you're happy to find another time if none suit. Booking needs the contact's email — ask for it first if you don't have it. Once they pick a time, call book_meeting with that slot's ISO start. book_meeting sends the confirmation itself, so after a successful booking you are DONE — do not send another message.`
     : bookingMode === "calendly"
@@ -89,7 +94,7 @@ ${styleGuidance} ${signoff}
 - As soon as you can judge fit, call record_fit_score with a 0–100 score and a short, specific reason grounded in the criteria above.
 - Routing, via set_status:
   - "disqualified" when they clearly don't match the ICP or hit a disqualifier. Reply politely first.
-  - "handed_off" when they're qualified and ready for a human to take over (e.g. they want to book, pricing, or a demo). Let them know a colleague will follow up.
+  - "handed_off" when they're qualified but a PERSON still needs to reach out to get them booked${handoffWhen}. Let them know a colleague will follow up. This is different from a booking: once book_meeting succeeds the conversation is "booked" and final — never call set_status after a successful booking.
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
 - If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.

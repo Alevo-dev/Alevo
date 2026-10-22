@@ -10,6 +10,9 @@ export type SecretKey =
   | "calcom_webhook_secret"
   | "calendly_webhook_secret";
 
+/** Form field name prefix for a secret: the field is `secret.<key>`. */
+export const FIELD_PREFIX = "secret.";
+
 export type SecretSpec = {
   key: SecretKey;
   label: string;

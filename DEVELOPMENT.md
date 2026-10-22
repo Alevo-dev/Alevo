@@ -61,6 +61,47 @@ pnpm tunnel   # ngrok http --domain=magical-midge-partly.ngrok-free.app 3001
 So a texted number hits `https://<your-ngrok>/api/webhooks/twilio`. Inspect
 traffic at http://127.0.0.1:4040.
 
+## Google Calendar OAuth app (booking calendar connect)
+
+The app code is done (`lib/booking/oauth.ts`, `/api/oauth/google/{start,callback}`);
+what it needs is a Google Cloud OAuth client. One Cloud project serves dev and
+prod — the client just lists both redirect URIs.
+
+1. **Project:** [console.cloud.google.com](https://console.cloud.google.com) →
+   New project (e.g. `alevo`). Enable **Google Calendar API** under
+   *APIs & Services → Library*.
+2. **Consent screen** (*APIs & Services → OAuth consent screen* / "Google Auth
+   Platform → Branding"): user type **External**; app name `Alevo`; support
+   email; logo (the mark); home page `https://getalevo.com`; privacy +
+   terms URLs on getalevo.com; authorized domain `getalevo.com`.
+3. **Scopes** (*Data access*): add
+   `https://www.googleapis.com/auth/calendar.events` and
+   `https://www.googleapis.com/auth/calendar.freebusy` (plus `openid`, `email`).
+   Both are *sensitive* scopes → the project needs **verification** before
+   outside users connect without the "unverified app" interstitial. Submit as
+   soon as the consent screen is filled in; it takes days to weeks.
+4. **Audience / publishing status:** while *Testing*, only listed test users can
+   connect **and their refresh tokens expire after 7 days** (bookings would
+   silently stop working a week after connecting). Add yourself as a test user
+   for the first try, then switch to **In production** (unverified is fine; the
+   warning screen has an "Advanced → go to Alevo" link) so tokens persist.
+5. **Credentials:** *Credentials → Create credentials → OAuth client ID* →
+   **Web application**, name `Alevo app`. Authorized redirect URIs:
+   - `https://<your-ngrok>.ngrok-free.app/api/oauth/google/callback` (dev)
+   - `https://app.getalevo.com/api/oauth/google/callback` (prod)
+
+   Copy the client ID + secret into `GOOGLE_OAUTH_CLIENT_ID` /
+   `GOOGLE_OAUTH_CLIENT_SECRET` (`.env.local` for dev; Vercel → Settings →
+   Environment Variables → Production for prod, then redeploy).
+6. **Try it:** Workspace → Agent → Booking calendar → Connect Google Calendar.
+   The consent screen must show exactly the calendar events + free/busy
+   permissions. The checklist is in `docs/manual-qa.md` → "Google Calendar /
+   Microsoft 365 booking".
+
+The redirect URI is built from `NEXT_PUBLIC_APP_URL`, so it must match the
+registered one character-for-character (scheme, host, no trailing slash).
+Google rejects `http://` for anything but localhost — use the ngrok URL in dev.
+
 ## Database (Supabase: dev + prod projects)
 
 One migrations folder (`supabase/migrations/`), two targets:
