@@ -583,7 +583,7 @@ Workspace → Integrations (`/workspace/integrations`).
 
 ## Connection health card (2026-10-22)
 
-Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx supabase db push`).
+Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx supabase db push`). To see data without real traffic, run `supabase/seed-dev-health.sql` in the dev SQL editor (~80 deliveries per workspace over the last 24h, ~10% failed); its last statement deletes them again.
 
 - [ ] Workspace → Integrations: "Connection health" card sits at the top. Subtitle: "Last 24 hours across all connected services".
 - [ ] Fresh org: body reads "No webhooks in the last 24 hours…", no line, no stat tiles.
@@ -685,6 +685,11 @@ Behaviour should be unchanged; these checks catch regressions from the cleanup.
 App:
 - [ ] Navigate Dashboard → Conversations → Meetings → Workspace: a skeleton (title, three stat tiles, a five-row table) shows instantly in the content column while each page loads (new `(app)/loading.tsx`); the sidebar/top bar stay put.
 - [ ] The skeleton blocks shimmer — a soft highlight sweeps left→right, staggered down the page. With "reduce motion" on in the OS they sit still.
+- [ ] Workspace tabs (Profile → Agent → Knowledge → Integrations): the next tab's body appears INSTANTLY as settings-shaped placeholders (card header + label/control rows) while it loads; the "Workspace" title and the tab strip never flicker. No more frozen old tab.
+- [ ] Conversations list → open a thread: the skeleton matches the thread page's layout — messages column (back link, name + status line, pill, sender line + alternating bubbles, reply box) and the lead-details aside (fit-score ring, details list, "why the score" box) — and the real page lands on top of it without the layout jumping.
+- [ ] Dashboard and Meetings each have their own skeleton matching the page (title + status line, four stat tiles, then the activity list beside the channel bars / the six-column table). The real page lands without the layout jumping.
+- [ ] Integrations → Connection health is now hourly columns (ok in blue, failures stacked on top in red, 2px gap between them), growing in from the baseline. Hover or tab onto a column: a tooltip with "14–15: 12 ok, 1 failed". Legend "ok / failed" under the chart; a quiet hour is an empty slot.
+- [ ] Sidebar → Conversations: the list skeleton matches the list page (title + count, lead-form button, five-column table with a two-line contact cell, pill and right-aligned score). Same for the back link from a thread.
 - [ ] Account menu → Manage account: the dialog opens (it is now loaded on demand). Same for the workspace picker's Manage.
 - [ ] Phone width: open the burger drawer — the workspace picker inside it works; close it; the desktop picker is unaffected.
 - [ ] Agent page: clicking the "Agent is on", "Book meetings" and "Answer calls" labels toggles the RIGHT switch each time (they had duplicate ids).
