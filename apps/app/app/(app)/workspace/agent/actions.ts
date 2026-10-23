@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { deleteOrgSecret, orgProfiles, recordAudit } from "@alevo/db";
+import { orgProfiles, recordAudit } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
 
@@ -101,46 +101,3 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
   }
 }
 
-export type DisconnectState = { ok?: boolean; error?: string };
-
-/**
- * Disconnect the connected booking calendar (Google / M365): drop the stored
- * refresh token and clear the profile's calendar fields. The agent then
- * falls back to Cal.com / Calendly / handoff per the usual precedence.
- */
-export async function disconnectCalendar(_prev: DisconnectState, _formData: FormData): Promise<DisconnectState> {
-  try {
-    await requireRole("admin");
-    const org = await getCurrentOrg();
-    if (!org) return { error: "No active organization." };
-
-    const [profile] = await withOrg((tx) =>
-      tx.select({ provider: orgProfiles.calendarProvider }).from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1),
-    );
-    if (profile?.provider === "google") {
-      await deleteOrgSecret(org.id, "google_calendar_refresh_token");
-    } else if (profile?.provider === "m365") {
-      await deleteOrgSecret(org.id, "m365_calendar_refresh_token");
-    }
-
-    await withOrg((tx) =>
-      tx
-        .update(orgProfiles)
-        .set({ calendarProvider: null, calendarId: null, calendarAccountEmail: null, updatedAt: new Date() })
-        .where(eq(orgProfiles.orgId, org.id)),
-    );
-
-    const me = await getCurrentUser();
-    await recordAudit({
-      orgId: org.id,
-      actorUserId: me?.id ?? null,
-      action: "qualifier.calendar_disconnected",
-      target: profile?.provider ?? "none",
-    });
-
-    revalidatePath("/workspace/agent");
-    return { ok: true };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong" };
-  }
-}

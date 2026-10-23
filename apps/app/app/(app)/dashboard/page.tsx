@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { contacts, conversations, meetings, orgProfiles, type Channel } from "@alevo/db";
+import { contacts, conversations, meetings, type Channel } from "@alevo/db";
 import { getCurrentOrg, withOrg } from "@alevo/auth";
+import { getAgentOn } from "@/lib/agent-on";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -38,10 +39,10 @@ export default async function DashboardPage() {
   // The window is computed in SQL so the render stays pure (no clock reads).
   const since = sql.raw(`now() - interval '${WINDOW_DAYS} days'`);
   // Explicit active-org scope on every read (platform admins bypass RLS).
-  const inOrg = (col: typeof conversations.orgId | typeof meetings.orgId | typeof orgProfiles.orgId) =>
+  const inOrg = (col: typeof conversations.orgId | typeof meetings.orgId) =>
     sql`${col} = (select app.current_org_id())`;
 
-  const [org, tz, [totals], [booked], byChannel, recent, [profile]] = await Promise.all([
+  const [org, tz, [totals], [booked], byChannel, recent, agentOn] = await Promise.all([
     getCurrentOrg(),
     getOrgTimezone(),
     withOrg((tx) =>
@@ -90,12 +91,9 @@ export default async function DashboardPage() {
         .orderBy(desc(conversations.createdAt))
         .limit(6),
     ),
-    withOrg((tx) =>
-      tx.select({ enabled: orgProfiles.enabled }).from(orgProfiles).where(inOrg(orgProfiles.orgId)).limit(1),
-    ),
+    getAgentOn(),
   ]);
 
-  const agentOn = profile?.enabled ?? false;
   const channelTotal = byChannel.reduce((sum, c) => sum + c.n, 0);
 
   return (

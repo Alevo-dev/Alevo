@@ -1,11 +1,32 @@
-import type { BookingProvider } from "@alevo/db";
 import type { SecretKey } from "@/lib/secrets-registry";
 import type { Tone } from "@/lib/ui/status";
+import { BOOKING_TOOL_LABEL, bookingToolMissing, type BookingSnapshot, type BookingTool } from "@/lib/booking/connected";
 
-export type ServiceIcon = "calcom" | "calendar" | "google" | "microsoft" | "calendly" | "twilio" | "resend" | "slack";
+export type ServiceIcon =
+  | "calcom"
+  | "calendar"
+  | "google"
+  | "microsoft"
+  | "calendly"
+  | "twilio"
+  | "resend"
+  | "slack"
+  | "hubspot"
+  | "zoho"
+  | "connectwise"
+  | "halopsa";
+
+/** The page is split into these sections, in this order. */
+export type ServiceGroup = "booking" | "communication" | "crm";
+export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string }[] = [
+  { id: "booking", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
+  { id: "communication", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
+  { id: "crm", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. Coming in a later sprint." },
+];
 
 export type ServiceView = {
   id: string;
+  group: ServiceGroup;
   name: string;
   hint: string;
   icon: ServiceIcon;
@@ -18,15 +39,8 @@ export type ServiceView = {
   issue?: string;
   /** Platform-level services have nothing for the org to manage. */
   managed: boolean;
-};
-
-/** The booking-related profile fields the status derivation reads. */
-export type BookingSnapshot = {
-  tool: BookingProvider | null;
-  calcomEventTypeId: number | null;
-  calendarProvider: BookingProvider | null;
-  calendarId: string | null;
-  calendlyUrl: string | null;
+  /** Booking tools: where they stand, for the reminder at the top of their dialog. */
+  setup?: { connected: boolean; chosen: boolean; missing: string | null };
 };
 
 export type ServiceInput = {
@@ -39,34 +53,67 @@ export type ServiceInput = {
 };
 
 const CONNECTED = { label: "Connected", tone: "success" } as const;
+const IN_USE = { label: "Booking tool", tone: "brand" } as const;
 const NOT_CONNECTED = { label: "Not connected", tone: "muted" } as const;
-const NOT_CHOSEN = { label: "Not chosen", tone: "muted" } as const;
 const NEEDS_SETUP = { label: "Needs setup", tone: "warning" } as const;
+const COMING_SOON = { label: "Coming soon", tone: "muted" } as const;
 const AGENT = "/workspace/agent";
-const BOOKING_ELSEWHERE = {
-  text: "Booking is set up under Agent → Booking: pick the tool and enter its details there.",
-  href: AGENT,
-  label: "Open Agent",
+
+/** PSA / CRM write-back (plan.md Sprint 5). Cards only, nothing to manage yet. */
+const CRM_PLACEHOLDERS: { id: string; name: string; hint: string; icon: ServiceIcon }[] = [
+  { id: "halopsa", name: "HaloPSA", hint: "Tickets, clients and opportunities", icon: "halopsa" },
+  { id: "connectwise", name: "ConnectWise", hint: "Companies, contacts and opportunities", icon: "connectwise" },
+  { id: "zoho", name: "Zoho CRM", hint: "Leads, contacts and deals", icon: "zoho" },
+  { id: "hubspot", name: "HubSpot", hint: "Contacts, deals and timeline notes", icon: "hubspot" },
+];
+
+const BOOKING_META: Record<BookingTool, { hint: string; icon: ServiceIcon; signingKey?: SecretKey }> = {
+  calcom: { hint: "Booking and availability", icon: "calcom", signingKey: "calcom_webhook_secret" },
+  google: { hint: "Direct booking with a Meet link", icon: "google" },
+  m365: { hint: "Direct booking with a Teams link", icon: "microsoft" },
+  calendly: { hint: "Booking links and webhook sync", icon: "calendly", signingKey: "calendly_webhook_secret" },
 };
-const CALENDAR_LABEL: Record<string, string> = { google: "Google Calendar", m365: "Microsoft 365" };
+
+/**
+ * One booking tool's card. Connected = can book (see `bookingToolMissing`);
+ * "Booking tool" = connected AND the one chosen under Agent → Booking. A tool
+ * that is half set up, or chosen but no longer connected, lands in Needs attention.
+ */
+function bookingService(tool: BookingTool, booking: BookingSnapshot, has: (key: string) => boolean): ServiceView {
+  const label = BOOKING_TOOL_LABEL[tool];
+  const meta = BOOKING_META[tool];
+  const missing = bookingToolMissing(tool, booking, has);
+  const connected = missing === null;
+  const chosen = booking.tool === tool;
+  const started =
+    tool === "calcom"
+      ? has("calcom_api_key") || booking.calcomEventTypeId != null
+      : tool === "calendly"
+        ? Boolean(booking.calendlyUrl) || has("calendly_webhook_secret")
+        : false;
+
+  let issue: string | undefined;
+  if (chosen && !connected) issue = `${label} is the booking tool but is missing its ${missing}.`;
+  else if (!connected && started) issue = `${label} is half set up: missing its ${missing}.`;
+  else if (chosen && meta.signingKey && !has(meta.signingKey)) issue = `${label} signing key missing. Bookings won't sync back.`;
+
+  return {
+    id: tool,
+    group: "booking",
+    name: label,
+    hint: meta.hint,
+    icon: meta.icon,
+    status: connected ? (chosen ? IN_USE : CONNECTED) : started || chosen ? NEEDS_SETUP : NOT_CONNECTED,
+    keys: [],
+    managed: true,
+    issue,
+    setup: { connected, chosen, missing },
+  };
+}
 
 /** Derives each service's state from what is actually stored, never from copy. */
 export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConfigured, booking }: ServiceInput): ServiceView[] {
   const has = (key: string) => setKeys.has(key);
-
-  // Cal.com: chosen + key + event type.
-  const calcomChosen = booking.tool === "calcom";
-  const calcomConfigured = has("calcom_api_key") && Boolean(booking.calcomEventTypeId);
-
-  // Calendar: chosen Google / M365 + that calendar connected (refresh token + calendar id).
-  const calendarTool = booking.tool === "google" || booking.tool === "m365" ? booking.tool : null;
-  const calendarTokenKey = calendarTool === "google" ? "google_calendar_refresh_token" : "m365_calendar_refresh_token";
-  const calendarConfigured =
-    calendarTool !== null && booking.calendarProvider === calendarTool && Boolean(booking.calendarId) && has(calendarTokenKey);
-
-  // Calendly: chosen + a scheduling link (its fields live on this page).
-  const calendlyChosen = booking.tool === "calendly";
-  const calendlyLink = Boolean(booking.calendlyUrl);
 
   const sms: { status: ServiceView["status"]; issue?: string } = !smsConfigured
     ? { status: { label: "Not set up", tone: "muted" } }
@@ -75,61 +122,13 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       : { status: CONNECTED };
 
   return [
-    {
-      id: "calcom",
-      name: "Cal.com",
-      hint: "Booking and availability",
-      icon: "calcom",
-      status: calcomChosen ? (calcomConfigured ? CONNECTED : NEEDS_SETUP) : NOT_CHOSEN,
-      keys: [],
-      managed: true,
-      elsewhere: BOOKING_ELSEWHERE,
-      issue: !calcomChosen
-        ? undefined
-        : !calcomConfigured
-          ? "Chosen for booking but missing its API key or event type ID."
-          : !has("calcom_webhook_secret")
-            ? "Cal.com webhook secret missing. Bookings won't sync back."
-            : undefined,
-    },
-    {
-      id: "calendar",
-      name: "Calendar",
-      hint: "Direct booking with Google or Microsoft 365",
-      icon: "calendar",
-      status: calendarTool ? (calendarConfigured ? CONNECTED : NEEDS_SETUP) : NOT_CHOSEN,
-      keys: [],
-      managed: true,
-      elsewhere: BOOKING_ELSEWHERE,
-      issue:
-        calendarTool && !calendarConfigured
-          ? `${CALENDAR_LABEL[calendarTool]} is chosen for booking but no calendar is connected yet.`
-          : undefined,
-    },
-    {
-      id: "calendly",
-      name: "Calendly",
-      hint: "Booking links and webhook sync",
-      icon: "calendly",
-      status: calendlyChosen
-        ? calendlyLink
-          ? CONNECTED
-          : NEEDS_SETUP
-        : calendlyLink
-          ? { label: "Link saved, not chosen", tone: "muted" }
-          : NOT_CONNECTED,
-      keys: ["calendly_webhook_secret"],
-      managed: true,
-      issue: !calendlyChosen
-        ? undefined
-        : !calendlyLink
-          ? "Chosen for booking but has no scheduling link."
-          : !has("calendly_webhook_secret")
-            ? "Calendly signing key missing. Bookings won't sync back."
-            : undefined,
-    },
+    bookingService("calcom", booking, has),
+    bookingService("google", booking, has),
+    bookingService("m365", booking, has),
+    bookingService("calendly", booking, has),
     {
       id: "twilio",
+      group: "communication",
       name: "Twilio",
       hint: "SMS replies and sending",
       icon: "twilio",
@@ -143,6 +142,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
     },
     {
       id: "resend",
+      group: "communication",
       name: "Resend",
       hint: "Email sending and replies",
       icon: "resend",
@@ -152,6 +152,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
     },
     {
       id: "slack",
+      group: "communication",
       name: "Slack",
       hint: "Alerts for qualified leads",
       icon: "slack",
@@ -159,5 +160,6 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       keys: ["slack_webhook_url"],
       managed: true,
     },
+    ...CRM_PLACEHOLDERS.map((p): ServiceView => ({ ...p, group: "crm", status: COMING_SOON, keys: [], managed: false })),
   ];
 }

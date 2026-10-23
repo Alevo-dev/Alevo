@@ -258,7 +258,7 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [x] Webhooks (`BOOKING_CREATED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`) → `/api/webhooks/calcom` (HMAC-verified) update `meetings` + conversation status
 
 **Google Calendar + Microsoft 365 adapters — basic, single rep (7–10h)** — ✅
-- [x] OAuth for one booking calendar per org (`/api/oauth/{google,microsoft}/{start,callback}`, signed-state CSRF); only the refresh token is stored encrypted (`org_secrets`), exchanged for an access token per use. Connect/disconnect in Settings → Qualifier
+- [x] OAuth for one booking calendar per org (`/api/oauth/{google,microsoft}/{start,callback}`, signed-state CSRF); only the refresh token is stored encrypted (`org_secrets`), exchanged for an access token per use. Connect/disconnect in Workspace → Integrations (one card per tool; Agent → Booking only offers connected tools — 2026-10-23)
 - [x] Free/busy (Google `POST /freeBusy`, Graph `POST /me/calendar/getSchedule`) → slots from simple rules: weekday working-hours window + meeting length + timezone (`lib/booking/slots.ts`, tz-aware)
 - [x] Create event with the lead as attendee + Meet/Teams link (Google `conferenceData` hangoutsMeet; Graph `isOnlineMeeting` teamsForBusiness); the calendar invite is the confirmation
 - [x] Double-booking guard: re-check free/busy right before inserting (and on reschedule)

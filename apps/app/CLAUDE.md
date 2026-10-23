@@ -60,7 +60,9 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
 - **Primitives** (`components/ui/`): `Button`/`buttonClass` (primary · accent ·
   secondary · ghost · danger; sm/md), `Card`/`CardHeader`, `Field`/`Input`/`Textarea`/
   `Select`/`FieldError` (red border + message beneath — rule 13), `SettingRow`
-  (label-left/control-right), `Switch`/`SwitchRow`, `Pill`/`StatusDot`, `StatTile`,
+  (label-left/control-right), `Switch` (a section's on/off switch goes in
+  `CardHeader`'s `control` slot, on the title line — never as a row beneath it),
+  `Pill`/`StatusDot`, `StatTile`,
   `PageHeader`, `Table`/`Th`/`Tr`/`Td`/`EmptyRow`, `Notice`. Compose these; don't
   hand-roll class strings on pages.
 - **No browser-default controls.** Never a native `<select>`, `alert()`, `confirm()` or
@@ -111,11 +113,17 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
 - **Workspace (not "Settings"):** the org's setup lives under `/workspace/*` — Business
   profile (`profile/`: company, offering, ICP, criteria, disqualifiers, voice →
   `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, SMS number →
-  `saveAgentSettings`; **Booking** = one switch + ONE chosen tool with only that tool's
-  fields beneath it → `booking-actions.ts`; **Phone calls** → `voice-actions.ts`;
-  enabling the agent requires the profile's three required fields), Knowledge,
-  Integrations (per-service status cards; Manage dialogs hold Slack's webhook and
-  Calendly's link + signing key, and point booking tools back to Agent → Booking). (No Files tab: the `files` table is a storage ledger behind the
+  `saveAgentSettings`; **Booking** = one switch + the CONNECTED tool the agent books
+  through, with only its behaviour settings beneath → `booking-actions.ts`; **Phone
+  calls** → `voice-actions.ts`; enabling the agent requires the profile's three
+  required fields), Knowledge, Integrations (status cards in three sections —
+  **Booking**: Cal.com, Google Calendar, Microsoft 365, Calendly, whose Manage dialogs
+  hold everything needed to *connect* that tool; **Communication**: Twilio, Resend,
+  Slack; **CRM and PSA**: HaloPSA, ConnectWise, Zoho CRM, HubSpot as "Coming soon"
+  placeholders until Sprint 5 write-back. Sections + placeholders live in
+  `lib/integrations/services.ts` (`SERVICE_GROUPS`, `CRM_PLACEHOLDERS`); marks in
+  `lib/integrations/brand-icons.ts` — `LETTER_MARKS` is the lettered-tile fallback for
+  brands Simple Icons doesn't carry). (No Files tab: the `files` table is a storage ledger behind the
   Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
   `/settings/*` redirects (next.config.ts).
 - **Manage workspace dialog:** the workspace picker (`components/workspace-switcher.tsx`)
@@ -133,6 +141,9 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   render a raw enum value. Shared formatters live in `lib/format.ts`.
 - **Shell:** `(app)/layout.tsx` + `components/app-sidebar.tsx` (232px rail, plan card,
   Clerk controls); Settings pages share `(app)/workspace/layout.tsx` + `settings-tabs.tsx`.
+  The agent's on/off state is always in the shell (`components/agent-status.tsx`, read once
+  per request via `lib/agent-on.ts`): a row under the theme control on desktop, a dot left of
+  the avatar on phones (pulsing dot = online; dot + "Offline" = off). Both link to Agent.
 - **Icons:** `lucide-react`, 1.75 stroke, 16px in dense UI. Voice: operator reporting
   in — plain verbs, sentence case, no exclamation marks or emoji.
 
@@ -323,15 +334,25 @@ the same tools (`check_availability` + `book_meeting`); Calendly is *link mode*
 (`BookingAdapter`: `availableSlots` + `book` + `cancel` + `reschedule`), resolved
 by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
 
-- **Connect (per org):** Workspace → Agent → **Booking** (`booking-ui.tsx` /
-  `booking-actions.ts`): a switch, then one tool. Cal.com: API key + webhook
-  secret (`org_secrets`) + event-type ID, all in that section (one Save). Google /
-  Microsoft 365: a Connect button there (`connectCalendar` saves the form, then
-  redirects into the OAuth start route) plus meeting length / working hours;
-  Disconnect is a `ConfirmSubmit formAction` inside the same form. Calendly: the
-  scheduling link (`org_profiles.calendly_url`) + webhook signing key live in
-  Integrations → Calendly → Manage (`calendly-form.tsx`); Booking only points there.
-  Turning booking off clears only the choice — each tool's details stay stored.
+- **Connect vs. behave (two places, by design):** every tool is *connected* under
+  **Workspace → Integrations** (its Manage dialog holds everything that makes it
+  usable — Cal.com: event type ID + API key + webhook secret (`calcom-form.tsx`);
+  Google / Microsoft 365: Connect (a link into the OAuth start route) + Disconnect
+  (`calendar-connect.tsx`; the callback returns to Integrations); Calendly: link +
+  signing key (`calendly-form.tsx`)). Each dialog opens with a `SetupStatus`
+  reminder: not ready (what's missing) / connected but not chosen / in use.
+  `lib/booking/connected.ts` is the one definition of "connected"
+  (`bookingToolMissing`, `connectedBookingTools`); the service cards, the Needs
+  attention list and Booking all derive from it.
+  **Workspace → Agent → Booking** (`booking-ui.tsx` / `booking-actions.ts`) is
+  behaviour only: a switch (disabled, with a "Connect a booking tool" link, while
+  nothing is connected), the connected tool the agent books through (auto-picked
+  when exactly one is connected; a chooser among connected ones otherwise), and
+  that tool's booking settings beneath (meeting length + working hours for
+  Google / M365; nothing for Cal.com / Calendly). The save re-derives the
+  connected set server-side and rejects anything else. Disconnecting a calendar,
+  clearing the Cal.com key / event type, or clearing the Calendly link un-chooses
+  that tool (`unchooseBookingTool`). Turning booking off clears only the choice.
 - **Book (Cal.com):** `check_availability` → `GET /v2/slots`
   (`cal-api-version: 2024-09-04`); `book_meeting` → `POST /v2/bookings`
   (`cal-api-version: 2026-02-25`) with `metadata.alevoOrgId`/`alevoConversationId`.

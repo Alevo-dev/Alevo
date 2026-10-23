@@ -5,7 +5,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
-import { SwitchRow } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { saveVoiceSettings, type VoiceErrors, type VoiceState, type VoiceValues } from "./voice-actions";
@@ -31,17 +31,16 @@ export function VoiceForm({ initial, phoneNumber }: { initial: VoiceValues; phon
       <Card>
         <CardHeader
           title="Phone calls"
-          hint="The same agent that handles texts and emails answers calls to the organization's number."
+          hint={
+            phoneNumber
+              ? `When on, the same agent that handles texts and emails answers calls to ${phoneNumber}.`
+              : "The same agent that handles texts and emails answers calls to the organization's number. Needs a phone number first (set it above)."
+          }
+          control={<Switch id="voiceEnabled" name="enabled" defaultChecked={v("enabled")} />}
+          controlId="voiceEnabled"
         />
-        <div className="mt-2">
-          <SwitchRow
-            id="voiceEnabled"
-            name="enabled"
-            label="Answer calls"
-            hint={phoneNumber ? `Calls to ${phoneNumber} are answered by Alevo.` : "Needs a phone number first (set it above)."}
-            defaultChecked={v("enabled")}
-          />
-          <FieldError>{e("enabled")}</FieldError>
+        <FieldError>{e("enabled")}</FieldError>
+        <div className="mt-6">
           <SettingRow
             label="Outside office hours"
             htmlFor="afterHours"

@@ -20,21 +20,3 @@ export function Switch(props: InputHTMLAttributes<HTMLInputElement>) {
     </label>
   );
 }
-
-/** A labelled toggle row: title + hint on the left, switch on the right. */
-export function SwitchRow({
-  id,
-  label,
-  hint,
-  ...input
-}: InputHTMLAttributes<HTMLInputElement> & { id: string; label: string; hint?: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-4">
-      <label htmlFor={id} className="cursor-pointer">
-        <span className="block text-sm font-semibold text-ink">{label}</span>
-        {hint && <span className="mt-1 block text-label text-ink-muted">{hint}</span>}
-      </label>
-      <Switch id={id} {...input} />
-    </div>
-  );
-}

@@ -18,7 +18,8 @@ import {
  * session; the callback is stateless (the signed `state` carries the org).
  */
 
-const SETTINGS = "/workspace/agent";
+// Calendars are connected from Integrations; the callback lands back there.
+const SETTINGS = "/workspace/integrations";
 
 // The callback returns to the origin the admin's browser is actually on
 // (`requestOrigin`), so they land where their session cookie lives.

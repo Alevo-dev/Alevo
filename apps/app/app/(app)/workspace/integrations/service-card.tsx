@@ -8,7 +8,15 @@ import { BrandMark } from "@/components/workspace/brand-mark";
 import { ManageDialog } from "./manage-dialog";
 
 /** One connected service: brand mark, name, state, and a Manage dialog with its keys. */
-export function ServiceCard({ service, manage }: { service: ServiceView; manage: ReactNode }) {
+export function ServiceCard({
+  service,
+  manage,
+  dialogDescription,
+}: {
+  service: ServiceView;
+  manage: ReactNode;
+  dialogDescription?: string;
+}) {
   return (
     <Card as="article" padding="sm" className="flex flex-col gap-4 p-5">
       <div className="flex items-center gap-3">
@@ -24,7 +32,11 @@ export function ServiceCard({ service, manage }: { service: ServiceView; manage:
           <StatusDot tone={service.status.tone} />
           {service.status.label}
         </span>
-        {service.managed && <ManageDialog name={service.name}>{manage}</ManageDialog>}
+        {service.managed && (
+          <ManageDialog name={service.name} description={dialogDescription}>
+            {manage}
+          </ManageDialog>
+        )}
       </div>
     </Card>
   );

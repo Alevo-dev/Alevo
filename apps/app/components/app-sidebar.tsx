@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, CalendarCheck, LayoutDashboard, MessagesSquare } from "lucide-react";
 import { cx } from "@/lib/cx";
+import { AgentStatus } from "./agent-status";
 import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -17,7 +18,7 @@ const NAV = [
 export type PlanCard = { name: string; renews: string | null } | null;
 
 /** Left rail on desktop, a stacked top bar on phones. */
-export function AppSidebar({ plan }: { plan: PlanCard }) {
+export function AppSidebar({ plan, agentOn }: { plan: PlanCard; agentOn: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -59,6 +60,7 @@ export function AppSidebar({ plan }: { plan: PlanCard }) {
 
       <div className="flex flex-col gap-4 px-1 md:mt-auto">
         <ThemeToggle />
+        <AgentStatus on={agentOn} className="border-t border-hairline pt-4" />
       </div>
     </aside>
   );

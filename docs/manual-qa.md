@@ -704,3 +704,57 @@ Marketing site:
 - [ ] Theme toggle still works (next-themes used directly).
 - [ ] The landing page demos still animate; with "reduce motion" on in the OS they stop.
 - [ ] Six removed packages (`@base-ui/react`, `class-variance-authority`, `cn`, `lucide-react`, `shadcn`, `tw-animate-css`, `motion`) — nothing visibly missing.
+
+## Agent status in the shell (2026-10-23)
+
+The agent's on/off state is always visible: `components/agent-status.tsx`, fed by
+`lib/agent-on.ts` (one cached read of `org_profiles.enabled` per request, explicitly
+scoped to the current org). Both variants link to Workspace → Agent.
+
+- [ ] Desktop: the sidebar has an "Agent: Offline — Manage" row under the theme control, separated by a hairline. With the agent on it reads "Agent: Online" with a blue dot that pulses.
+- [ ] Phone width: the status sits LEFT of the avatar in the top bar. Agent on → just a pulsing blue dot (no text). Agent off → a grey dot with "Offline". Tapping it opens Workspace → Agent.
+- [ ] Workspace → Agent → flip "Agent is on" → Save: the sidebar row / top-bar dot update right after the "Saved." toast without a reload; the Dashboard status line matches.
+- [ ] With "reduce motion" on in the OS the online dot is solid blue, not pulsing.
+- [ ] No active org (fresh account before choosing a workspace): no status in the top bar; the sidebar row reads Offline.
+
+## Section switches on the title line (2026-10-23)
+
+`CardHeader` has a `control` slot; the Agent page's three on/off switches now sit on
+the section title's line (title left, switch right, hint beneath). `SwitchRow` is gone.
+
+- [ ] Workspace → Agent: "Agent", "Booking" and "Phone calls" each show their switch at the right end of the title line; the explanatory hint runs beneath, full width. No "Agent is on" / "Book meetings" / "Answer calls" rows remain.
+- [ ] Clicking a section title toggles its switch (the title is its label); keyboard focus on the switch shows the focus ring.
+- [ ] The agent with an incomplete Business profile: the hint ends with "Needs the company name… Business profile first." and saving ON shows the red error under the header; the switch stays where it was.
+- [ ] Booking: turning the switch on reveals the tool cards beneath the hint; a validation error on the tool shows in red under the header.
+- [ ] Phone calls: with a number set the hint names it ("…answers calls to +1…"); without one it says a number is needed. The "Outside office hours" row is first (no top hairline) under the header.
+- [ ] Phone width: title and switch stay on one line; long hints wrap under both.
+
+## Booking: connect under Integrations, choose under Agent (2026-10-23)
+
+Supersedes the Integrations half of "Booking in one place" above. One client → one
+booking tool. Tools are CONNECTED under Integrations (one card each: Cal.com, Google
+Calendar, Microsoft 365, Calendly); Agent → Booking only offers connected ones.
+
+Workspace → Integrations:
+- [ ] Four booking cards. Nothing stored: all "Not connected". Each Manage dialog opens with a reminder line at the top ("Not ready yet: … still needs its API key and event type ID" / "…a connected calendar" / "…scheduling link").
+- [ ] Cal.com → Manage: event type ID + API key + webhook secret in ONE form, one Save/Cancel (appear on change). Save a key + numeric ID → toast, card "Connected", reminder turns blue: "Connected. Turn booking on under Agent → Booking". Only a key (or only an ID) → card "Needs setup" + a Needs attention row "Cal.com is half set up: missing its …".
+- [ ] Google Calendar → Manage: a "Connect Google Calendar" button (admins only) that goes to the Google consent screen; on return you land on INTEGRATIONS with a toast and the card reads "Connected"; the dialog shows the account email + Disconnect (confirm). Microsoft 365's dialog then says Google is connected and to disconnect it first (one calendar at a time).
+- [ ] Calendly → Manage: link + signing key as before; saving a link → "Connected".
+- [ ] A connected tool that is also chosen under Agent shows a blue "Booking tool" status and its dialog says "Connected and in use". Chosen Cal.com/Calendly without its signing key → Needs attention "… signing key missing. Bookings won't sync back."
+- [ ] Clearing what a chosen tool needs (Disconnect the calendar; Clear the Cal.com API key or blank its event type ID; blank the Calendly link) un-chooses it: Agent → Booking falls back to "Nothing is connected yet" (or the next connected tool) and the agent hands off.
+
+Workspace → Agent → Booking:
+- [ ] Nothing connected: the switch is disabled; hint ends "Nothing is connected yet."; a row with "Connect a booking tool" (primary) → Integrations. No tool cards.
+- [ ] Exactly one tool connected: switch on → one row "Books through Calendly, https://…" (or "Google Calendar, you@…", "Cal.com, event type 123") with its mark, a one-line how-it-works, and a "Change" link to Integrations. No chooser. Save → toast; Integrations shows that card as "Booking tool".
+- [ ] Two or more connected (e.g. Cal.com keys + a Calendly link): a "Books through" chooser listing ONLY those, plus "Manage connections" → Integrations.
+- [ ] Google / Microsoft 365 chosen: meeting length + working hours beneath; Cal.com / Calendly: nothing beneath. No Connect / Disconnect / key fields anywhere on the Agent page.
+- [ ] Tamper check: submit the form with `tool=google` while Google isn't connected → red "Connect a booking tool under Integrations first." under the header; nothing saved.
+- [ ] Turn booking off → Save: cards go back to "Connected" (not "Booking tool"); every connection stays. On again: the same tool is pre-selected.
+- [ ] Switch OFF with a tool connected: the row still shows it — "Connected: Calendly, https://…" with "Turn booking on and the agent books through it." and a Manage link. With several connected it names the others ("Also connected: …"). Switch on → the row reads "Books through …" (one tool) or becomes the chooser (several).
+
+## Integrations in sections + CRM/PSA placeholders (2026-10-23)
+
+- [ ] Workspace → Integrations: below the health / attention pair, three sections in order — **Booking** (Cal.com, Google Calendar, Microsoft 365, Calendly), **Communication** (Twilio, Resend, Slack), **CRM and PSA** (HaloPSA, ConnectWise, Zoho CRM, HubSpot). Each has a title and a one-line hint.
+- [ ] The four CRM/PSA cards read "Coming soon" (grey dot) and have no Manage button. HubSpot and Zoho show their real marks; HaloPSA and ConnectWise show lettered tiles ("H" teal, "CW" navy) until real logos land.
+- [ ] Nothing about the Booking or Communication cards changed (statuses, Manage dialogs, Needs attention).
+- [ ] Phone width: sections stack; cards go one per row.

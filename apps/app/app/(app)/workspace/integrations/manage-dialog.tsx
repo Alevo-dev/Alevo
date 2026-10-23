@@ -8,10 +8,12 @@ import { Dialog } from "@/components/ui/dialog";
 export function ManageDialog({
   name,
   label = "Manage",
+  description = "Keys are stored encrypted. Values are never shown again after you save them.",
   children,
 }: {
   name: string;
   label?: string;
+  description?: string;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -20,7 +22,7 @@ export function ManageDialog({
       <Button type="button" size="sm" variant="secondary" onClick={() => setOpen(true)}>
         {label}
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title={name} description="Keys are stored encrypted. Values are never shown again after you save them." size="xl">
+      <Dialog open={open} onClose={() => setOpen(false)} title={name} description={description} size="xl">
         <div className="space-y-4">{children}</div>
       </Dialog>
     </>

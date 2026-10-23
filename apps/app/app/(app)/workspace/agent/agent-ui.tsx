@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/field";
+import { FieldError, Input } from "@/components/ui/field";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
 import { Switch } from "@/components/ui/switch";
@@ -76,28 +76,23 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
     <form key={formKey} ref={formRef} action={action} noValidate onInput={recheck} onChange={recheck} className="space-y-6">
       <Card>
         <CardHeader
-          title="The agent"
-          hint="When on, Alevo replies to new leads, asks qualifying questions and scores fit. Off means new leads wait for a person."
-        />
-        <div className="mt-2">
-          <SettingRow
-            label="Agent is on"
-            htmlFor="enabled"
-            hint={
-              profileReady ? undefined : (
+          title="Agent"
+          hint={
+            <>
+              When on, Alevo replies to new leads, asks qualifying questions and scores fit. Off means new leads wait for a person.
+              {!profileReady && (
                 <>
+                  {" "}
                   Needs the company name, offering and ideal customer in your{" "}
                   <Link href="/workspace/profile">Business profile</Link> first.
                 </>
-              )
-            }
-            error={e("enabled")}
-          >
-            <div className="flex h-10 items-center md:justify-end">
-              <Switch id="enabled" name="enabled" defaultChecked={Boolean(v("enabled"))} />
-            </div>
-          </SettingRow>
-        </div>
+              )}
+            </>
+          }
+          control={<Switch id="enabled" name="enabled" defaultChecked={Boolean(v("enabled"))} />}
+          controlId="enabled"
+        />
+        <FieldError>{e("enabled")}</FieldError>
       </Card>
 
       <Card>

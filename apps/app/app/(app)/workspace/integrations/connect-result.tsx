@@ -11,8 +11,8 @@ export function ConnectResult({ connected }: { connected?: string }) {
   useEffect(() => {
     if (!connected) return;
     const name = connected === "m365" ? "Microsoft 365" : "Google";
-    toast.success(`Connected your ${name} calendar. The agent will book meetings on it.`);
-    router.replace("/workspace/agent");
+    toast.success(`Connected your ${name} calendar. Turn booking on under Agent to use it.`);
+    router.replace("/workspace/integrations");
   }, [connected, router]);
   return null;
 }

@@ -5,8 +5,10 @@ import { eq, sql } from "drizzle-orm";
 import { orgSubscriptions, plans } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
 import { AppSidebar, type PlanCard } from "@/components/app-sidebar";
+import { AgentStatus } from "@/components/agent-status";
 import { UserMenu } from "@/components/user-menu";
 import { MobileMenu } from "@/components/mobile-menu";
+import { getAgentOn } from "@/lib/agent-on";
 
 /** The org's plan for the sidebar card (explicitly scoped to the active org). */
 async function loadPlan(): Promise<PlanCard> {
@@ -28,15 +30,16 @@ async function loadPlan(): Promise<PlanCard> {
 /** Shell for every authenticated, org-scoped route: sidebar + content column. */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { orgId } = await auth();
-  const plan = orgId ? await loadPlan() : null;
+  const [plan, agentOn] = orgId ? await Promise.all([loadPlan(), getAgentOn()]) : [null, false];
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
       <div className="hidden md:flex">
-        <AppSidebar plan={plan} />
+        <AppSidebar plan={plan} agentOn={agentOn} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar: burger menu + logo on mobile, logo on desktop, account menu on the right. */}
+        {/* Top bar: burger menu + logo on mobile, logo on desktop, account menu on the right.
+            The agent status sits left of the avatar on phones; desktop has it in the sidebar. */}
         <div className="flex h-14 shrink-0 items-center justify-between px-4 md:px-10">
           <div className="flex items-center gap-3">
             <MobileMenu plan={plan} />
@@ -45,7 +48,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <span className="font-display text-lg font-semibold tracking-tight">Alevo</span>
             </Link>
           </div>
-          <UserMenu />
+          <div className="flex items-center gap-2">
+            {orgId && <AgentStatus on={agentOn} compact className="md:hidden" />}
+            <UserMenu />
+          </div>
         </div>
         <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">{children}</main>
       </div>

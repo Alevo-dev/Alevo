@@ -1,10 +1,12 @@
-import { BRAND_ICONS, MICROSOFT_SQUARES, SLACK_PIECES, type BrandIcon } from "@/lib/integrations/brand-icons";
+import { BRAND_ICONS, LETTER_MARKS, MICROSOFT_SQUARES, SLACK_PIECES, type BrandIcon } from "@/lib/integrations/brand-icons";
 import type { ServiceIcon } from "@/lib/integrations/services";
 
-const MARK: Record<Exclude<ServiceIcon, "calendar" | "google" | "microsoft" | "slack" | "calcom">, BrandIcon> = {
+const MARK: Record<Exclude<ServiceIcon, "calendar" | "google" | "microsoft" | "slack" | "calcom" | keyof typeof LETTER_MARKS>, BrandIcon> = {
   calendly: BRAND_ICONS.calendly,
   resend: BRAND_ICONS.resend,
   twilio: BRAND_ICONS.twilio,
+  hubspot: BRAND_ICONS.hubspot,
+  zoho: BRAND_ICONS.zoho,
 };
 
 function Glyph({ path, fill, className }: { path: string; fill: string; className?: string }) {
@@ -76,7 +78,15 @@ export function BrandMark({ icon }: { icon: ServiceIcon }) {
       </span>
     );
   }
-  const mark = MARK[icon];
+  if (icon in LETTER_MARKS) {
+    const { text, fill } = LETTER_MARKS[icon as keyof typeof LETTER_MARKS];
+    return (
+      <span aria-hidden="true" className={TILE} style={{ backgroundColor: fill }}>
+        <span className="font-display text-sm font-bold leading-none text-white">{text}</span>
+      </span>
+    );
+  }
+  const mark = MARK[icon as keyof typeof MARK];
   return (
     <span aria-hidden="true" className={`${TILE} p-2`}>
       <Glyph path={mark.path} fill={`#${mark.hex}`} className="size-full" />

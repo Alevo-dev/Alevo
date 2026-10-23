@@ -7,20 +7,31 @@ import { Notice } from "@/components/ui/notice";
 import { StatusDot } from "@/components/ui/pill";
 import { isEmailConfigured } from "@/lib/email/resend";
 import { isSmsConfigured } from "@/lib/sms/twilio";
-import { buildServices, type ServiceView } from "@/lib/integrations/services";
+import { bookingSnapshot } from "@/lib/booking/connected";
+import { buildServices, SERVICE_GROUPS, type ServiceView } from "@/lib/integrations/services";
 import { getConnectionHealth } from "@/lib/integrations/health";
 import { keyField } from "@/lib/secrets-registry";
+import { CalcomForm } from "./calcom-form";
+import { CalendarConnect } from "./calendar-connect";
 import { CalendlyForm } from "./calendly-form";
+import { ConnectResult } from "./connect-result";
 import { ConnectionHealthCard, PAIR_CARD_CLASS } from "./connection-health";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceCard } from "./service-card";
 import { ManageDialog } from "./manage-dialog";
+import { SetupStatus } from "./setup-status";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Integrations" };
 
-export default async function SecretsPage() {
+const CALENDAR_DESCRIPTION = "Alevo books on one calendar at a time. Only a refresh token is stored, encrypted.";
+
+export default async function SecretsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ calendar_connected?: string; calendar_error?: string }>;
+}) {
   let userRole: string = "viewer";
   try {
     userRole = await requireRole("viewer");
@@ -37,56 +48,81 @@ export default async function SecretsPage() {
   }
 
   // Explicit org filter: platform admins bypass RLS, so scope in code.
-  const [setKeys, [profile], health] = await Promise.all([
+  const [{ calendar_connected, calendar_error }, setKeys, [profile], health] = await Promise.all([
+    searchParams,
     listOrgSecretKeys(org.id),
     withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1)),
     getConnectionHealth(org.id),
   ]);
-  const canReveal = userRole === "admin" || userRole === "owner";
+  const canModify = userRole === "admin" || userRole === "owner";
   const isSet = new Set(setKeys);
+  const booking = bookingSnapshot(profile);
 
   const services = buildServices({
     setKeys: isSet,
     smsFromNumber: profile?.smsFromNumber ?? null,
     smsConfigured: isSmsConfigured(),
     emailConfigured: isEmailConfigured(),
-    booking: {
-      tool: profile?.bookingTool ?? null,
-      calcomEventTypeId: profile?.calcomEventTypeId ?? null,
-      calendarProvider: profile?.calendarProvider ?? null,
-      calendarId: profile?.calendarId ?? null,
-      calendlyUrl: profile?.calendlyUrl ?? null,
-    },
+    booking,
   });
   const attention = services.filter((s) => s.issue);
+  const connectedCalendar =
+    booking.calendarProvider === "google" || booking.calendarProvider === "m365"
+      ? { provider: booking.calendarProvider, email: booking.calendarAccountEmail }
+      : null;
 
   /** The contents of one service's Manage dialog: its own form, or a pointer elsewhere. */
   function manageContent(service: ServiceView) {
-    if (service.id === "calendly") {
-      return (
-        <CalendlyForm
-          link={profile?.calendlyUrl ?? ""}
-          signingKeySet={isSet.has("calendly_webhook_secret")}
-          canModify={canReveal}
-        />
-      );
+    switch (service.id) {
+      case "calcom":
+        return (
+          <>
+            <SetupStatus service={service} />
+            <CalcomForm
+              eventTypeId={booking.calcomEventTypeId != null ? String(booking.calcomEventTypeId) : ""}
+              apiKeySet={isSet.has("calcom_api_key")}
+              webhookSecretSet={isSet.has("calcom_webhook_secret")}
+              canModify={canModify}
+            />
+          </>
+        );
+      case "google":
+      case "m365":
+        return (
+          <>
+            <SetupStatus service={service} />
+            <CalendarConnect provider={service.id} connected={connectedCalendar} canModify={canModify} />
+          </>
+        );
+      case "calendly":
+        return (
+          <>
+            <SetupStatus service={service} />
+            <CalendlyForm link={booking.calendlyUrl ?? ""} signingKeySet={isSet.has("calendly_webhook_secret")} canModify={canModify} />
+          </>
+        );
+      default:
+        return (
+          <>
+            {service.keys.length > 0 && (
+              <ServiceKeysForm
+                canReveal={canModify}
+                canModify={canModify}
+                fields={service.keys.map((key) => keyField(key, isSet.has(key), key === "slack_webhook_url"))}
+              />
+            )}
+            <ElsewhereNote service={service} />
+          </>
+        );
     }
-    return (
-      <>
-        {service.keys.length > 0 && (
-          <ServiceKeysForm
-            canReveal={canReveal}
-            canModify={canReveal}
-            fields={service.keys.map((key) => keyField(key, isSet.has(key), key === "slack_webhook_url"))}
-          />
-        )}
-        <ElsewhereNote service={service} />
-      </>
-    );
   }
+  const dialogDescription = (service: ServiceView) => (service.id === "google" || service.id === "m365" ? CALENDAR_DESCRIPTION : undefined);
 
   return (
     <div className="space-y-10">
+      <ConnectResult connected={calendar_connected} />
+      {calendar_error && <Notice tone="danger">Couldn&apos;t connect your calendar: {calendar_error}</Notice>}
+
       {/* Side by side on desktop, stacked on mobile. */}
       <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <ConnectionHealthCard health={health} />
@@ -113,7 +149,7 @@ export default async function SecretsPage() {
                       Warning
                     </span>
                     {s.managed && (
-                      <ManageDialog name={s.name} label="Review">
+                      <ManageDialog name={s.name} label="Review" description={dialogDescription(s)}>
                         {manageContent(s)}
                       </ManageDialog>
                     )}
@@ -125,19 +161,23 @@ export default async function SecretsPage() {
         </Card>
       </div>
 
-      <section aria-labelledby="connected-services" className="space-y-4">
-        <div>
-          <h2 id="connected-services" className="text-heading font-semibold text-ink">
-            Connected services
-          </h2>
-          <p className="mt-2 text-sm text-ink-muted">Where Alevo books meetings, sends messages and posts alerts.</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {services.map((s) => (
-            <ServiceCard key={s.id} service={s} manage={manageContent(s)} />
-          ))}
-        </div>
-      </section>
+      {SERVICE_GROUPS.map((group) => (
+        <section key={group.id} aria-labelledby={`services-${group.id}`} className="space-y-4">
+          <div>
+            <h2 id={`services-${group.id}`} className="text-heading font-semibold text-ink">
+              {group.title}
+            </h2>
+            <p className="mt-2 text-sm text-ink-muted">{group.hint}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {services
+              .filter((s) => s.group === group.id)
+              .map((s) => (
+                <ServiceCard key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
+              ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
