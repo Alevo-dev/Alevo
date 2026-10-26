@@ -39,6 +39,9 @@ export type ServiceView = {
   issue?: string;
   /** Platform-level services have nothing for the org to manage. */
   managed: boolean;
+  /** Shown as a card on the page (connected, or at least started). Everything
+   *  else waits in the "Connect a tool" picker. */
+  listed: boolean;
   /** Booking tools: where they stand, for the reminder at the top of their dialog. */
   setup?: { connected: boolean; chosen: boolean; missing: string | null };
 };
@@ -106,6 +109,7 @@ function bookingService(tool: BookingTool, booking: BookingSnapshot, has: (key: 
     status: connected ? (chosen ? IN_USE : CONNECTED) : started || chosen ? NEEDS_SETUP : NOT_CONNECTED,
     keys: [],
     managed: true,
+    listed: connected || started || chosen,
     issue,
     setup: { connected, chosen, missing },
   };
@@ -135,6 +139,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       status: sms.status,
       keys: [],
       managed: smsConfigured,
+      listed: smsConfigured && Boolean(smsFromNumber),
       elsewhere: smsConfigured
         ? { text: "The org's SMS number is set in the agent settings.", href: AGENT, label: "Open Agent" }
         : undefined,
@@ -149,6 +154,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       status: emailConfigured ? CONNECTED : { label: "Not set up", tone: "muted" },
       keys: [],
       managed: false,
+      listed: emailConfigured,
     },
     {
       id: "slack",
@@ -159,7 +165,8 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       status: has("slack_webhook_url") ? CONNECTED : NOT_CONNECTED,
       keys: ["slack_webhook_url"],
       managed: true,
+      listed: has("slack_webhook_url"),
     },
-    ...CRM_PLACEHOLDERS.map((p): ServiceView => ({ ...p, group: "crm", status: COMING_SOON, keys: [], managed: false })),
+    ...CRM_PLACEHOLDERS.map((p): ServiceView => ({ ...p, group: "crm", status: COMING_SOON, keys: [], managed: false, listed: false })),
   ];
 }

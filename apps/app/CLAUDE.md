@@ -116,14 +116,17 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   `saveAgentSettings`; **Booking** = one switch + the CONNECTED tool the agent books
   through, with only its behaviour settings beneath → `booking-actions.ts`; **Phone
   calls** → `voice-actions.ts`; enabling the agent requires the profile's three
-  required fields), Knowledge, Integrations (status cards in three sections —
-  **Booking**: Cal.com, Google Calendar, Microsoft 365, Calendly, whose Manage dialogs
-  hold everything needed to *connect* that tool; **Communication**: Twilio, Resend,
-  Slack; **CRM and PSA**: HaloPSA, ConnectWise, Zoho CRM, HubSpot as "Coming soon"
-  placeholders until Sprint 5 write-back. Sections + placeholders live in
-  `lib/integrations/services.ts` (`SERVICE_GROUPS`, `CRM_PLACEHOLDERS`); marks in
-  `lib/integrations/brand-icons.ts` — `LETTER_MARKS` is the lettered-tile fallback for
-  brands Simple Icons doesn't carry). (No Files tab: the `files` table is a storage ledger behind the
+  required fields), Knowledge, Integrations (three sections — **Booking**: Cal.com,
+  Google Calendar, Microsoft 365, Calendly; **Communication**: Twilio, Resend, Slack;
+  **CRM and PSA**: HaloPSA, ConnectWise, Zoho CRM, HubSpot as "Coming soon"
+  placeholders until Sprint 5 write-back. A section shows cards ONLY for tools that
+  are connected or at least started (`ServiceView.listed`), else "Nothing connected
+  yet."; everything else waits in the **Connect a tool** picker (`connect-tool.tsx`:
+  same sections, a Connect button per row that closes the picker and opens that
+  tool's settings dialog — the same panel its card's Manage would show). Sections +
+  placeholders live in `lib/integrations/services.ts` (`SERVICE_GROUPS`,
+  `CRM_PLACEHOLDERS`); marks in `lib/integrations/brand-icons.ts` — `LETTER_MARKS` is
+  the lettered-tile fallback for brands Simple Icons doesn't carry). (No Files tab: the `files` table is a storage ledger behind the
   Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
   `/settings/*` redirects (next.config.ts).
 - **Manage workspace dialog:** the workspace picker (`components/workspace-switcher.tsx`)

@@ -15,6 +15,7 @@ import { CalcomForm } from "./calcom-form";
 import { CalendarConnect } from "./calendar-connect";
 import { CalendlyForm } from "./calendly-form";
 import { ConnectResult } from "./connect-result";
+import { ConnectTool } from "./connect-tool";
 import { ConnectionHealthCard, PAIR_CARD_CLASS } from "./connection-health";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceCard } from "./service-card";
@@ -66,6 +67,8 @@ export default async function SecretsPage({
     booking,
   });
   const attention = services.filter((s) => s.issue);
+  const listed = services.filter((s) => s.listed);
+  const connectable = services.filter((s) => !s.listed);
   const connectedCalendar =
     booking.calendarProvider === "google" || booking.calendarProvider === "m365"
       ? { provider: booking.calendarProvider, email: booking.calendarAccountEmail }
@@ -161,23 +164,52 @@ export default async function SecretsPage({
         </Card>
       </div>
 
-      {SERVICE_GROUPS.map((group) => (
-        <section key={group.id} aria-labelledby={`services-${group.id}`} className="space-y-4">
-          <div>
-            <h2 id={`services-${group.id}`} className="text-heading font-semibold text-ink">
-              {group.title}
-            </h2>
-            <p className="mt-2 text-sm text-ink-muted">{group.hint}</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {services
-              .filter((s) => s.group === group.id)
-              .map((s) => (
-                <ServiceCard key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
-              ))}
-          </div>
-        </section>
-      ))}
+      {/* Only connected (or started) tools get a card; everything else waits in the picker. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-heading font-semibold text-ink">Connected tools</h2>
+          <p className="mt-2 text-sm text-ink-muted">Where Alevo books meetings, sends messages, posts alerts and writes leads back.</p>
+        </div>
+        {canModify && (
+          <ConnectTool
+            groups={SERVICE_GROUPS}
+            tools={connectable.map((s) => ({
+              id: s.id,
+              group: s.group,
+              name: s.name,
+              hint: s.hint,
+              icon: s.icon,
+              managed: s.managed,
+              unavailable: s.status.label,
+              dialogDescription: dialogDescription(s),
+            }))}
+            panels={Object.fromEntries(connectable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
+          />
+        )}
+      </div>
+
+      {SERVICE_GROUPS.map((group) => {
+        const cards = listed.filter((s) => s.group === group.id);
+        return (
+          <section key={group.id} aria-labelledby={`services-${group.id}`} className="space-y-4">
+            <div>
+              <h2 id={`services-${group.id}`} className="text-heading font-semibold text-ink">
+                {group.title}
+              </h2>
+              <p className="mt-2 text-sm text-ink-muted">{group.hint}</p>
+            </div>
+            {cards.length === 0 ? (
+              <p className="rounded-md border border-dashed border-hairline p-4 text-sm text-ink-muted">Nothing connected yet.</p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {cards.map((s) => (
+                  <ServiceCard key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }

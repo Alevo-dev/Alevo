@@ -758,3 +758,16 @@ Workspace → Agent → Booking:
 - [ ] The four CRM/PSA cards read "Coming soon" (grey dot) and have no Manage button. HubSpot and Zoho show their real marks; HaloPSA and ConnectWise show lettered tiles ("H" teal, "CW" navy) until real logos land.
 - [ ] Nothing about the Booking or Communication cards changed (statuses, Manage dialogs, Needs attention).
 - [ ] Phone width: sections stack; cards go one per row.
+
+## Integrations: only connected tools listed + "Connect a tool" picker (2026-10-26)
+
+Supersedes the card list in the two sections above. A tool gets a card only once it is
+connected (or at least started, so a half-set-up tool stays visible with "Needs setup").
+
+- [ ] Fresh org: "Connected tools" header with a primary **Connect a tool** button (admins/owners only); Booking and CRM sections read "Nothing connected yet."; Communication shows Resend (platform-configured) only.
+- [ ] Connect a tool → a dialog with the same three sections, each row = mark + name + hint. Booking tools, Twilio and Slack have a **Connect** button; CRM/PSA rows show a "Coming soon" pill; a platform service that isn't set up shows "Not set up".
+- [ ] Click Connect on Calendly: the picker closes and Calendly's settings dialog opens (same panel as Manage, with the reminder line at the top). Save a link → toast; close the dialog → Calendly now has a card under Booking and is gone from the picker.
+- [ ] A tool with a card has Manage (as before) and never appears in the picker. Clear everything it needs (e.g. blank the Calendly link) → its card disappears and it is back in the picker.
+- [ ] Half set up (Cal.com key but no event type): card stays, "Needs setup", listed in Needs attention; not in the picker.
+- [ ] Escape / backdrop closes either dialog; the × in the picker's corner closes it.
+- [ ] A viewer-role member sees the cards but no Connect a tool button.

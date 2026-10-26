@@ -4,11 +4,13 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 
+export const KEYS_DESCRIPTION = "Keys are stored encrypted. Values are never shown again after you save them.";
+
 /** Opens one service's keys and settings in a dialog instead of scrolling the page. */
 export function ManageDialog({
   name,
   label = "Manage",
-  description = "Keys are stored encrypted. Values are never shown again after you save them.",
+  description = KEYS_DESCRIPTION,
   children,
 }: {
   name: string;
