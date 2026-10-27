@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { desc, eq, sql } from "drizzle-orm";
 import { files, kbDocuments } from "@alevo/db";
-import { ForbiddenError, requireRole, withOrg } from "@alevo/auth";
-import { Notice } from "@/components/ui/notice";
+import { requireRole, withOrg } from "@alevo/auth";
+import { authInterrupt } from "@/lib/auth-interrupts";
 import { fmtDate, fmtSize } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { AddDocumentForm, DocumentList, type DocView } from "./knowledge-ui";
@@ -15,10 +15,7 @@ export default async function KnowledgePage() {
   try {
     await requireRole("admin");
   } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return <Notice tone="warning">You need an admin role to manage the knowledge base.</Notice>;
-    }
-    throw error;
+    authInterrupt(error);
   }
 
   const [tz, rows] = await Promise.all([

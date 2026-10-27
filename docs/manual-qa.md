@@ -858,3 +858,97 @@ Legal pages, business details, email footers, data requests, plan limits. Dashbo
 - [ ] Set `voice_minutes` to the allowance and call the number: the caller hears "we can't take calls right now, please text this number or email us" and the call ends.
 - [ ] Lower the counter back under 80%: the banner disappears, the Qualifier works the next inbound message.
 - [ ] Alerts fire once: crossing 80% posts once, crossing 100% posts once, further usage posts nothing.
+
+## Embeddable lead form + spam protection (2026-10-27)
+
+Three ways onto a website, all through the same `captureLead` path: the hosted page,
+`embed.js` (renders our form in the customer's page), an iframe mode, and the JSON
+endpoint `/api/forms/<orgId>` for a form the customer already has. Needs migration
+0021 (`npx supabase db push`); until it is applied the rate limiter fails open (the form
+still works, Sentry gets the error).
+
+- [ ] Integrations → a new **Lead capture** section at the top with a **Website form** card (Alevo mark, "Ready"). Manage opens four copyable blocks: Hosted page, Embed on your site, Iframe, Your own form. Copy → "Copied." toast and the button flips to a check for two seconds.
+- [ ] Hosted form: fill it normally → Send shows a spinner + "Sending…", every field is disabled while it sends, then the thank-you card. The lead appears under Conversations as **Web form** with a consent record (`source = hosted_form`).
+- [ ] Hosted form, errors: empty submit → red borders + messages under Name, Email and the consent box; no browser popups. A bad email → "Enter a valid email address."
+- [ ] Embed: save a plain HTML file with the script snippet, open it in a browser. The form renders in the page's font, submits with a spinner and disabled fields, shows per-field errors inline, and the thank-you block on success. The conversation's consent row has `source = embed`.
+- [ ] Iframe: an HTML file with the iframe snippet. The frame fits the form (no inner scrollbar) and grows for the thank-you and error states; `theme=light` renders light, `theme=dark` dark.
+- [ ] Your own form: `curl -X POST <origin>/api/forms/<orgId> -H "content-type: application/json" -d '{"name":"Pat","email":"pat@example.com","consent":true}'` → `{"ok":true}`; missing consent → 400 with `errors.consent`; unknown org → 404. A browser `<form method="post">` to the endpoint lands on the hosted thank-you page.
+- [ ] Spam, honeypot: in DevTools, give the hidden `website` input a value and submit → the form says thanks but NO conversation is created.
+- [ ] Spam, fill time: submit within two seconds of the page loading (DevTools: set `startedAt` to now) → thanks, no conversation. Reload, wait, submit → it goes through.
+- [ ] Spam, rate limit (after 0021): eleven JSON posts from the same machine inside ten minutes → the eleventh is 429 "Too many submissions…". The hosted form shows that message by the Send button, keeping the values.
+- [ ] CORS: the embed works from a `file://` page and from another origin (OPTIONS preflight answers 204).
+- [ ] Reduced motion: the embed's spinner is static; the hosted form's spinner is the shared one.
+
+---
+
+# Sprint 5 — Dashboard (2026-10-27)
+
+Matches the Claude Design dashboard mockup. Dashboards: **App** `/dashboard`, **Supabase** (`conversations`, `meetings`, `calls`, `usage_counters`).
+
+- [ ] Header has a **7 days / 30 days / 90 days** switch; the choice sits in the URL (`?window=30`), survives refresh, and the description reads "last N days".
+- [ ] Switching re-scopes everything: the four tiles, Leads per day, Speed to lead, Meetings booked, Where leads come from. **Plan usage** stays "This billing month".
+- [ ] 7 and 30 days: tiles and charts bucket per day; 90 days: per week (13 bars, labels like "Oct 20"). Tooltips on the 90-day charts show the full week range ("Oct 14 – Oct 20").
+- [ ] Leads per day is an **area chart**: line + soft fill + a dot per point, gridlines at 0 / half / max, x labels never collide at any window (30 days shows every 4th day plus the last; the meetings card at a third width shows fewer).
+- [ ] Hover or Tab onto a point / column: a tooltip shows "N leads · Oct 21"; the peak carries its number; focus moves through points with Tab.
+- [ ] Speed to lead shows **Median** and **95th percentile** (e.g. "9s", "3m 10s"), the pill names the state (Under a minute / Slower than target / Well over target / No replies yet), and a violet sparkline of the median per day appears once two periods have replies. Send two test leads a minute apart with the agent on, then check the numbers against `first_reply_sent_at − lead_received_at`.
+- [ ] Meetings booked is a **column chart**; cancelled meetings are excluded. Book then cancel a meeting: the column drops.
+- [ ] Plan usage lists one bar per allowance with "used of allowance"; amber bars and "Near the limit" from 80%, red and "Paused at the limit" at 100% (set `usage_counters.used` in Supabase to check).
+- [ ] Live activity is full width with a pulsing "Updating" dot. Submit the lead form in another tab: the new lead appears within 30 seconds without a reload. Switch tabs and back: it refreshes at once.
+- [ ] Phone width (≤420px): the switch wraps under the title, every row is one column, charts fit without horizontal scroll, axis labels stay readable. (Not verified in the browser during the build — check by hand.)
+- [ ] Both themes: gridlines, dots and tooltips follow light / dark.
+
+# Sprint 5 — Test loop: admin view, speed watch, ConnectWise (2026-10-27)
+
+One pass covers everything Sprint 5 built. Repeat it after any change to the dashboard, limits, admin console or write-back.
+
+**Prereqs**: `pnpm db:push:dev` (migration 0022). `npx inngest-cli dev` running. For the alert: `INTERNAL_ALERTS_SLACK_WEBHOOK` in `apps/app/.env.local`. For ConnectWise: `CONNECTWISE_CLIENT_ID` in `.env.local` and a sandbox (site, company ID, API member + keys).
+
+**1. Seed** — open `supabase/seed-dev-dashboard.sql`, paste your workspace id at the top, run it against the DEV project. The query at the bottom prints leads / qualified / median / p95 for the last 7 days: keep those numbers.
+
+**2. Tenant dashboard** (`/dashboard`)
+- [ ] 7 days: the Leads tile and Qualified tile match the seed query; Speed to lead shows the same median and p95 and the violet sparkline is drawn across the days.
+- [ ] 30 and 90 days re-scope every card; the 90-day sparkline shows 13 weekly points; some weeks read slow (minutes), most read seconds.
+- [ ] Meetings booked columns are non-zero; cancelled seeded meetings don't count. Where leads come from shows all five channels.
+- [ ] Plan usage is untouched by the seed (it reads `usage_counters`, not conversations).
+- [ ] Run the Sprint 5 Dashboard checklist above once more (switch, tooltips, live feed).
+
+**3. Plan limits** (set `usage_counters.used` for `inbound_conversations` in Supabase)
+- [ ] At 80%: amber bar + "Near the limit" on the dashboard, the shell banner appears, Slack + owner email arrive once (not again on the next lead).
+- [ ] At 100%: red bar + "Paused at the limit"; a new lead stays `new` and the Qualifier run shows `skipped: over-allowance` in Inngest; voice says it can't take calls.
+- [ ] Reset `used` to 0: everything clears.
+
+**4. Super-admin console** (`apps/admin`, :3002, signed in as a platform admin)
+- [ ] `/dashboard` shows the five totals and a row per org; the seeded org's Leads / Qualified / Median / p95 match the tenant dashboard for the same window.
+- [ ] The 7 / 30 / 90 switch is in the URL and re-scopes the table; orgs with nothing in the window sink to the bottom with 0s and "No replies".
+- [ ] A row with p95 over 60s reads "Over target" / "Well over" in red; on-target rows read "On target".
+- [ ] A non-admin user still sees "Not authorized".
+
+**5. Speed watch** (Inngest dev UI → Functions → `speed-to-lead-watch` → Invoke)
+- [ ] With the seed in place the run returns `slow: 1` (or more) and a Slack message lists the org with p95, median and the answered count.
+- [ ] Delete the seeded contacts (bottom of the seed file) and invoke again: `slow: 0`, nothing posted.
+- [ ] Without `INTERNAL_ALERTS_SLACK_WEBHOOK`: `posted: false` with the "isn't set" error, no crash.
+
+**6. ConnectWise** (Workspace → Integrations → Connect a tool → ConnectWise)
+- [ ] Save only the site: the card appears as "Needs setup" and Needs attention names what's missing; the Agent still works.
+- [ ] Fill every field + both keys, Save: card reads "Connected", keys show as saved (never their values). "Test connection" reports the Manage version and finds the member; a wrong private key gives an inline error, not a toast.
+- [ ] Hand a lead off (reply as contact → the agent escalates, or set status in a conversation): Inngest shows `psa-writeback` with steps load → company → contact → activity-handed_off. In Manage: the company (or the matched existing one), the contact with the email, an activity "Alevo handed off a lead: …" assigned to the member. The conversation page shows "In ConnectWise" with the three ids.
+- [ ] Book a meeting (agent or Cal.com webhook): a second run adds `activity-booked` and `opportunity`; Manage has the opportunity "Company — inbound via Alevo (Name)" with the meeting time in its notes.
+- [ ] Re-send the same event (Inngest → Replay): the run completes with the same ids and Manage has no duplicates.
+- [ ] Clear a key: card drops to "Needs setup", the next hand-off run ends at `load` with `skipped: no-psa`.
+- [ ] An org without ConnectWise: hand-offs still produce a run that ends `skipped: no-psa` — no error.
+
+**7. Clean up** — delete the seeded contacts (bottom of the seed file); remove the test company / contact / opportunity in the sandbox if you want it clean.
+
+# Status screens — 404 / 403 / 401 / error (2026-10-27)
+
+All four share one look (mark, mono status line, headline, one sentence, actions) in both themes.
+
+- [ ] Signed in, open `/conversations/00000000-0000-0000-0000-000000000000`: the 404 renders inside the shell (sidebar stays), tab title "Page not found", "Back to dashboard" and "Open conversations" work.
+- [ ] Open `/nothing-here` (signed in or out): the standalone 404 on its own canvas with "Go to Alevo" and "Sign in"; the response status is 404.
+- [ ] As a **viewer** or **rep**, open `/workspace/agent`, `/workspace/knowledge`, `/workspace/profile`: the 403 screen ("This part is for owners and admins"), status 403, links to the dashboard and Members. As an admin the pages render as before.
+- [ ] Remove your membership from the org in Supabase (or use an account with none) and open `/workspace/integrations`: the 401 screen with "Sign in" and "Switch workspace".
+- [ ] Force an error (e.g. temporarily `throw new Error("boom")` at the top of `dashboard/page.tsx`): the error screen inside the shell with a reference digest, "Try again" re-renders, Sentry receives the event when a DSN is set. Remove the throw.
+- [ ] Phone width: the screen stays centred, buttons wrap under each other, nothing scrolls sideways.
+- [ ] **Admin console** (`:3002`, restart `pnpm dev:all` first): as a non-admin, `/dashboard` shows the same 403 screen ("This console is for Alevo staff") with "Open the Alevo app" and "Sign out"; `/nothing` shows the 404; the tab has the Alevo favicon; as a platform admin the console renders in the app's fonts (Space Grotesk / Inter).
+- [ ] **Marketing site** (`:3000`): `/nothing-here` shows the same screen as the app (mark, "404 · Page not found", Space Grotesk headline) with "Back to home" → `/`, "Contact us" → `/contact`, "Sign in to the app" → the app's sign-in; the cookie bar still sits at the bottom; the rest of the site keeps its own Fraunces / Geist type.
+- [ ] **Admin console look** (`:3002`, as a platform admin): top bar with the mark, "Alevo" + a violet Admin pill, "Open the app", the theme toggle and the account button; the page is "Across all organizations" with the 7 / 30 / 90 pill switch, five stat tiles (Leads in featured, Qualified violet, Meetings green, Calls amber, Over 60s red), the funnel table in a card with a pill per org for speed to lead, then Organizations and Recent activity side by side. Light and dark both on the app's palette; sign-in page shows the mark + Admin pill above Clerk's form.

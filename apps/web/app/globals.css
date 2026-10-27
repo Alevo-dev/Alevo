@@ -1,5 +1,10 @@
 @import "tailwindcss";
 @import "@alevo/tokens/tokens.css";
+/* Design-system utilities shared with the app (bg-canvas, text-ink, font-display …)
+   for the status screens from @alevo/ui. The site's own @theme below keeps its
+   fonts and radii; the screens override the font variables on their wrapper. */
+@import "@alevo/ui/theme.css";
+@source "../../../packages/ui/src";
 
 @custom-variant dark (&:is(.dark *));
 

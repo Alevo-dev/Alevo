@@ -1,0 +1,126 @@
+/* Alevo design-system utilities for Tailwind v4, shared by every app.
+   Reads the live `--ds-*` tokens from @alevo/tokens/tokens.css, so light/dark
+   flips come from the `.dark` class alone. Import AFTER tailwindcss and the
+   tokens in each app's globals.css:
+
+     @import "tailwindcss";
+     @import "@alevo/tokens/tokens.css";
+     @import "@alevo/ui/theme.css";
+     @source "../../../packages/ui/src";   (so Tailwind sees the shared components' classes)
+
+   Fonts: the app's root layout must set --font-display / --font-body / --font-data
+   (Space Grotesk, Inter, JetBrains Mono via next/font). */
+@theme inline {
+  --color-canvas: var(--ds-canvas);
+  --color-surface: var(--ds-surface);
+  --color-raised: var(--ds-surface-raised);
+  --color-hairline: var(--ds-hairline);
+  --color-control: var(--ds-control);
+  --color-ink: var(--ds-ink);
+  --color-ink-muted: var(--ds-ink-muted);
+  --color-link: var(--ds-link);
+  --color-brand: var(--ds-brand);
+  --color-brand-sky: var(--ds-brand-sky);
+  --color-brand-soft: var(--ds-brand-soft);
+  --color-violet: var(--ds-accent);
+  --color-violet-light: var(--ds-accent-light);
+  --color-violet-soft: var(--ds-accent-soft);
+  --color-on-brand: var(--ds-on-brand);
+  --color-success: var(--ds-success);
+  --color-warning: var(--ds-warning);
+  --color-danger: var(--ds-danger);
+  --color-vivid-brand: var(--ds-vivid-brand);
+  --color-vivid-violet: var(--ds-vivid-accent);
+  --color-vivid-success: var(--ds-vivid-success);
+  --color-vivid-warning: var(--ds-vivid-warning);
+  --color-vivid-danger: var(--ds-vivid-danger);
+  --color-on-vivid: var(--ds-on-vivid);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-data);
+
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
+
+  --shadow-float: var(--ds-shadow-float);
+  --shadow-glow: var(--ds-glow-brand);
+
+  /* Type styles from the design system (size / line-height). */
+  --text-title: 32px;
+  --text-title--line-height: 38px;
+  --text-heading: 21px;
+  --text-heading--line-height: 28px;
+  --text-metric: 34px;
+  --text-metric--line-height: 40px;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+}
+
+@layer utilities {
+  /* Tabular figures for anything that counts up (metrics, durations). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Content settling in (status screens, feed rows). */
+  .animate-rise {
+    animation: ds-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Bars growing from the baseline (stat-tile mini bars, column charts).
+     Stagger with `style={{ animationDelay }}`. */
+  .animate-grow-y {
+    transform-origin: bottom;
+    animation: ds-grow-y 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Loading skeleton block (route-level loading.tsx): a soft highlight sweeps
+     across it. Stagger blocks with `style={{ animationDelay }}` on the element. */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--ds-surface-raised);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--ds-ink) 7%, transparent) 50%,
+      transparent 100%
+    );
+    animation: ds-shimmer 1.6s ease-in-out infinite;
+    animation-delay: inherit;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise,
+    .animate-grow-y,
+    .skeleton::after {
+      animation: none;
+    }
+  }
+}
+
+@keyframes ds-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ds-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes ds-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}

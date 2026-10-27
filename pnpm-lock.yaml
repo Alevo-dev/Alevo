@@ -26,12 +26,18 @@ importers:
       '@alevo/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@alevo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@clerk/nextjs':
         specifier: ^7
         version: 7.9.18(next@16.3.6(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       drizzle-orm:
         specifier: ^0.38.3
         version: 0.38.4(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(@types/react@19.3.0)(postgres@3.4.9)(react@19.2.8)
+      lucide-react:
+        specifier: ^1.47.0
+        version: 1.48.0(react@19.2.8)
       next:
         specifier: 16.3.6
         version: 16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -87,6 +93,9 @@ importers:
       '@alevo/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@alevo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@anthropic-ai/sdk':
         specifier: ^0.133.0
         version: 0.133.0(zod@4.6.5)
@@ -175,6 +184,12 @@ importers:
       '@alevo/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@alevo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      lucide-react:
+        specifier: ^1.47.0
+        version: 1.48.0(react@19.2.8)
       next:
         specifier: 16.3.6
         version: 16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -281,6 +296,30 @@ importers:
   packages/tokens: {}
 
   packages/tsconfig: {}
+
+  packages/ui:
+    devDependencies:
+      '@alevo/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/react':
+        specifier: ^19
+        version: 19.3.0
+      lucide-react:
+        specifier: ^1.47.0
+        version: 1.48.0(react@19.2.8)
+      next:
+        specifier: 16.3.6
+        version: 16.3.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      typescript:
+        specifier: ^5
+        version: 5.9.3
 
 packages:
 

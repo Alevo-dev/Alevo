@@ -11,6 +11,7 @@ import {
   type MeetingStatus,
 } from "@alevo/db";
 import { safeEqual } from "@/lib/crypto/safe-equal";
+import { requestPsaWriteback } from "@/lib/psa/request";
 import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
@@ -132,6 +133,7 @@ export const POST = trackDeliveries("calcom", async (req, track) => {
           .where(and(eq(conversations.id, convId), eq(conversations.orgId, orgId!)));
       }
     });
+    if (convId) await requestPsaWriteback(orgId!, convId, "booked");
 
     return new Response("ok", { status: 200 });
   } catch (err) {

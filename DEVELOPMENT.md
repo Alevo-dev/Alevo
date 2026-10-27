@@ -131,6 +131,42 @@ Env lives in `apps/app/.env.local` (copy from `apps/app/.env.example`). After
 your first sign-in, promote yourself to platform admin in the Supabase SQL
 editor (see `apps/app/CLAUDE.md` → Platform-admin bootstrap).
 
+## ConnectWise Manage (PSA write-back)
+
+Alevo needs one developer **client ID** (developer.connectwise.com → ClientID):
+`CONNECTWISE_CLIENT_ID` in `apps/app/.env.local`. Each org then connects its own
+instance under Workspace → Integrations → ConnectWise: the API host (cloud
+`api-na.myconnectwise.net` etc., sandbox `api-staging.connectwisedev.com`), the
+login company ID, the API member identifier, and that member's public / private
+keys (Manage → System → Members → API Members → API Keys). "Test connection"
+round-trips to `/system/info`. Write-backs run as the `psa-writeback` Inngest
+function; watch them in the Inngest dev UI.
+
+## Internal alerts
+
+`INTERNAL_ALERTS_SLACK_WEBHOOK` (an incoming webhook on Alevo's own Slack) receives
+platform signals — today the daily `speed-to-lead-watch` digest of orgs whose p95
+first reply missed 60s. Unset locally = silent.
+
+## Dashboard test data
+
+`supabase/seed-dev-dashboard.sql` (set the workspace id at the top) fills 90 days of
+leads, replies, meetings and calls for one org so `/dashboard`, the admin console
+and the speed watch have shape. The clean-up line at the bottom removes it.
+
+## Shared UI (`packages/ui`)
+
+`@alevo/ui` holds what every app renders (product app, admin console, and the
+marketing site's 404 / error pages — which load the app's fonts just for those
+screens via `components/status/app-fonts.ts`): the Tailwind theme mapping
+(`theme.css`), `Button` / `buttonClass`, `cx`, the status screens (404 / 403 /
+401 / error) and the theme boot script for `global-error`. Both apps list it in
+`transpilePackages` and import `@alevo/ui/theme.css` in `globals.css`. After
+adding a workspace package, stop the dev servers and delete that app's `.next`
+folder before starting again — Turbopack's persistent cache keeps the failed
+"Can't resolve '@alevo/ui/…'" result from before the package was linked. The admin console
+links to the product app via `NEXT_PUBLIC_APP_URL` (dev: `http://localhost:3001`).
+
 ## Checks
 
 ```bash

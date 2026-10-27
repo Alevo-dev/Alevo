@@ -150,6 +150,29 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
 - **Icons:** `lucide-react`, 1.75 stroke, 16px in dense UI. Voice: operator reporting
   in — plain verbs, sentence case, no exclamation marks or emoji.
 
+**Shared primitives (`@alevo/ui`, `packages/ui/src`).** `Button`, `Card`, `Pill` /
+`StatusDot`, `Table`, `StatTile`, `CountUp`, `PageHeader`, `Skeleton`, `ThemeToggle`,
+`WindowSwitch`, the `Tone` type, `cx` and the status screens live there so the admin
+console renders the exact same UI; the files under `components/ui/`, `lib/cx.ts` and
+`lib/ui/status.ts` (for `Tone`) just re-export them. Add a new primitive to the package
+when the console could use it, otherwise keep it in `components/ui/`.
+
+**Status screens.** One component, `StatusScreen` + `StatusAction` (`@alevo/ui/status-screen`),
+draws every can't-see-this state in BOTH apps (the admin console has the same five
+route files, standalone): mark, mono "404 · Page not
+found" line, display headline, one sentence, actions, optional reference digest.
+Route files: `(app)/not-found.tsx`, `forbidden.tsx` (403), `unauthorized.tsx`
+(401) and `error.tsx` (client boundary, Sentry + `retry`) render inside the shell;
+`app/not-found.tsx` / `app/error.tsx` use `standalone` (own canvas) for routes
+outside it; `app/global-error.tsx` replaces the document and loads the theme
+itself. Pages call `notFound()` for a missing record and `authInterrupt(error)` (from
+`@alevo/auth`) around `requireRole` / `requirePlatformAdmin` — it maps
+`ForbiddenError` → `forbidden()` and `UnauthorizedError` → `unauthorized()`
+(`experimental.authInterrupts` is on in both apps' `next.config.ts`). Never an inline
+Notice for a role failure. The design-system utility mapping (`bg-canvas`, `text-ink`,
+`font-display`, `text-title` …) lives in `packages/ui/theme.css`, imported by each
+app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/src`.
+
 ## Data + auth seams
 
 - **`@alevo/db`** — Drizzle over `postgres-js` through the Supavisor transaction
@@ -229,6 +252,12 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   backfilled from the old precedence. See Booking below.
 - **0020** `org_profiles.business_address` — the org's postal address, printed in
   every agent email footer (CAN-SPAM / CASL). Edited under Workspace → Business profile.
+- **0021** `rate_limits` (fixed-window counters keyed by hashed IP / org for the
+  public lead endpoint; service path only, no policies).
+- **0022** PSA write-back: `org_profiles.connectwise_site` / `connectwise_company_id` /
+  `connectwise_member` (keys live in `org_secrets`) + `psa_links` (which Alevo record
+  became which PSA record; unique per org/provider/kind/local id; tenant reads,
+  service writes). See PSA write-back below.
 
 ## The Qualifier (Claude agent)
 
@@ -464,6 +493,30 @@ by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
   can already self-serve via Cal.com/Calendly invite links, synced by our
   webhooks), and push-notification sync for Google/M365 calendar changes.
 
+## Lead form (hosted, embed, API)
+
+One capture path for every way a lead arrives from a website: `lib/leads/capture.ts`
+(`captureLead`: validate, spam checks, rate limits, then contact + conversation + first
+message + consent + metering + `conversation/message.received`). `fields.ts` holds the
+field reading/validation and `spam.ts` the checks, both pure (`tests/lead-form.test.ts`).
+
+- **Hosted page** `/f/[orgId]` (server action `submitLead` → `captureLead`). `?embed=1`
+  renders only the form and posts its height to the parent (`frame-resize.tsx`;
+  `theme=light|dark` follows the snippet); `?submitted=1` / `?error=1` are where a plain
+  HTML post to the API lands.
+- **Endpoint** `POST /api/forms/[orgId]` (public in `proxy.ts`, open CORS): JSON,
+  form-encoded or multipart → `{ ok: true }` / 400 `{ errors }` / 404 / 429 / 500. An
+  `Accept: text/html` form post is redirected to the hosted page instead.
+- **Embed** `public/embed.js` (vanilla, no build): renders the form into `data-target`,
+  posts JSON to the endpoint, spinner + disabled fieldset while sending, per-field errors
+  inline, thank-you block on success. Snippets (hosted link, script, iframe, API) are
+  copyable under Integrations → **Lead capture** → Website form (`embed-snippets.tsx`).
+- **Spam** fails quietly (a normal thanks, lead dropped): honeypot field `website`,
+  fill time under 2s (`startedAt` set client-side after mount), and fixed-window rate
+  limits (`hitRateLimit` in `@alevo/db`, table `rate_limits`, 0021): 10 per IP per
+  10 min (IP hashed), 300 per org per hour. The limiter **fails open** on an error.
+  The consent row records the source: `hosted_form` / `embed` / `api`.
+
 ## Consent (compliance)
 
 Consent is data, not a checkbox (plan.md rule 8). The `consents` table (0007)
@@ -533,6 +586,32 @@ booking (Sprint 3), and PSA write-back (Sprint 5).
 - Local: `npx inngest-cli dev` (auto-discovers `/api/inngest`). Prod: the Vercel
   integration sets `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`.
 
+**Other functions.** `psa-writeback` (see PSA write-back) and `speed-to-lead-watch`
+(cron, 13:00 UTC daily: `funnelByOrg(1)` from `@alevo/db` → `slowOrgs` /
+`speedDigest` in `lib/alerts/speed-digest.ts` → `notifyInternal`, Alevo's own
+Slack via `INTERNAL_ALERTS_SLACK_WEBHOOK`; silent when every org is on target).
+
+## Dashboard
+
+`(app)/dashboard/page.tsx` follows the Claude Design mockup row for row. One **time
+window** for the whole page (`?window=7|30|90`, `window-switch.tsx`; helpers in
+`lib/dashboard/window.ts`, tested): 7 and 30 days bucket per day, 90 per week (13
+bars), all as calendar days in the org timezone computed in SQL. Rows: the four
+`StatTile`s (`kpi-tiles.tsx`) → **Leads per day** (area chart) + **Speed to lead**
+(`speed-card.tsx`: p50 / p95 of `first_reply_sent_at − lead_received_at` over
+answered leads, a violet sparkline of the median per bucket, a pill against the 60s
+target) → **Meetings booked** (columns) + **Where leads come from** (donut) + **Plan
+usage** (`usage-meter.tsx`, always the billing month) → **Live activity**
+(`auto-refresh.tsx` re-fetches every 30s while visible). `trend-chart.tsx` is the one
+chart primitive (`kind="area" | "columns"`, hover + keyboard tooltip, peak label,
+sr-only table, `width` ≈ the card's px so labels stay readable; axis labels thin out
+via `labelStep` / `showLabel`). Charts are inline SVG on the tokens — no chart library.
+
+The super-admin console (`apps/admin`, `/dashboard`) shows the same funnel across
+every org (`funnelByOrg(days)` in `packages/db/src/metrics.ts`, service path, clock
+read in SQL) with the same 7 / 30 / 90 switch, p95 flagged over 60s. Dev data for
+both: `supabase/seed-dev-dashboard.sql`.
+
 ## Plan limits (usage allowances)
 
 Agreed policy (plan.md §6, 2026-10-27): **nothing is billed automatically.** At 80% of
@@ -556,6 +635,40 @@ prospecting email) lands with Stripe — the legal pages already describe both b
   warning notice from 80%, danger once paused. Never a toast.
 - An allowance of 0 means "not metered" (ok), so Starter's 0 outbound dials never
   blocks anything.
+
+## PSA write-back (ConnectWise Manage)
+
+Plan.md Sprint 5. A lead reaches the PSA when it becomes **qualified** in the
+dashboard's sense — handed to a person, or a meeting booked — never on a score alone.
+
+- **Connect** (Workspace → Integrations → ConnectWise, `connectwise-form.tsx`, one
+  Save): API site (host only, `normalizeSite`), login company ID and the API member
+  identifier on `org_profiles`; public / private keys in `org_secrets`. Connected =
+  all five present (`connectwiseMissing` in `lib/psa/connectwise-map.ts`); anything
+  less shows Needs setup with what's missing. "Test connection" (`testConnectWise`)
+  pings `/system/info` and checks the member exists. The platform developer client
+  ID is `CONNECTWISE_CLIENT_ID` (env; sent as the `clientId` header).
+- **Trigger**: `requestPsaWriteback(orgId, conversationId, "handed_off" | "booked")`
+  (`lib/psa/request.ts`) sends `psa/writeback.requested` from the Qualifier tools
+  (`set_status` handed_off, `escalate_to_human`, `book_meeting`), the voice tools,
+  and the Cal.com / Calendly booking webhooks. Best-effort, never fails the caller.
+- **Function** `psa-writeback` (per-org concurrency 1, throttled, 3 retries):
+  `load` → `company` → `contact` → `activity-<reason>` → `opportunity` (booked
+  only). Each `ensure*` in `lib/psa/writeback.ts` checks `psa_links`, then Manage's
+  own search, then creates — so a replay never duplicates. Step results are ids
+  only: the client is rebuilt inside every step (`loadConnectWise`), keys never
+  leave the server or land in Inngest.
+- **Mapping** (`connectwise-map.ts`, tested): company = what the lead typed, else
+  their work-email domain, else their name; identifier = upper-case alnum ≤25;
+  contact by email (`childConditions=communicationItems/value=`); activity name
+  ≤100 chars + notes with score / reasons / meeting / deep link; opportunity
+  "Company — inbound via Alevo (Name)" assigned to the member. Creates look up the
+  instance's default company status / type and activity type / status (`defaultFlag`)
+  and send them when present.
+- **UI**: the conversation page lists what was written ("In ConnectWise",
+  `psa-panel.tsx`) from `psa_links` with an explicit org filter.
+- Not built: updates after creation (status changes, notes appended), HaloPSA,
+  CRMs, plan gating on `plans.psa_integrations`.
 
 ## Platform-admin bootstrap
 

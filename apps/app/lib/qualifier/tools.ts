@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { conversations, isSuppressed, meetings, messages, withService, type Channel } from "@alevo/db";
+import { requestPsaWriteback } from "@/lib/psa/request";
 import { notifySlack } from "@/lib/notifications/slack";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
@@ -343,8 +344,12 @@ export async function dispatchTool(
           .where(and(scoped(target), notBooked())),
       );
       effects.status = status as SettableStatus;
-      // Alert the org the moment a lead is handed to a human (best-effort Slack).
-      if (status === "handed_off") await notifyHandoff(target);
+      // Alert the org the moment a lead is handed to a human (best-effort Slack),
+      // and write the qualified lead back to the org's PSA.
+      if (status === "handed_off") {
+        await notifyHandoff(target);
+        await requestPsaWriteback(target.orgId, target.conversationId, "handed_off");
+      }
       return `Conversation status set to ${status}.`;
     }
 
@@ -358,7 +363,10 @@ export async function dispatchTool(
           .where(and(scoped(target), notBooked())),
       );
       await notifyHandoff(target, { urgent: true, reason });
-      if (!effects.booked) effects.status = "handed_off";
+      if (!effects.booked) {
+        effects.status = "handed_off";
+        await requestPsaWriteback(target.orgId, target.conversationId, "handed_off");
+      }
       effects.escalated = true;
       return "Escalated to a human and notified the team.";
     }
@@ -436,6 +444,7 @@ export async function dispatchTool(
       });
       effects.booked = true;
       effects.replied = true;
+      await requestPsaWriteback(target.orgId, target.conversationId, "booked");
       return `Booked for ${result.startIso} and confirmed to the contact (${note}). You're done — do not send another message.`;
     }
 

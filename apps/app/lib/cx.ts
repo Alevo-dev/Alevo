@@ -1,4 +1,2 @@
-/** Join class names, skipping falsy values. */
-export function cx(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
-}
+/** Shared with the admin console: see packages/ui. */
+export { cx } from "@alevo/ui/cx";

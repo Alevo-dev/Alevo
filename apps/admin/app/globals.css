@@ -1,36 +1,15 @@
 @import "tailwindcss";
 @import "@alevo/tokens/tokens.css";
+/* The design-system utilities every Alevo app shares (bg-canvas, text-ink,
+   font-display, text-title, .skeleton …) and the shared components' classes. */
+@import "@alevo/ui/theme.css";
+@source "../../../packages/ui/src";
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
-
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-}
-
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-hairline;
   }
 
   html {
@@ -39,17 +18,38 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-canvas text-ink;
   }
 
-  h1, h2, h3, h4 {
+  /* Display face for headings only (design system: Space Grotesk, never body). */
+  h1,
+  h2,
+  h3 {
     @apply font-display;
     letter-spacing: -0.02em;
+    text-wrap: balance;
   }
 
+  a {
+    @apply text-link;
+  }
+
+  ::placeholder {
+    @apply text-ink-muted;
+  }
+
+  /* Keyboard focus: a 2px canvas gap then a 2px brand ring. */
   :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-    border-radius: 2px;
+    outline: none;
+    box-shadow: var(--ds-focus-ring);
+    border-radius: var(--ds-radius-sm);
+  }
+
+  /* Native pickers follow the active theme, not the OS. */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
   }
 }

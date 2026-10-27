@@ -7,6 +7,8 @@ import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth
 import { isSecretKey } from "@/lib/secrets-registry";
 import { readSecretFields, storeSecrets, validateSecrets, type SecretErrors } from "@/lib/secrets/save";
 import { notifySlack } from "@/lib/notifications/slack";
+import { normalizeSite } from "@/lib/psa/connectwise-map";
+import { loadConnectWise } from "@/lib/psa/connectwise";
 
 export type ActionState = {
   ok?: boolean;
@@ -191,6 +193,69 @@ export async function disconnectCalendar(_prev: ActionState, _formData: FormData
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "qualifier.calendar_disconnected", target: provider ?? "none" });
     revalidateBoth();
     return { ok: true };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export type ConnectWiseState = {
+  ok?: boolean;
+  error?: string;
+  errors?: { connectwiseSite?: string; connectwiseCompanyId?: string; connectwiseMember?: string } & SecretErrors;
+  values?: { connectwiseSite: string; connectwiseCompanyId: string; connectwiseMember: string };
+};
+
+/**
+ * ConnectWise Manage: the API site, login company id and API member (profile)
+ * plus the public / private keys (secrets), one submit. Clearing every field
+ * disconnects: nothing is written back until it is complete again.
+ */
+export async function saveConnectWise(_prev: ConnectWiseState, formData: FormData): Promise<ConnectWiseState> {
+  const connectwiseSite = String(formData.get("connectwiseSite") ?? "").trim();
+  const connectwiseCompanyId = String(formData.get("connectwiseCompanyId") ?? "").trim();
+  const connectwiseMember = String(formData.get("connectwiseMember") ?? "").trim();
+  const values = { connectwiseSite, connectwiseCompanyId, connectwiseMember };
+  try {
+    const { org, actorId } = await adminContext();
+    const entries = readSecretFields(formData, ["connectwise_public_key", "connectwise_private_key"]);
+    const errors: ConnectWiseState["errors"] = validateSecrets(entries);
+    const site = connectwiseSite ? normalizeSite(connectwiseSite) : null;
+    if (connectwiseSite && !site) errors.connectwiseSite = "Enter the API host, like api-na.myconnectwise.net.";
+    if (connectwiseCompanyId && !/^[\w.-]{1,50}$/.test(connectwiseCompanyId)) {
+      errors.connectwiseCompanyId = "Company IDs are letters, digits, dots, dashes or underscores.";
+    }
+    if (connectwiseMember && !/^[\w.@-]{1,50}$/.test(connectwiseMember)) {
+      errors.connectwiseMember = "Enter the member's identifier as shown in System → Members.";
+    }
+    if (Object.keys(errors).length > 0) return { errors, values };
+
+    await storeSecrets(org.id, actorId, entries);
+    await upsertProfile(org.id, {
+      connectwiseSite: site,
+      connectwiseCompanyId: connectwiseCompanyId || null,
+      connectwiseMember: connectwiseMember || null,
+    });
+    await recordAudit({ orgId: org.id, actorUserId: actorId, action: "connectwise.settings_saved", target: site ?? "no site" });
+    revalidatePath("/workspace/integrations");
+    return { ok: true, values: { ...values, connectwiseSite: site ?? "" } };
+  } catch (error) {
+    return { ...fail(error), values };
+  }
+}
+
+export type ConnectWiseTestState = { ok?: boolean; error?: string; detail?: string };
+
+/** Round-trip to the org's Manage instance: version, and whether the member exists. */
+export async function testConnectWise(_prev: ConnectWiseTestState, _formData: FormData): Promise<ConnectWiseTestState> {
+  try {
+    const { org } = await adminContext();
+    const loaded = await loadConnectWise(org.id);
+    if (!loaded.ok) return { error: loaded.reason };
+    const { client, member, site } = loaded.conn;
+    const version = await client.ping();
+    const memberFound = await client.memberExists(member);
+    if (!memberFound) return { error: `Connected to ${site} (Manage ${version}), but no member with the identifier "${member}" was found.` };
+    return { ok: true, detail: `Connected to ${site} (Manage ${version}). Member ${member} found.` };
   } catch (error) {
     return fail(error);
   }

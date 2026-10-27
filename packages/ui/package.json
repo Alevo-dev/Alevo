@@ -1,0 +1,42 @@
+{
+  "name": "@alevo/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Alevo shared UI — the design-system theme mapping and the components every surface renders (cards, pills, tables, stat tiles, status screens, theme toggle).",
+  "exports": {
+    "./button": "./src/button.tsx",
+    "./card": "./src/card.tsx",
+    "./count-up": "./src/count-up.tsx",
+    "./cx": "./src/cx.ts",
+    "./page-header": "./src/page-header.tsx",
+    "./pill": "./src/pill.tsx",
+    "./skeleton": "./src/skeleton.tsx",
+    "./stat-tile": "./src/stat-tile.tsx",
+    "./status-screen": "./src/status-screen.tsx",
+    "./table": "./src/table.tsx",
+    "./theme-script": "./src/theme-script.ts",
+    "./theme-toggle": "./src/theme-toggle.tsx",
+    "./tone": "./src/tone.ts",
+    "./window-switch": "./src/window-switch.tsx",
+    "./theme.css": "./theme.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "lucide-react": "^1",
+    "next": "^16",
+    "next-themes": "^0.4",
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@alevo/tsconfig": "workspace:*",
+    "@types/react": "^19",
+    "lucide-react": "^1.47.0",
+    "next": "16.3.6",
+    "next-themes": "^0.4.6",
+    "react": "19.2.8",
+    "typescript": "^5"
+  }
+}

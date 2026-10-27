@@ -12,8 +12,8 @@ import type {
   MeetingStatus,
 } from "@alevo/db";
 
-export type Tone = "brand" | "violet" | "success" | "warning" | "danger" | "muted";
-export type StatusView = { label: string; tone: Tone };
+export type { StatusView, Tone } from "@alevo/ui/tone";
+import type { StatusView } from "@alevo/ui/tone";
 
 export const CONVERSATION_STATUS: Record<ConversationStatus, StatusView> = {
   new: { label: "New", tone: "brand" },

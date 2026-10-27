@@ -55,3 +55,10 @@ export type VoiceCallEndedData = {
   customerNumber: string | null;
   toNumber: string | null;
 };
+
+/**
+ * Fired when a lead becomes qualified (handed to a person, or a meeting booked)
+ * so the org's PSA gets the company, contact, activity and — on a booking — the
+ * opportunity. The function is a no-op for orgs without a PSA connected.
+ */
+export type PsaWritebackRequestedData = { orgId: string; conversationId: string; reason: "handed_off" | "booked" };

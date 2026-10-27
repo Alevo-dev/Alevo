@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { orgProfiles } from "@alevo/db";
-import { ForbiddenError, getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
-import { Notice } from "@/components/ui/notice";
+import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { authInterrupt } from "@/lib/auth-interrupts";
 import { BusinessProfileForm } from "./profile-ui";
 import type { BusinessProfileValues } from "./actions";
 
@@ -14,10 +14,7 @@ export default async function BusinessProfilePage() {
   try {
     await requireRole("admin");
   } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return <Notice tone="warning">You need an admin role to edit the business profile.</Notice>;
-    }
-    throw error;
+    authInterrupt(error);
   }
 
   const org = await getCurrentOrg();

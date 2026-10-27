@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
+import { requestPsaWriteback } from "@/lib/psa/request";
 import { getBookingAdapter, bookingConfigFromProfile } from "@/lib/booking";
 import { formatSlot, offerSlots } from "@/lib/booking/offer";
 import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
@@ -62,6 +63,7 @@ export async function dispatchVoiceTool(
           .where(and(scoped(ctx), sql`${conversations.status} <> 'booked'`)),
       );
       await notifySlack(ctx.orgId, `Call escalated: ${reason}`).catch((e) => Sentry.captureException(e));
+      await requestPsaWriteback(ctx.orgId, ctx.conversationId, "handed_off");
       return "Someone has been alerted and will join or call back shortly.";
     }
 
@@ -168,6 +170,7 @@ export async function dispatchVoiceTool(
           .set({ status: "booked", updatedAt: new Date() })
           .where(scoped(ctx));
       });
+      await requestPsaWriteback(ctx.orgId, ctx.conversationId, "booked");
       return "Booked. A calendar invite is on its way to the caller by email. Confirm the time out loud and end the call.";
     }
 
@@ -202,6 +205,7 @@ export async function dispatchVoiceTool(
       if (status === "handed_off") {
         const note = str(args.note) || "A person needs to follow up";
         await notifySlack(ctx.orgId, `Lead handed off after a call: ${note}`).catch((e) => Sentry.captureException(e));
+        await requestPsaWriteback(ctx.orgId, ctx.conversationId, "handed_off");
       }
       return status === "handed_off" ? "Lead marked for a person to follow up." : "Lead marked as not a fit.";
     }

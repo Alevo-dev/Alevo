@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { listOrgSecretKeys, orgProfiles } from "@alevo/db";
-import { ForbiddenError, getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
-import { Notice } from "@/components/ui/notice";
+import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { authInterrupt } from "@/lib/auth-interrupts";
 import { bookingSnapshot, connectedBookingTools, isBookingTool } from "@/lib/booking/connected";
 import { AgentForm } from "./agent-ui";
 import { BookingForm } from "./booking-ui";
@@ -18,10 +18,7 @@ export default async function AgentPage() {
   try {
     await requireRole("admin");
   } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return <Notice tone="warning">You need an admin role to configure the agent.</Notice>;
-    }
-    throw error;
+    authInterrupt(error);
   }
 
   const org = await getCurrentOrg();

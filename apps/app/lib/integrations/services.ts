@@ -1,8 +1,10 @@
 import type { SecretKey } from "@/lib/secrets-registry";
 import type { Tone } from "@/lib/ui/status";
 import { BOOKING_TOOL_LABEL, bookingToolMissing, type BookingSnapshot, type BookingTool } from "@/lib/booking/connected";
+import { connectwiseMissing, connectwiseStarted, type ConnectWiseSnapshot } from "@/lib/psa/connectwise-map";
 
 export type ServiceIcon =
+  | "alevo"
   | "calcom"
   | "calendar"
   | "google"
@@ -17,11 +19,12 @@ export type ServiceIcon =
   | "halopsa";
 
 /** The page is split into these sections, in this order. */
-export type ServiceGroup = "booking" | "communication" | "crm";
+export type ServiceGroup = "capture" | "booking" | "communication" | "crm";
 export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string }[] = [
+  { id: "capture", title: "Lead capture", hint: "Where leads come in from your website: the hosted page, the embed, or your own form posting to Alevo." },
   { id: "booking", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
   { id: "communication", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
-  { id: "crm", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. Coming in a later sprint." },
+  { id: "crm", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. ConnectWise today; HaloPSA and CRMs later." },
 ];
 
 export type ServiceView = {
@@ -53,6 +56,7 @@ export type ServiceInput = {
   smsConfigured: boolean;
   emailConfigured: boolean;
   booking: BookingSnapshot;
+  connectwise: ConnectWiseSnapshot;
 };
 
 const CONNECTED = { label: "Connected", tone: "success" } as const;
@@ -62,10 +66,9 @@ const NEEDS_SETUP = { label: "Needs setup", tone: "warning" } as const;
 const COMING_SOON = { label: "Coming soon", tone: "muted" } as const;
 const AGENT = "/workspace/agent";
 
-/** PSA / CRM write-back (plan.md Sprint 5). Cards only, nothing to manage yet. */
+/** PSA / CRM write-back still to come. Cards only, nothing to manage yet. */
 const CRM_PLACEHOLDERS: { id: string; name: string; hint: string; icon: ServiceIcon }[] = [
   { id: "halopsa", name: "HaloPSA", hint: "Tickets, clients and opportunities", icon: "halopsa" },
-  { id: "connectwise", name: "ConnectWise", hint: "Companies, contacts and opportunities", icon: "connectwise" },
   { id: "zoho", name: "Zoho CRM", hint: "Leads, contacts and deals", icon: "zoho" },
   { id: "hubspot", name: "HubSpot", hint: "Contacts, deals and timeline notes", icon: "hubspot" },
 ];
@@ -116,8 +119,13 @@ function bookingService(tool: BookingTool, booking: BookingSnapshot, has: (key: 
 }
 
 /** Derives each service's state from what is actually stored, never from copy. */
-export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConfigured, booking }: ServiceInput): ServiceView[] {
+export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConfigured, booking, connectwise }: ServiceInput): ServiceView[] {
   const has = (key: string) => setKeys.has(key);
+
+  // ConnectWise is connected once every setting and both keys are stored; anything
+  // saved before that shows the card as Needs setup, with what's missing.
+  const cwMissing = connectwiseMissing(connectwise, has);
+  const cwStarted = connectwiseStarted(connectwise, has);
 
   const sms: { status: ServiceView["status"]; issue?: string } = !smsConfigured
     ? { status: { label: "Not set up", tone: "muted" } }
@@ -126,6 +134,17 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       : { status: CONNECTED };
 
   return [
+    {
+      id: "form",
+      group: "capture",
+      name: "Website form",
+      hint: "Hosted page, embed script, or API",
+      icon: "alevo",
+      status: { label: "Ready", tone: "success" },
+      keys: [],
+      managed: true,
+      listed: true,
+    },
     bookingService("calcom", booking, has),
     bookingService("google", booking, has),
     bookingService("m365", booking, has),
@@ -166,6 +185,18 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       keys: ["slack_webhook_url"],
       managed: true,
       listed: has("slack_webhook_url"),
+    },
+    {
+      id: "connectwise",
+      group: "crm",
+      name: "ConnectWise",
+      hint: "Companies, contacts, activities and opportunities",
+      icon: "connectwise",
+      status: cwMissing === null ? CONNECTED : cwStarted ? NEEDS_SETUP : NOT_CONNECTED,
+      keys: [],
+      managed: true,
+      listed: cwMissing === null || cwStarted,
+      issue: cwStarted && cwMissing ? `ConnectWise is half set up: missing its ${cwMissing}. Nothing is written back until it is complete.` : undefined,
     },
     ...CRM_PLACEHOLDERS.map((p): ServiceView => ({ ...p, group: "crm", status: COMING_SOON, keys: [], managed: false, listed: false })),
   ];

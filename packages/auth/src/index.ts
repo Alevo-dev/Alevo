@@ -11,3 +11,4 @@ export {
   deleteActiveOrg,
 } from "./org-admin";
 export { UnauthorizedError, ForbiddenError } from "./errors";
+export { authInterrupt } from "./auth-interrupts";

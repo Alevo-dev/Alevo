@@ -20,6 +20,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/oauth/(.*)/callback",
   "/api/unsubscribe(.*)", // public one-click unsubscribe (signed token)
   "/f/(.*)", // public hosted lead forms
+  "/api/forms/(.*)", // public lead endpoint (embed script + customers' own forms); rate-limited in code
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

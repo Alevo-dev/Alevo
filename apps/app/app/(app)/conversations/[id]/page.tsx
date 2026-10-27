@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { contacts, conversations, emailSuppressions, meetings, messages, orgProfiles } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
-import { Card, CardTitle } from "@/components/ui/card";
+import { CardTitle } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { Pill, StatusDot } from "@/components/ui/pill";
 import { cx } from "@/lib/cx";
 import { displayName, fmtDateTime, fmtTime } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
+import { linkedRecords } from "@/lib/psa/writeback";
 import { CHANNEL_LABEL, CONVERSATION_STATUS, MEETING_STATUS } from "@/lib/ui/status";
 import { ReplyAsContact } from "./reply-ui";
 import { AutoRefresh } from "./auto-refresh";
 import { FitScore } from "./fit-score";
+import { PsaPanel } from "./psa-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       .where(and(eq(conversations.id, id), sql`${conversations.orgId} = (select app.current_org_id())`))
       .limit(1),
   );
-  return { title: row ? displayName(row.firstName, row.lastName, row.email ?? row.phone) : "Conversation" };
+  return { title: row ? displayName(row.firstName, row.lastName, row.email ?? row.phone) : "Page not found" };
 }
 
 const AUTHOR_LABEL = { contact: "Contact", assistant: "Alevo agent", human: "Rep" } as const;
@@ -39,6 +42,8 @@ export default async function ConversationThread({ params }: { params: Promise<{
     tx
       .select({
         id: conversations.id,
+        orgId: conversations.orgId,
+        contactId: conversations.contactId,
         status: conversations.status,
         channel: conversations.channel,
         fitScore: conversations.fitScore,
@@ -56,18 +61,10 @@ export default async function ConversationThread({ params }: { params: Promise<{
       .limit(1),
   );
 
-  if (!conv) {
-    return (
-      <Card className="mx-auto max-w-2xl">
-        <p className="text-ink-muted">Conversation not found.</p>
-        <Link href="/conversations" className="mt-2 inline-block text-sm">
-          Back to conversations
-        </Link>
-      </Card>
-    );
-  }
+  // Wrong id, or another org's conversation (RLS + the explicit filter hide it).
+  if (!conv) notFound();
 
-  const [tz, thread, [profile], [meeting]] = await Promise.all([
+  const [tz, thread, [profile], [meeting], psa] = await Promise.all([
     getOrgTimezone(),
     withOrg((tx) =>
       tx
@@ -95,6 +92,8 @@ export default async function ConversationThread({ params }: { params: Promise<{
         .orderBy(desc(meetings.createdAt))
         .limit(1),
     ),
+    // What was written back to the PSA for this lead (explicit org filter).
+    withOrg((tx) => linkedRecords(tx, conv.orgId, conv.id, conv.contactId)),
   ]);
   const qualifierEnabled = profile?.enabled ?? false;
 
@@ -219,6 +218,8 @@ export default async function ConversationThread({ params }: { params: Promise<{
             )}
           </div>
         )}
+
+        <PsaPanel records={psa} tz={tz} />
       </aside>
     </div>
   );

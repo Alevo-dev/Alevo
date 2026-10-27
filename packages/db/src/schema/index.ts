@@ -11,6 +11,8 @@ export * from "./suppressions";
 export * from "./meetings";
 export * from "./webhook-deliveries";
 export * from "./calls";
+export * from "./rate-limits";
+export * from "./psa";
 
 import * as identity from "./identity";
 import * as billing from "./billing";
@@ -25,6 +27,8 @@ import * as suppressions from "./suppressions";
 import * as meetings from "./meetings";
 import * as webhookDeliveries from "./webhook-deliveries";
 import * as calls from "./calls";
+import * as rateLimits from "./rate-limits";
+import * as psa from "./psa";
 
 /** Aggregate passed to drizzle() so `tx.query.*` is available for every table. */
 export const schema = {
@@ -41,4 +45,6 @@ export const schema = {
   ...meetings,
   ...webhookDeliveries,
   ...calls,
+  ...rateLimits,
+  ...psa,
 };

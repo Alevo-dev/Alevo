@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // `forbidden()` / `unauthorized()` → app/(app)/forbidden.tsx + unauthorized.tsx
+  // (lib/auth-interrupts.ts maps @alevo/auth errors onto them).
+  experimental: { authInterrupts: true },
   // "Settings" became "Workspace" (2026-10-20); keep old links and bookmarks alive.
   async redirects() {
     return [
@@ -14,7 +17,7 @@ const nextConfig: NextConfig = {
   },
   // Shared workspace packages ship as raw TS (no build step); Next transpiles
   // them. @alevo/tokens ships CSS only and needs no transpile.
-  transpilePackages: ["@alevo/db", "@alevo/auth"],
+  transpilePackages: ["@alevo/db", "@alevo/auth", "@alevo/ui"],
   allowedDevOrigins: ['magical-midge-partly.ngrok-free.app'],
   images: {
     remotePatterns: [

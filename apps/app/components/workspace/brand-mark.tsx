@@ -1,7 +1,8 @@
+import Image from "next/image";
 import { BRAND_ICONS, LETTER_MARKS, MICROSOFT_SQUARES, SLACK_PIECES, type BrandIcon } from "@/lib/integrations/brand-icons";
 import type { ServiceIcon } from "@/lib/integrations/services";
 
-const MARK: Record<Exclude<ServiceIcon, "calendar" | "google" | "microsoft" | "slack" | "calcom" | keyof typeof LETTER_MARKS>, BrandIcon> = {
+const MARK: Record<Exclude<ServiceIcon, "alevo" | "calendar" | "google" | "microsoft" | "slack" | "calcom" | keyof typeof LETTER_MARKS>, BrandIcon> = {
   calendly: BRAND_ICONS.calendly,
   resend: BRAND_ICONS.resend,
   twilio: BRAND_ICONS.twilio,
@@ -35,6 +36,13 @@ const TILE = "inline-flex size-10 shrink-0 items-center justify-center rounded-m
 
 /** A brand's real mark in its own colours, on a white tile so dark marks stay visible on navy. */
 export function BrandMark({ icon }: { icon: ServiceIcon }) {
+  if (icon === "alevo") {
+    return (
+      <span aria-hidden="true" className={`${TILE} p-2`}>
+        <Image src="/alevo-mark.png" alt="" width={24} height={24} className="size-full object-contain" />
+      </span>
+    );
+  }
   if (icon === "calendar") {
     return (
       <span aria-hidden="true" className={`${TILE} gap-1 p-1.5`}>

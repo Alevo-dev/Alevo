@@ -1,6 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { orgSubscriptions, plans, withService } from "@alevo/db";
+import { funnelByOrg, organizations, orgSubscriptions, plans, withService } from "@alevo/db";
+import { notifyInternal } from "@/lib/alerts/internal";
+import { slowOrgs, speedDigest } from "@/lib/alerts/speed-digest";
+import { ensureActivity, ensureCompany, ensureContact, ensureOpportunity, loadWritebackContext } from "@/lib/psa/writeback";
 import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
 import { FOLLOWUPS } from "@/lib/cadence/schedule";
@@ -13,6 +16,7 @@ import {
   type ConversationMessageReceivedData,
   type KbDocumentIngestData,
   type OrgProvisionedData,
+  type PsaWritebackRequestedData,
   type VoiceCallEndedData,
 } from "./client";
 
@@ -220,6 +224,67 @@ export const processVoiceCall = inngest.createFunction(
   },
 );
 
+/**
+ * PSA write-back (plan.md Sprint 5). Reacts to a lead becoming qualified and
+ * mirrors it into the org's ConnectWise: company → contact → activity, plus an
+ * opportunity when a meeting was booked. Each vendor call is its own step so it
+ * retries alone; every `ensure*` checks the `psa_links` ledger (then Manage's
+ * own search) before creating, so a replay never duplicates a record. Step
+ * results hold ids only — the org's keys are decrypted inside each step and
+ * never stored by Inngest. One run per org at a time, throttled to be polite
+ * to the PSA; orgs without a PSA connected return at the first step.
+ */
+export const psaWriteback = inngest.createFunction(
+  {
+    id: "psa-writeback",
+    concurrency: { key: "event.data.orgId", limit: 1 },
+    throttle: { key: "event.data.orgId", limit: 30, period: "1m" },
+    retries: 3,
+    triggers: [{ event: "psa/writeback.requested" }],
+  },
+  async ({ event, step }) => {
+    const { orgId, conversationId, reason } = event.data as PsaWritebackRequestedData;
+
+    const ctx = await step.run("load", () => loadWritebackContext(orgId, conversationId));
+    if (!ctx) return { ok: true, skipped: "no-psa" };
+
+    const companyId = await step.run("company", () => ensureCompany(ctx));
+    const contactId = await step.run("contact", () => ensureContact(ctx, companyId));
+    const activityId = await step.run(`activity-${reason}`, () => ensureActivity(ctx, reason, companyId, contactId));
+    const opportunityId = reason === "booked" ? await step.run("opportunity", () => ensureOpportunity(ctx, companyId, contactId)) : null;
+
+    return { ok: true, companyId, contactId, activityId, opportunityId };
+  },
+);
+
+/**
+ * Internal speed-to-lead watch (plan.md Sprint 5: "internal alert above ~60s").
+ * Once a day, measures every org's first-reply p95 over the last 24 hours and
+ * posts the ones over target to Alevo's own alerts channel. Silent when every
+ * org is on target, or when the internal webhook isn't configured.
+ */
+export const speedToLeadWatch = inngest.createFunction(
+  { id: "speed-to-lead-watch", retries: 1, triggers: [{ cron: "0 13 * * *" }] },
+  async ({ step }) => {
+    const slow = await step.run("measure", async () => {
+      const funnel = await funnelByOrg(1);
+      if (funnel.length === 0) return [];
+      const names = await withService((tx) =>
+        tx
+          .select({ id: organizations.id, name: organizations.name })
+          .from(organizations)
+          .where(inArray(organizations.id, funnel.map((f) => f.orgId))),
+      );
+      const nameOf = new Map(names.map((n) => [n.id, n.name]));
+      return slowOrgs(funnel.map((f) => ({ name: nameOf.get(f.orgId) ?? f.orgId, replied: f.replied, p50: f.p50, p95: f.p95 })));
+    });
+    const text = speedDigest(slow);
+    if (!text) return { ok: true, slow: 0 };
+    const result = await step.run("notify", () => notifyInternal(text));
+    return { ok: true, slow: slow.length, posted: result.ok, error: result.error };
+  },
+);
+
 /** Every Inngest function must be registered in the serve route. */
 export const functions = [
   orgProvisioned,
@@ -227,4 +292,6 @@ export const functions = [
   conversationCadence,
   ingestKbDocument,
   processVoiceCall,
+  psaWriteback,
+  speedToLeadWatch,
 ];

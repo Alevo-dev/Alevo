@@ -228,7 +228,7 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 ### Sprint 2 — Capture, conversation, Qualifier (35–45h) — ✅ complete (merged; tested in dev; all but SMS verified in production — SMS awaits prod Twilio/A2P)
 - [x] Tables: `contacts`, `conversations`, `messages`, `consents` (0007) + `org_profiles` (0008, the Qualifier's per-org ICP context)
 - [x] Tables: `kb_documents`, `kb_chunks` (pgvector `vector(1024)`, hnsw cosine) (0010)
-- [x] Hosted form per org → creates contact + conversation (`/f/[orgId]`); embeddable snippet pending
+- [x] Hosted form per org → creates contact + conversation (`/f/[orgId]`); **embeddable** (2026-10-27): `public/embed.js` script, iframe mode (`?embed=1`, auto-height), and a public JSON endpoint `/api/forms/[orgId]` for customers' own forms, all through one `captureLead`; spam protection = honeypot + fill-time + per-IP / per-org rate limits (`rate_limits`, 0021). Snippets under Integrations → Lead capture → Website form
 - [x] Email (Resend): outbound Qualifier replies + inbound `email.received` webhook (`/api/webhooks/resend`), per-conversation Reply-To threading, idempotent on `providerRef`; feeds the same `conversation/message.received` event
 - [x] SMS (Twilio): outbound Qualifier texts + inbound webhook (`/api/webhooks/twilio`, X-Twilio-Signature verified), per-org number routing (`org_profiles.sms_from_number`), STOP opt-out respected, idempotent on `providerRef` (MessageSid); feeds the same `conversation/message.received` event
 - [x] Email compliance: `List-Unsubscribe` header + visible footer link + one-click `/api/unsubscribe` (signed token); `email_suppressions` (0011); bounce/complaint webhooks → suppress; the Qualifier skips suppressed contacts entirely (context-loader gate) + a suppression banner on the conversation. _Follow-ups: suppress on hard bounces only (ignore transient); contact-initiated resubscribe (re-submitting the form lifts `unsubscribe`/`bounce`, never `complaint`)._
@@ -287,12 +287,12 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 - [ ] Still open: accessibility pass with a tool (contrast, keyboard) on both sites; opt-in overage + monthly cap (Stripe); the "no card for the trial" claim on Pricing must stay true when billing lands
 
 ### Sprint 5 — PSA write-back, dashboard, notifications (20–25h)
-- [ ] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking
-- [ ] Dashboard: leads in, qualified, meetings booked, missed calls recovered (weekly) — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11). *Partly done 2026-10-26: the four tiles match the mockup (7-day mini bars in org-timezone days, share lines, featured Leads tile, Missed calls recovered from `calls`) and "Where leads come from" is the donut + legend. Still to do: leads-per-day and meetings-per-week charts, speed-to-lead, usage meter, live feed.*
-- [ ] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at`, shown to the tenant and alerted internally above ~60s
-- [~] Usage meter: conversations, voice minutes, outbound dials vs plan allowance. *2026-10-27: limits enforced — alerts (Slack + owner email) at 80%, the agent pauses at 100% (Qualifier skips, voice says "can't take calls"), shell banner from 80%. Still to do: a usage meter card with bars, and opt-in overage + cap once Stripe lands.*
-- [ ] Super-admin view: same numbers across all orgs
-- [ ] Slack: qualified lead, meeting booked, escalation requested
+- [x] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking. *Built 2026-10-27 (`lib/psa/`, Inngest `psa-writeback`, `psa_links` ledger, Integrations → ConnectWise with Test connection). Fires on hand-off and booking. Not yet run against the sandbox — needs `CONNECTWISE_CLIENT_ID` + the sandbox site / company ID / member / keys.*
+- [x] Dashboard: leads in, qualified, meetings booked, missed calls recovered — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11). *Done 2026-10-27 to the mockup: one page-wide window switch (7 / 30 / 90 days), the four tiles, leads area chart, speed-to-lead card with sparkline, meetings columns, lead-source donut, plan-usage meter, live activity feed refreshing every 30s. Show rate is not on the page yet (needs more outcomes recorded).*
+- [x] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at` shown to the tenant (dashboard, 2026-10-27); internal daily alert (`speed-to-lead-watch`, orgs with p95 > 60s over ≥3 answered leads in 24h → `INTERNAL_ALERTS_SLACK_WEBHOOK`), 2026-10-27
+- [~] Usage meter: conversations, voice minutes, outbound dials vs plan allowance. *2026-10-27: limits enforced — alerts (Slack + owner email) at 80%, the agent pauses at 100% (Qualifier skips, voice says "can't take calls"), shell banner from 80%. Usage meter card with one bar per allowance on the dashboard (2026-10-27). Still to do: opt-in overage + cap once Stripe lands.*
+- [x] Super-admin view: same numbers across all orgs — `apps/admin` `/dashboard`, 7 / 30 / 90 switch, per-org funnel + p50 / p95 with slow orgs flagged (2026-10-27)
+- [ ] Slack: qualified lead, meeting booked, escalation requested *(hand-off / escalation / usage alerts already post; booked + qualified-lead messages still to add)*
 
 ### Sprint 6 — Onboarding wizard (15–20h)
 - [ ] Company profile + brand basics

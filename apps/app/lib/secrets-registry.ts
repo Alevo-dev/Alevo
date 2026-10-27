@@ -8,7 +8,9 @@ export type SecretKey =
   | "slack_webhook_url"
   | "calcom_api_key"
   | "calcom_webhook_secret"
-  | "calendly_webhook_secret";
+  | "calendly_webhook_secret"
+  | "connectwise_public_key"
+  | "connectwise_private_key";
 
 /** Form field name prefix for a secret: the field is `secret.<key>`. */
 export const FIELD_PREFIX = "secret.";
@@ -66,6 +68,20 @@ export const SECRET_KEYS: readonly SecretSpec[] = [
     label: "Cal­endly webhook signing key",
     help: "Verifies Calendly booking webhooks. From the Calendly webhook subscription pointing at /api/webhooks/calendly.",
     placeholder: "Calendly signing key",
+    inputType: "password",
+  },
+  {
+    key: "connectwise_public_key",
+    label: "ConnectWise public key",
+    help: "From the API member's API Keys tab in ConnectWise Manage (System → Members → API Members).",
+    placeholder: "public key",
+    inputType: "password",
+  },
+  {
+    key: "connectwise_private_key",
+    label: "ConnectWise private key",
+    help: "Shown once when the key pair is created. Stored encrypted; never shown again here either.",
+    placeholder: "private key",
     inputType: "password",
   },
 ];

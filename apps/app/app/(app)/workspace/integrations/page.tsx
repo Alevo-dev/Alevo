@@ -1,21 +1,26 @@
 import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { listOrgSecretKeys, orgProfiles } from "@alevo/db";
-import { ForbiddenError, getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { authInterrupt } from "@/lib/auth-interrupts";
 import { Card } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { StatusDot } from "@/components/ui/pill";
 import { isEmailConfigured } from "@/lib/email/resend";
 import { isSmsConfigured } from "@/lib/sms/twilio";
 import { bookingSnapshot } from "@/lib/booking/connected";
+import { connectwiseSnapshot } from "@/lib/psa/connectwise-map";
 import { buildServices, SERVICE_GROUPS, type ServiceView } from "@/lib/integrations/services";
 import { getConnectionHealth } from "@/lib/integrations/health";
 import { keyField } from "@/lib/secrets-registry";
+import { appUrl } from "@/lib/app-url";
 import { CalcomForm } from "./calcom-form";
 import { CalendarConnect } from "./calendar-connect";
 import { CalendlyForm } from "./calendly-form";
 import { ConnectResult } from "./connect-result";
+import { ConnectWiseForm } from "./connectwise-form";
 import { ConnectTool } from "./connect-tool";
+import { EmbedSnippets } from "./embed-snippets";
 import { ConnectionHealthCard, PAIR_CARD_CLASS } from "./connection-health";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceCard } from "./service-card";
@@ -27,6 +32,9 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Integrations" };
 
 const CALENDAR_DESCRIPTION = "Alevo books on one calendar at a time. Only a refresh token is stored, encrypted.";
+const FORM_DESCRIPTION = "Put the form on your website, or point your own form at Alevo. Every submission opens a conversation the agent works.";
+const CONNECTWISE_DESCRIPTION =
+  "When a lead is handed to a person or books a meeting, Alevo creates or finds the company and contact in Manage, logs an activity, and opens an opportunity on a booking. Keys are stored encrypted.";
 
 export default async function SecretsPage({
   searchParams,
@@ -37,16 +45,16 @@ export default async function SecretsPage({
   try {
     userRole = await requireRole("viewer");
   } catch (error) {
-    if (error instanceof ForbiddenError) {
-      return <Notice tone="warning">You need to be a member of this organization to view integrations.</Notice>;
-    }
-    throw error;
+    authInterrupt(error);
   }
 
   const org = await getCurrentOrg();
   if (!org) {
     return <Notice tone="warning">No organization selected.</Notice>;
   }
+  // Plain values for the closures below (TS does not narrow `org` inside them).
+  const orgId = org.id;
+  const orgName = org.name;
 
   // Explicit org filter: platform admins bypass RLS, so scope in code.
   const [{ calendar_connected, calendar_error }, setKeys, [profile], health] = await Promise.all([
@@ -58,6 +66,7 @@ export default async function SecretsPage({
   const canModify = userRole === "admin" || userRole === "owner";
   const isSet = new Set(setKeys);
   const booking = bookingSnapshot(profile);
+  const connectwise = connectwiseSnapshot(profile);
 
   const services = buildServices({
     setKeys: isSet,
@@ -65,6 +74,7 @@ export default async function SecretsPage({
     smsConfigured: isSmsConfigured(),
     emailConfigured: isEmailConfigured(),
     booking,
+    connectwise,
   });
   const attention = services.filter((s) => s.issue);
   const listed = services.filter((s) => s.listed);
@@ -77,6 +87,8 @@ export default async function SecretsPage({
   /** The contents of one service's Manage dialog: its own form, or a pointer elsewhere. */
   function manageContent(service: ServiceView) {
     switch (service.id) {
+      case "form":
+        return <EmbedSnippets orgId={orgId} origin={appUrl()} company={orgName} />;
       case "calcom":
         return (
           <>
@@ -104,6 +116,18 @@ export default async function SecretsPage({
             <CalendlyForm link={booking.calendlyUrl ?? ""} signingKeySet={isSet.has("calendly_webhook_secret")} canModify={canModify} />
           </>
         );
+      case "connectwise":
+        return (
+          <ConnectWiseForm
+            site={connectwise.site ?? ""}
+            companyId={connectwise.companyId ?? ""}
+            member={connectwise.member ?? ""}
+            publicKeySet={isSet.has("connectwise_public_key")}
+            privateKeySet={isSet.has("connectwise_private_key")}
+            connected={service.status.label === "Connected"}
+            canModify={canModify}
+          />
+        );
       default:
         return (
           <>
@@ -119,7 +143,14 @@ export default async function SecretsPage({
         );
     }
   }
-  const dialogDescription = (service: ServiceView) => (service.id === "google" || service.id === "m365" ? CALENDAR_DESCRIPTION : undefined);
+  const dialogDescription = (service: ServiceView) =>
+    service.id === "google" || service.id === "m365"
+      ? CALENDAR_DESCRIPTION
+      : service.id === "form"
+        ? FORM_DESCRIPTION
+        : service.id === "connectwise"
+          ? CONNECTWISE_DESCRIPTION
+          : undefined;
 
   return (
     <div className="space-y-10">

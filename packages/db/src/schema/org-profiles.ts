@@ -63,6 +63,12 @@ export const orgProfiles = pgTable(
       .default("voicemail"),
     vapiAssistantId: text("vapi_assistant_id"),
     vapiPhoneNumberId: text("vapi_phone_number_id"),
+    // ConnectWise Manage write-back (migration 0022). The API host, the login
+    // company id and the API member who owns activities + opportunities. The
+    // public/private keys live in org_secrets; the developer client ID is env.
+    connectwiseSite: text("connectwise_site"),
+    connectwiseCompanyId: text("connectwise_company_id"),
+    connectwiseMember: text("connectwise_member"),
     ...timestamps,
   },
   (t) => [index("org_profiles_org_id_idx").on(t.orgId)],
