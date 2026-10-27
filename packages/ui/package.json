@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Alevo shared UI — the design-system theme mapping and the components every surface renders (cards, pills, tables, stat tiles, status screens, theme toggle).",
+  "description": "Alevo shared UI — the design-system theme mapping and the components every surface renders (cards, pills, tables, forms, dialogs, stat tiles, status screens, theme toggle).",
   "exports": {
     "./button": "./src/button.tsx",
     "./card": "./src/card.tsx",
+    "./confirm-dialog": "./src/confirm-dialog.tsx",
     "./count-up": "./src/count-up.tsx",
     "./cx": "./src/cx.ts",
+    "./dialog": "./src/dialog.tsx",
+    "./field": "./src/field.tsx",
+    "./icon-button": "./src/icon-button.tsx",
+    "./notice": "./src/notice.tsx",
     "./page-header": "./src/page-header.tsx",
     "./pill": "./src/pill.tsx",
     "./skeleton": "./src/skeleton.tsx",
@@ -28,15 +33,18 @@
     "lucide-react": "^1",
     "next": "^16",
     "next-themes": "^0.4",
-    "react": ">=19"
+    "react": ">=19",
+    "react-dom": ">=19"
   },
   "devDependencies": {
     "@alevo/tsconfig": "workspace:*",
     "@types/react": "^19",
+    "@types/react-dom": "^19",
     "lucide-react": "^1.47.0",
     "next": "16.3.6",
     "next-themes": "^0.4.6",
     "react": "19.2.8",
+    "react-dom": "19.2.8",
     "typescript": "^5"
   }
 }

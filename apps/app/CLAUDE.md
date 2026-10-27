@@ -258,6 +258,11 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
   `connectwise_member` (keys live in `org_secrets`) + `psa_links` (which Alevo record
   became which PSA record; unique per org/provider/kind/local id; tenant reads,
   service writes). See PSA write-back below.
+- **0023** `platform_secrets` — Alevo's own encrypted settings (not per org), edited in
+  the admin console (Settings). Today: `internal_alerts_slack_webhook`, read by the
+  speed-to-lead watch. `@alevo/db` exposes `set/get/deletePlatformSecret` +
+  `platformSecretStatus`; service path only; the admin app needs the same
+  `SECRETS_MASTER_KEY` as the app.
 
 ## The Qualifier (Claude agent)
 
@@ -589,7 +594,8 @@ booking (Sprint 3), and PSA write-back (Sprint 5).
 **Other functions.** `psa-writeback` (see PSA write-back) and `speed-to-lead-watch`
 (cron, 13:00 UTC daily: `funnelByOrg(1)` from `@alevo/db` → `slowOrgs` /
 `speedDigest` in `lib/alerts/speed-digest.ts` → `notifyInternal`, Alevo's own
-Slack via `INTERNAL_ALERTS_SLACK_WEBHOOK`; silent when every org is on target).
+Slack webhook saved under Admin → Settings → Internal alerts (`platform_secrets`);
+silent when every org is on target or nothing is saved).
 
 ## Dashboard
 

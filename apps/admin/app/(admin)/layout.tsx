@@ -31,6 +31,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="font-display text-lg font-semibold tracking-tight">Alevo</span>
           </Link>
           <Pill tone="violet">Admin</Pill>
+          <nav aria-label="Console" className="ml-4 hidden items-center gap-1 sm:flex">
+            <Link href="/dashboard" className="rounded-sm px-3 py-1.5 text-sm font-medium text-ink-muted no-underline transition-colors hover:text-ink">
+              Overview
+            </Link>
+            <Link href="/settings" className="rounded-sm px-3 py-1.5 text-sm font-medium text-ink-muted no-underline transition-colors hover:text-ink">
+              Settings
+            </Link>
+          </nav>
         </div>
         <div className="flex items-center gap-4">
           <a href={APP_URL} className="hidden text-label text-ink-muted no-underline hover:text-ink sm:inline">

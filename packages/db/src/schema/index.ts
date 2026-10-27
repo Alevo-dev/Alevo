@@ -13,6 +13,7 @@ export * from "./webhook-deliveries";
 export * from "./calls";
 export * from "./rate-limits";
 export * from "./psa";
+export * from "./platform-secrets";
 
 import * as identity from "./identity";
 import * as billing from "./billing";
@@ -29,6 +30,7 @@ import * as webhookDeliveries from "./webhook-deliveries";
 import * as calls from "./calls";
 import * as rateLimits from "./rate-limits";
 import * as psa from "./psa";
+import * as platformSecrets from "./platform-secrets";
 
 /** Aggregate passed to drizzle() so `tx.query.*` is available for every table. */
 export const schema = {
@@ -47,4 +49,5 @@ export const schema = {
   ...calls,
   ...rateLimits,
   ...psa,
+  ...platformSecrets,
 };

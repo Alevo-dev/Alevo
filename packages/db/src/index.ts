@@ -13,6 +13,7 @@ export { claimWebhookEvent, releaseWebhookEvent } from "./webhook-events";
 export { currentPeriod, getUsage, recordUsage, type UsageRow } from "./usage";
 export { hitRateLimit } from "./rate-limit";
 export { funnelByOrg, funnelSeries, type FunnelBucket, type OrgFunnel } from "./metrics";
+export { deletePlatformSecret, getPlatformSecret, platformSecretStatus, setPlatformSecret, type PlatformSecretKey } from "./platform-secrets";
 export { isSuppressed, addSuppression } from "./suppressions";
 export { recordConsent, revokeConsentForContact, revokeConsentForEmail } from "./consents";
 export * from "./schema";

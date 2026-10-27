@@ -1,14 +1,16 @@
 import "server-only";
+import { getPlatformSecret } from "@alevo/db";
 import type { SlackResult } from "@/lib/notifications/slack";
 
 /**
- * Alevo's own alerts channel (not a tenant's): `INTERNAL_ALERTS_SLACK_WEBHOOK`.
+ * Alevo's own alerts channel (not a tenant's): the Slack webhook saved under
+ * Admin console → Settings → Internal alerts (platform_secrets, encrypted).
  * Used for platform-level signals such as the speed-to-lead watch. Best-effort,
- * never throws; unset in dev means "skipped".
+ * never throws; nothing saved means "skipped".
  */
 export async function notifyInternal(text: string): Promise<SlackResult> {
-  const webhook = process.env.INTERNAL_ALERTS_SLACK_WEBHOOK;
-  if (!webhook) return { ok: false, error: "INTERNAL_ALERTS_SLACK_WEBHOOK isn't set." };
+  const webhook = await getPlatformSecret("internal_alerts_slack_webhook");
+  if (!webhook) return { ok: false, error: "No internal alerts webhook saved (Admin → Settings)." };
   try {
     const res = await fetch(webhook, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
     return res.ok ? { ok: true } : { ok: false, error: `Slack returned ${res.status}` };

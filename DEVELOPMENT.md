@@ -144,9 +144,10 @@ function; watch them in the Inngest dev UI.
 
 ## Internal alerts
 
-`INTERNAL_ALERTS_SLACK_WEBHOOK` (an incoming webhook on Alevo's own Slack) receives
-platform signals — today the daily `speed-to-lead-watch` digest of orgs whose p95
-first reply missed 60s. Unset locally = silent.
+Alevo's own Slack webhook (for platform signals — today the daily
+`speed-to-lead-watch` digest of orgs whose p95 first reply missed 60s) is saved in
+the admin console under Settings → Internal alerts, encrypted in `platform_secrets`.
+Nothing saved = silent. The console needs the app's `SECRETS_MASTER_KEY` to write it.
 
 ## Dashboard test data
 
