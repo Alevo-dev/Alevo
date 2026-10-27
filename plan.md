@@ -292,7 +292,7 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 - [x] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at` shown to the tenant (dashboard, 2026-10-27); internal daily alert (`speed-to-lead-watch`, orgs with p95 > 60s over ≥3 answered leads in 24h → the Slack webhook saved under Admin → Settings), 2026-10-27
 - [~] Usage meter: conversations, voice minutes, outbound dials vs plan allowance. *2026-10-27, hand-tested: limits enforced — alerts (Slack + owner email) at 80%, the agent pauses at 100% (Qualifier skips, voice says "can't take calls"), shell banner from 80%. Usage meter card with one bar per allowance on the dashboard (2026-10-27). Still to do: opt-in overage + cap once Stripe lands.*
 - [x] Super-admin view: same numbers across all orgs — `apps/admin` `/dashboard`, 7 / 30 / 90 switch, per-org funnel + p50 / p95 with slow orgs flagged; console restyled on the shared `@alevo/ui` package (2026-10-27, hand-tested)
-- [ ] Slack: qualified lead, meeting booked, escalation requested *(hand-off / escalation / usage alerts already post; booked + qualified-lead messages still to add)*
+- [x] Slack: qualified lead, meeting booked, escalation requested — all four post to the org's Slack (`lib/notifications/lead-events.ts`): strong fit reached (first score ≥ 70), meeting booked (agent, voice, Cal.com external, Calendly), hand-off, escalation; plus the usage alerts and the **no-reply fallback** (`reply-watchdog`: 5 minutes without an outbound reply, or the agent off / paused / contact opted out → lead marked handed off + "Lead needs a person" with contact details) (2026-10-27)
 
 ### Sprint 6 — Onboarding wizard (15–20h)
 - [ ] Company profile + brand basics

@@ -953,3 +953,22 @@ All four share one look (mark, mono status line, headline, one sentence, actions
 - [ ] **Marketing site** (`:3000`): `/nothing-here` shows the same screen as the app (mark, "404 · Page not found", Space Grotesk headline) with "Back to home" → `/`, "Contact us" → `/contact`, "Sign in to the app" → the app's sign-in; the cookie bar still sits at the bottom; the rest of the site keeps its own Fraunces / Geist type.
 - [ ] **Admin console look** (`:3002`, as a platform admin): top bar with the mark, "Alevo" + a violet Admin pill, "Open the app", the theme toggle and the account button; the page is "Across all organizations" with the 7 / 30 / 90 pill switch, five stat tiles (Leads in featured, Qualified violet, Meetings green, Calls amber, Over 60s red), the funnel table in a card with a pill per org for speed to lead, then Organizations and Recent activity side by side. Light and dark both on the app's palette; sign-in page shows the mark + Admin pill above Clerk's form.
 - [ ] **Admin → Settings → Internal alerts**: paste a Slack incoming webhook, Save → pill reads "Set" with "Last saved …"; "Send test" posts a line to the channel; a non-Slack URL shows an inline field error; Clear asks first, then the pill reads "Not set" and the speed watch run reports "No internal alerts webhook saved". Needs `SECRETS_MASTER_KEY` in `apps/admin/.env.local` (same as the app) and migration 0023.
+
+# Org Slack notifications (2026-10-27)
+
+With a Slack webhook saved under Integrations → Slack:
+- [ ] Reply as a contact so the agent scores the lead ≥ 70: one "Qualified lead: …" message with the score, why, and the conversation link. Score again (still ≥ 70): no second message. A lead scored 40 then 75: the message arrives on the 75.
+- [ ] Book through the agent (email / SMS or a call): one "Meeting booked: …" with the time in the org timezone and the join link; the Cal.com webhook for that same booking does NOT post a second one.
+- [ ] Book directly in Cal.com / Calendly with the Alevo metadata or link: one "Meeting booked" message.
+- [ ] Hand-off and escalation still post as before; the usage alerts still post at 80% / 100%.
+- [ ] No webhook saved: nothing posts and nothing errors (the reply still goes out).
+
+# No-reply fallback (2026-10-27)
+
+Slack webhook saved under Integrations → Slack; `CADENCE_FAST=1` in `.env.local` shrinks the wait from 5 minutes to 30 seconds.
+- [ ] Agent OFF: submit the lead form. Within seconds Slack gets "Lead needs a person: … — the agent is turned off" with email / phone and the link; the conversation shows "Handed to a rep". No second message when the same contact writes again.
+- [ ] Agent ON, `usage_counters.used` at the allowance: a new lead posts "… the plan's conversation allowance is used up".
+- [ ] Agent ON, normal: reply as a contact → the agent answers → no fallback message (Inngest `reply-watchdog` run ends `answered`).
+- [ ] Agent ON but broken (e.g. a wrong `ANTHROPIC_API_KEY`): reply as a contact → after the wait, "… the agent hasn't replied after 5 minutes" (or 30 seconds), status "Handed to a rep", the `reply-watchdog` run ends `no-reply`.
+- [ ] Two contact messages 10s apart: one watchdog run (the first is cancelled), one alert at most.
+- [ ] Lead already booked or handed off: no alert.

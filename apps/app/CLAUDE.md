@@ -302,6 +302,15 @@ still active, it arms the follow-up cadence (see Durable workflows below).
   duplicate-reply risk until idempotency keys land; the Anthropic SDK retries
   transient API errors in-process.
 
+**Org Slack notifications** (`lib/notifications/`). `notifySlack(orgId, text)` posts to
+the org's webhook (Integrations → Slack), best-effort. What posts: a lead's first
+strong-fit score (`crossedStrongFit`, ≥ 70, from `record_fit_score` in the Qualifier
+and voice tools), a meeting booked (`notifyMeetingBooked` from `book_meeting`, the voice
+booking, a Cal.com booking Alevo didn't make, and Calendly), hand-off / escalation
+(`notifyHandoff` in the tools), the no-reply fallback (`notifyUnansweredLead`, see
+Durable workflows), and the plan-limit alerts. Message text is pure in
+`lead-messages.ts` (tested); `lead-events.ts` loads the records.
+
 ## Email channel (Resend)
 
 The first real inbound/outbound channel. `lib/email/resend.ts` is the only
@@ -590,6 +599,16 @@ booking (Sprint 3), and PSA write-back (Sprint 5).
   Immediate replies to a fresh inbound are never gated (speed-to-lead).
 - Local: `npx inngest-cli dev` (auto-discovers `/api/inngest`). Prod: the Vercel
   integration sets `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`.
+
+**No-reply fallback.** `reply-watchdog` also reacts to `conversation/message.received`:
+sleeps `NO_REPLY_AFTER` (`lib/qualifier/unanswered.ts`: 5 minutes, 30s under
+`CADENCE_FAST`), then `checkUnanswered` (`watchdog.ts`) — if the lead is still
+new / active and no outbound message followed their latest inbound, it marks the
+conversation `handed_off` and posts "Lead needs a person: who, why, how to reach
+them" to the org's Slack (`notifyUnansweredLead`). `qualify-conversation` calls the
+same notifier at once when it skips for `disabled`, `over-allowance` or
+`suppressed`. One alert per lead: already handed-off / booked / closed leads are left
+alone.
 
 **Other functions.** `psa-writeback` (see PSA write-back) and `speed-to-lead-watch`
 (cron, 13:00 UTC daily: `funnelByOrg(1)` from `@alevo/db` → `slowOrgs` /

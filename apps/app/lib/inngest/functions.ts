@@ -4,6 +4,9 @@ import { funnelByOrg, organizations, orgSubscriptions, plans, withService } from
 import { notifyInternal } from "@/lib/alerts/internal";
 import { slowOrgs, speedDigest } from "@/lib/alerts/speed-digest";
 import { ensureActivity, ensureCompany, ensureContact, ensureOpportunity, loadWritebackContext } from "@/lib/psa/writeback";
+import { notifyUnansweredLead } from "@/lib/notifications/lead-events";
+import { NO_REPLY_AFTER } from "@/lib/qualifier/unanswered";
+import { checkUnanswered } from "@/lib/qualifier/watchdog";
 import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
 import { FOLLOWUPS } from "@/lib/cadence/schedule";
@@ -93,7 +96,15 @@ export const qualifyConversation = inngest.createFunction(
     // partial failure. With no steps the function runs exactly once per attempt.
     const ctx = await loadQualifierContext(orgId, conversationId);
     if (!ctx) return { ok: true, skipped: "not-found" };
-    if ("skip" in ctx) return { ok: true, skipped: ctx.skip };
+    if ("skip" in ctx) {
+      // The agent can't work this lead (off, paused at the plan limit, or the
+      // contact opted out of email): a person has to. Alert the org now rather
+      // than after the watchdog's wait.
+      if (ctx.skip === "disabled" || ctx.skip === "over-allowance" || ctx.skip === "suppressed") {
+        await notifyUnansweredLead(orgId, conversationId, ctx.skip);
+      }
+      return { ok: true, skipped: ctx.skip };
+    }
 
     const result = await runQualifier(ctx);
 
@@ -285,6 +296,30 @@ export const speedToLeadWatch = inngest.createFunction(
   },
 );
 
+/**
+ * The no-reply fallback (plan.md risk 9: silent latency). Every inbound message
+ * also starts this: wait `NO_REPLY_AFTER` (5 minutes; `CADENCE_FAST=1` → 30s),
+ * then if nothing went out to the contact after their latest message and the
+ * lead is still being worked, mark it handed off and tell the org's Slack who
+ * to reach. `singleton` per conversation (mode: cancel) so a newer message
+ * restarts the clock instead of stacking alerts; the Qualifier's own skips
+ * alert immediately and leave this run nothing to do.
+ */
+export const replyWatchdog = inngest.createFunction(
+  {
+    id: "reply-watchdog",
+    concurrency: { key: "event.data.orgId", limit: 4 },
+    singleton: { key: "event.data.conversationId", mode: "cancel" },
+    retries: 1,
+    triggers: [{ event: "conversation/message.received" }],
+  },
+  async ({ event, step }) => {
+    const { orgId, conversationId } = event.data as ConversationMessageReceivedData;
+    await step.sleep("wait-for-reply", NO_REPLY_AFTER);
+    return step.run("check", () => checkUnanswered(orgId, conversationId));
+  },
+);
+
 /** Every Inngest function must be registered in the serve route. */
 export const functions = [
   orgProvisioned,
@@ -294,4 +329,5 @@ export const functions = [
   processVoiceCall,
   psaWriteback,
   speedToLeadWatch,
+  replyWatchdog,
 ];

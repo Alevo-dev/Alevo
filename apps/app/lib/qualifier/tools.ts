@@ -3,6 +3,8 @@ import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { conversations, isSuppressed, meetings, messages, withService, type Channel } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
+import { notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
+import { crossedStrongFit } from "@/lib/notifications/lead-messages";
 import { notifySlack } from "@/lib/notifications/slack";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
@@ -319,13 +321,14 @@ export async function dispatchTool(
       const score = clampScore(input.score);
       if (score === null) return "Error: score must be a number between 0 and 100.";
       const reasons = String(input.reasons ?? "").trim() || null;
-      await withService((tx) =>
-        tx
-          .update(conversations)
-          .set({ fitScore: score, scoreReasons: reasons, updatedAt: new Date() })
-          .where(scoped(target)),
-      );
+      const previous = await withService(async (tx) => {
+        const [row] = await tx.select({ fitScore: conversations.fitScore }).from(conversations).where(scoped(target)).limit(1);
+        await tx.update(conversations).set({ fitScore: score, scoreReasons: reasons, updatedAt: new Date() }).where(scoped(target));
+        return row?.fitScore ?? null;
+      });
       effects.score = score;
+      // Tell the org's Slack the first time a lead scores a strong fit.
+      if (crossedStrongFit(previous, score)) await notifyQualifiedLead(target.orgId, target.conversationId);
       return `Recorded fit score ${score}.`;
     }
 
@@ -444,6 +447,7 @@ export async function dispatchTool(
       });
       effects.booked = true;
       effects.replied = true;
+      await notifyMeetingBooked(target.orgId, target.conversationId);
       await requestPsaWriteback(target.orgId, target.conversationId, "booked");
       return `Booked for ${result.startIso} and confirmed to the contact (${note}). You're done — do not send another message.`;
     }

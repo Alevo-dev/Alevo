@@ -3,6 +3,8 @@ import { and, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
+import { notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
+import { crossedStrongFit } from "@/lib/notifications/lead-messages";
 import { getBookingAdapter, bookingConfigFromProfile } from "@/lib/booking";
 import { formatSlot, offerSlots } from "@/lib/booking/offer";
 import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
@@ -170,6 +172,7 @@ export async function dispatchVoiceTool(
           .set({ status: "booked", updatedAt: new Date() })
           .where(scoped(ctx));
       });
+      await notifyMeetingBooked(ctx.orgId, ctx.conversationId);
       await requestPsaWriteback(ctx.orgId, ctx.conversationId, "booked");
       return "Booked. A calendar invite is on its way to the caller by email. Confirm the time out loud and end the call.";
     }
@@ -179,12 +182,12 @@ export async function dispatchVoiceTool(
       if (!Number.isFinite(raw)) return "Error: score must be a number from 0 to 100.";
       const score = Math.max(0, Math.min(100, Math.round(raw)));
       const reasons = str(args.reasons) || null;
-      await withService((tx) =>
-        tx
-          .update(conversations)
-          .set({ fitScore: score, scoreReasons: reasons, updatedAt: new Date() })
-          .where(scoped(ctx)),
-      );
+      const previous = await withService(async (tx) => {
+        const [row] = await tx.select({ fitScore: conversations.fitScore }).from(conversations).where(scoped(ctx)).limit(1);
+        await tx.update(conversations).set({ fitScore: score, scoreReasons: reasons, updatedAt: new Date() }).where(scoped(ctx));
+        return row?.fitScore ?? null;
+      });
+      if (crossedStrongFit(previous, score)) await notifyQualifiedLead(ctx.orgId, ctx.conversationId);
       return `Recorded fit score ${score}.`;
     }
 

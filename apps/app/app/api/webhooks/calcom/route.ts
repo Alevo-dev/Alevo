@@ -12,6 +12,7 @@ import {
 } from "@alevo/db";
 import { safeEqual } from "@/lib/crypto/safe-equal";
 import { requestPsaWriteback } from "@/lib/psa/request";
+import { notifyMeetingBooked } from "@/lib/notifications/lead-events";
 import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
@@ -133,7 +134,11 @@ export const POST = trackDeliveries("calcom", async (req, track) => {
           .where(and(eq(conversations.id, convId), eq(conversations.orgId, orgId!)));
       }
     });
-    if (convId) await requestPsaWriteback(orgId!, convId, "booked");
+    if (convId) {
+      // The agent already announced its own bookings; an external one is news.
+      if (!existing) await notifyMeetingBooked(orgId!, convId);
+      await requestPsaWriteback(orgId!, convId, "booked");
+    }
 
     return new Response("ok", { status: 200 });
   } catch (err) {
