@@ -75,7 +75,8 @@ export async function putObject(key: string, body: ArrayBuffer, contentType: str
     .join("/")}`;
   const res = await client.fetch(endpoint, {
     method: "PUT",
-    headers: { "content-type": contentType },
+    // R2 rejects chunked uploads with 411, so send the length explicitly.
+    headers: { "content-type": contentType, "content-length": String(body.byteLength) },
     body,
   });
   if (!res.ok) throw new Error(`R2 put failed (${res.status})`);

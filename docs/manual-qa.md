@@ -600,7 +600,22 @@ Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx sup
 
 ## Inbound voice — Sprint 4 (2026-10-22)
 
-Built, but **not yet verified against a live call**. The Vapi API details that the research could not confirm are listed below; check each one on the first test call and fix the code if the payload differs.
+**First live call made 2026-10-26** (Ottawa, 3:25pm). Verified: Vapi reaches the webhook through ngrok, `tool-calls` + `end-of-call-report` arrive with the secret header and the expected field paths, the Inngest event fires. Found and fixed the same day:
+- Org timezone was null → hours checked in UTC → the "we're closed" greeting at 3pm. Now falls back to the app default (America/New_York), and the Phone calls hint points at the Default timezone field.
+- After hours had no booking tools, so no booking push. With a calendar connected the agent now still qualifies and offers times after hours (greeting: "closed right now, but I can still get you a time").
+- The caller's name never reached the contact (thread showed "—"). New `save_contact_details` tool on voice AND the Qualifier; threads fall back to the phone number.
+- Name recognition looped three times ("Later 1" / "Less o 1" / "Lace"). Transcriber set to Deepgram nova-3; prompt now asks for a spelling once and moves on.
+- No `calls` row: the recording upload failed (`R2 put failed (411)`) and took the whole Inngest run with it. `putObject` now sends `content-length`; a recording failure no longer loses the call record.
+
+Re-test after those fixes:
+- [ ] Set **Agent → Default timezone** (America/Toronto for Ottawa) and Save. Call at a weekday afternoon: the OPEN greeting plays ("How can I help you today?").
+- [ ] Give your name once. If the agent is unsure it asks you to spell it, repeats it once, and moves on. The conversation list and thread show the name (or the phone number before a name is known), not "—".
+- [ ] Qualify as a good lead: the agent offers two times by day and time without being asked, takes your email, books. Thread shows Booked, invite arrives.
+- [ ] Within a minute of hanging up: `calls` row, thread summary, Slack "Call ended (booked, N min)", voice minutes up, recording in R2 (no 411 in the Inngest run).
+- [ ] Empty tool calls (Vapi fires some with no arguments, then retries): the thread never shows "Message taken on a call / Reason: No reason given"; exactly ONE message with name, callback and reason appears per call, plus one call-summary entry.
+- [ ] Wrap-up sounds human: while the agent saves or books it says ONE line ("give me a few seconds while I get that noted down"), not "hang on a sec" several times. Scoring and status are silent. Then it asks "Is there anything else I can help you with?"; say no → it thanks you, says goodbye and HANGS UP itself (endCall).
+- [ ] Switched off: the closed greeting plays and the call ends by itself.
+- [ ] Set the booking hours to end an hour ago (or call on a weekend) with "Take details" selected: greeting says closed but offers to get you a time; the agent still books. With "Take a short message" selected it only takes a message.
 
 Setup (once per environment):
 - [ ] Migration `0018_voice.sql` applied (`npx supabase db push`).
@@ -611,10 +626,11 @@ Setup (once per environment):
 Turning calls on:
 - [ ] Agent → Phone calls: turn on "Answer calls" → Save. Save appears only once something changed; Cancel sits beside it.
 - [ ] With no phone number set, turning calls on shows the error under the switch; nothing is sent to Vapi.
-- [ ] In Vapi's dashboard: the assistant exists, and the number is attached to it.
+- [x] Save with `serverMessages` containing `assistant-request` is rejected by Vapi (400, 2026-10-26) — removed; the assistant now lists only `tool-calls` + `end-of-call-report`.
+- [ ] In Vapi's dashboard: the assistant exists, and the number exists with **no** assistant attached and a Server URL ending in `/api/webhooks/vapi` (that is what makes Vapi ask us which assistant to use on every call).
 
 Live call (dial the number from a phone):
-- [ ] Greeting plays and says "This call may be recorded."
+- [x] Greeting plays and says "This call may be recorded." (2026-10-26)
 - [ ] Ask a question covered by the knowledge base. The agent answers from it (or says it'll follow up if nothing matches).
 - [ ] Ask for a meeting. Agent offers times from the connected calendar, takes your email, books. A calendar invite arrives and the thread shows "booked".
 - [ ] Ask for a person. Slack gets "Call escalated: …", and the thread is handed off.
@@ -629,11 +645,11 @@ Off:
 - [ ] Turn calls off → Save. A call now gets "we're not taking calls right now, please text this number."
 
 **Unverified against Vapi's docs, check on the first call:**
-- [ ] Tool definitions: `model.tools` as `{ type: "function", function: { name, description, parameters } }`, routed to the assistant's server URL. Look at a real `tool-calls` body.
-- [ ] Tool results come back as `{ results: [{ name, toolCallId, result }] }` and the agent speaks them.
-- [ ] The secret arrives in the `x-alevo-secret` header (we set it through `server.headers`). If Vapi rejects the assistant, check the `server` field name.
-- [ ] `assistant-request`: the response `{ assistant: {...} }` is honoured per call, so after-hours and off-mode take effect. If calls always get the open greeting, this shape is wrong.
-- [ ] `end-of-call-report` field paths: `message.call.id`, `message.call.phoneNumberId`, `message.call.customer.number`, `message.endedReason`, `message.summary`, `message.durationSeconds`, `message.artifact.transcript`. Log one raw payload and compare.
+- [x] Tool definitions: `model.tools` as `{ type: "function", function: { name, description, parameters } }`, routed to the assistant's server URL. Confirmed on the first call (take_message ran).
+- [x] Tool results come back as `{ results: [{ name, toolCallId, result }] }` and the agent speaks them.
+- [x] The secret arrives in the `x-alevo-secret` header (we set it through `server.headers`).
+- [ ] `assistant-request` arrives from the number's server URL (not the assistant's), and the response `{ assistant: {...} }` is honoured per call, so after-hours and off-mode take effect. If calls always get the open greeting, this shape is wrong. An unmatched number gets `{ error }`, which Vapi speaks before hanging up.
+- [x] `end-of-call-report` field paths: callRef, customer number, to number, endedReason, summary, transcript and a 67s duration all arrived on the Inngest event.
 - [ ] Recording download: `GET /call/{id}/mono-recording` returns audio (it redirects to a signed URL).
 - [ ] The model id `claude-sonnet-5` is accepted by Vapi's Anthropic provider.
 
@@ -737,16 +753,16 @@ Calendar, Microsoft 365, Calendly); Agent → Booking only offers connected ones
 
 Workspace → Integrations:
 - [ ] Four booking cards. Nothing stored: all "Not connected". Each Manage dialog opens with a reminder line at the top ("Not ready yet: … still needs its API key and event type ID" / "…a connected calendar" / "…scheduling link").
-- [ ] Cal.com → Manage: event type ID + API key + webhook secret in ONE form, one Save/Cancel (appear on change). Save a key + numeric ID → toast, card "Connected", reminder turns blue: "Connected. Turn booking on under Agent → Booking". Only a key (or only an ID) → card "Needs setup" + a Needs attention row "Cal.com is half set up: missing its …".
-- [ ] Google Calendar → Manage: a "Connect Google Calendar" button (admins only) that goes to the Google consent screen; on return you land on INTEGRATIONS with a toast and the card reads "Connected"; the dialog shows the account email + Disconnect (confirm). Microsoft 365's dialog then says Google is connected and to disconnect it first (one calendar at a time).
-- [ ] Calendly → Manage: link + signing key as before; saving a link → "Connected".
+- [x] Cal.com → Manage: event type ID + API key + webhook secret in ONE form, one Save/Cancel (appear on change). Save a key + numeric ID → toast, card "Connected", reminder turns blue: "Connected. Turn booking on under Agent → Booking". Only a key (or only an ID) → card "Needs setup" + a Needs attention row "Cal.com is half set up: missing its …". *(Real key: tested 2026-10-26.)*
+- [x] Google Calendar → Manage: a "Connect Google Calendar" button (admins only) that goes to the Google consent screen; on return you land on INTEGRATIONS with a toast (its "Agent" is an underlined link to the Agent tab) and the card reads "Connected"; the dialog shows the account email + Disconnect (confirm). Microsoft 365's dialog then says Google is connected and to disconnect it first (one calendar at a time). *(Google + Microsoft 365: tested 2026-10-26.)*
+- [x] Calendly → Manage: link + signing key as before; saving a link → "Connected". *(Tested 2026-10-23 with a test link.)*
 - [ ] A connected tool that is also chosen under Agent shows a blue "Booking tool" status and its dialog says "Connected and in use". Chosen Cal.com/Calendly without its signing key → Needs attention "… signing key missing. Bookings won't sync back."
 - [ ] Clearing what a chosen tool needs (Disconnect the calendar; Clear the Cal.com API key or blank its event type ID; blank the Calendly link) un-chooses it: Agent → Booking falls back to "Nothing is connected yet" (or the next connected tool) and the agent hands off.
 
 Workspace → Agent → Booking:
 - [ ] Nothing connected: the switch is disabled; hint ends "Nothing is connected yet."; a row with "Connect a booking tool" (primary) → Integrations. No tool cards.
 - [ ] Exactly one tool connected: switch on → one row "Books through Calendly, https://…" (or "Google Calendar, you@…", "Cal.com, event type 123") with its mark, a one-line how-it-works, and a "Change" link to Integrations. No chooser. Save → toast; Integrations shows that card as "Booking tool".
-- [ ] Two or more connected (e.g. Cal.com keys + a Calendly link): a "Books through" chooser listing ONLY those, plus "Manage connections" → Integrations.
+- [x] Two or more connected (e.g. Cal.com keys + a Calendly link): a "Books through" chooser listing ONLY those, plus "Manage connections" → Integrations. *(Dev, 2026-10-26.)*
 - [ ] Google / Microsoft 365 chosen: meeting length + working hours beneath; Cal.com / Calendly: nothing beneath. No Connect / Disconnect / key fields anywhere on the Agent page.
 - [ ] Tamper check: submit the form with `tool=google` while Google isn't connected → red "Connect a booking tool under Integrations first." under the header; nothing saved.
 - [ ] Turn booking off → Save: cards go back to "Connected" (not "Booking tool"); every connection stays. On again: the same tool is pre-selected.
@@ -764,10 +780,51 @@ Workspace → Agent → Booking:
 Supersedes the card list in the two sections above. A tool gets a card only once it is
 connected (or at least started, so a half-set-up tool stays visible with "Needs setup").
 
-- [ ] Fresh org: "Connected tools" header with a primary **Connect a tool** button (admins/owners only); Booking and CRM sections read "Nothing connected yet."; Communication shows Resend (platform-configured) only.
-- [ ] Connect a tool → a dialog with the same three sections, each row = mark + name + hint. Booking tools, Twilio and Slack have a **Connect** button; CRM/PSA rows show a "Coming soon" pill; a platform service that isn't set up shows "Not set up".
-- [ ] Click Connect on Calendly: the picker closes and Calendly's settings dialog opens (same panel as Manage, with the reminder line at the top). Save a link → toast; close the dialog → Calendly now has a card under Booking and is gone from the picker.
-- [ ] A tool with a card has Manage (as before) and never appears in the picker. Clear everything it needs (e.g. blank the Calendly link) → its card disappears and it is back in the picker.
-- [ ] Half set up (Cal.com key but no event type): card stays, "Needs setup", listed in Needs attention; not in the picker.
+- [x] Fresh org: "Connected tools" header with a primary **Connect a tool** button (admins/owners only); Booking and CRM sections read "Nothing connected yet."; Communication shows Resend (platform-configured) only.
+- [x] Connect a tool → a dialog with the same three sections, each row = mark + name + hint. Booking tools, Twilio and Slack have a **Connect** button; CRM/PSA rows show a "Coming soon" pill; a platform service that isn't set up shows "Not set up".
+- [x] Click Connect on Calendly: the picker closes and Calendly's settings dialog opens (same panel as Manage, with the reminder line at the top). Save a link → toast; close the dialog → Calendly now has a card under Booking and is gone from the picker.
+- [x] A tool with a card has Manage (as before) and never appears in the picker. Clear everything it needs (e.g. blank the Calendly link) → its card disappears and it is back in the picker.
+- [x] Half set up (Cal.com key but no event type): card stays, "Needs setup", listed in Needs attention ("Cal.com is half set up: missing its event type ID."); not in the picker. Adding the event type → "Connected", row gone. *(All of the above run on dev 2026-10-26 with throwaway values, then reverted.)*
 - [ ] Escape / backdrop closes either dialog; the × in the picker's corner closes it.
 - [ ] A viewer-role member sees the cards but no Connect a tool button.
+
+## Infrastructure checks (2026-10-26)
+
+- [x] Dev database: `supabase db push` reports "Remote database is up to date" (0017–0019 applied).
+- [x] Live inbound through the ngrok domain: unsigned POSTs to `/api/webhooks/{calcom,calendly,resend,twilio}` answered 200 / 200 / 400 / 403 and each wrote a `webhook_deliveries` row (`org_id` null — no org could be resolved, so they don't count toward any workspace's health card). Attributed deliveries need a real provider event: a Resend reply to a `reply+<id>@` address, a Cal.com booking webhook, or an SMS to the org's Twilio number.
+- [x] Loading skeletons on the dev server: Dashboard → Conversations → Meetings → Workspace → Agent each rendered in under one screenshot interval (~150 ms), so the skeleton never showed. They only matter on cold / slow loads; nothing to fix.
+- [ ] Phone-width checks (agent dot by the avatar, switches on the title line, picker, stacked health/attention): NOT run — the automation can't resize a maximised Chrome window. Un-maximise Chrome or use DevTools device mode.
+- [ ] Viewer-role member sees cards but no "Connect a tool" button: NOT run — needs a second account.
+
+## Booking push on every channel (2026-10-26)
+
+The agent no longer waits to be asked. Once a lead qualifies it offers concrete times
+(`lib/booking/offer.ts`: a spread over the next 24–72 hours, 2h notice, a week if full).
+
+- [ ] SMS loop (Agent on, a booking tool connected): give qualifying answers over two or three texts. As soon as fit is established the agent asks to put a call on the calendar AND lists two or three times (day + time, e.g. "Tue 10:00 AM, Wed 2:30 PM") in the same text, each on its own short line, and asks for an email if it doesn't have one. Reply with a choice → the meeting is booked and the thread goes **Booked**.
+- [ ] Say none of those work → it offers the remaining times once; decline again → it hands off ("a colleague will find a time"), status **Handed off**.
+- [ ] Email channel: the same, but the times are a short bulleted list inside a complete email.
+- [ ] Calendly mode: the offer is the scheduling link, sent in the same turn as the ask, with a nudge to pick something in the next day or two.
+- [ ] No booking tool connected: once qualified, the agent asks about a call, promises a callback within one business day, and sets **Handed off**.
+- [ ] Follow-up nudge (CADENCE_FAST=1): a quiet lead that already looked qualified gets a nudge that IS a time offer (two or three slots), not a generic "just checking in".
+- [ ] Offered times are inside the next 72 hours and at least two hours from now; with a full calendar they widen to the week and the agent says so ("the soonest I have is …").
+- [ ] Vapi (after Twilio): on a good call the agent offers two times by voice, confirms the chosen one out loud, and the call ends with a **Booked** lead.
+
+## Dashboard tiles + channel donut from the mockup (2026-10-26)
+
+The four key-figure tiles and "Where leads come from" now follow the Claude Design
+Dashboard artboard. "Open conversations" is replaced by "Missed calls recovered"
+(inbound calls answered by the agent, from `calls`). The window is calendar days in
+the org timezone: today plus the six before it.
+
+- [ ] Tiles: Leads in (blue, featured: gradient fill, brand border, blue→violet top rule), Qualified (violet), Meetings booked (green), Missed calls recovered (amber). Each has a row of seven mini bars that grow in, staggered, left = six days ago, right = today.
+- [ ] The big number equals the sum of its bars (count the bars against Conversations filtered to the last week).
+- [ ] Share lines: Leads "Last 7 days"; Qualified "<n>% of leads"; Meetings "<n>% conversion"; Missed calls "Answered by the agent". With zero leads the Qualified and Meetings lines fall back to plain text (no "NaN%").
+- [ ] Missed calls recovered counts the test calls made on 2026-10-26 (one per answered call, by the call's start time).
+- [ ] Where leads come from: a fixed 320px column; a 200px donut sitting left (brand, violet, grey, then green/amber for a 4th/5th channel, largest first, starting at 12 o'clock) with the total and "leads" in the middle, and a legend under it: swatch, "Channel, nn%", count on the right. Hover a segment → tooltip "Channel: nn%".
+- [ ] Live dot: with the agent on, the dot in the Dashboard status line and the shell's "Agent: Online" dot are **green** (success), pulsing; off → grey, still.
+- [ ] Zero leads in the window → "No new leads in this window." in that card; no conversations at all → the "No leads yet" card still replaces both sections.
+- [ ] Change Workspace → Agent → Default timezone to one far away (e.g. Pacific/Auckland) → bars shift by a day where leads sit near midnight; totals can change by those edge leads. Set it back.
+- [ ] Loading skeleton (throttle or cold load): tiles are the taller shape with a bar row.
+- [ ] Reduced motion (Windows: Settings → Accessibility → Visual effects → Animation effects off): bars and donut appear without the intro animation.
+- [ ] Phone width: tiles two per row; donut centred with the legend beneath.

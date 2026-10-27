@@ -33,8 +33,10 @@ export function followupDirective(attempt: number, isLast: boolean): string {
   }
   return (
     `${base} Send a brief, friendly nudge (one short paragraph, no pressure) that ` +
-    `moves the conversation forward or gently re-asks your last question. If the ` +
-    `thread shows they're not interested or not a fit, call ` +
-    `set_status('disqualified') instead of replying.`
+    `moves the conversation forward. If the lead already looks qualified and booking ` +
+    `is available, make the nudge a concrete offer: call check_availability, then ` +
+    `propose two or three specific times (or send the booking link). Otherwise gently ` +
+    `re-ask your last question. If the thread shows they're not interested or not a ` +
+    `fit, call set_status('disqualified') instead of replying.`
   );
 }

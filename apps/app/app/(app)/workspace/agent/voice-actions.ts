@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { orgProfiles, recordAudit } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
-import { buildAssistantBody } from "@/lib/voice/assistant";
+import { buildAssistantBody, VOICE_SECRET_HEADER, voiceServerUrl } from "@/lib/voice/assistant";
 import { bookingLinked } from "@/lib/voice/schedule";
 import { createAssistant, importTwilioNumber, isVapiConfigured, updateAssistant } from "@/lib/voice/vapi";
 
@@ -17,8 +17,10 @@ const AFTER_HOURS = ["voicemail", "take_message"] as const;
 
 /**
  * Turn inbound calls on or off. On: create or update the Vapi assistant from the
- * business profile, and import the org's number into Vapi once. Off: keep the
- * number attached, but the assistant answers "we're not taking calls right now".
+ * business profile (a saved copy that validates the body and shows in Vapi's
+ * dashboard), and import the org's number into Vapi once. The number is routed
+ * per call through assistant-request, so Off needs no Vapi call: the webhook
+ * answers "we're not taking calls right now".
  */
 export async function saveVoiceSettings(_prev: VoiceState, formData: FormData): Promise<VoiceState> {
   const afterRaw = String(formData.get("afterHours") ?? "");
@@ -76,8 +78,10 @@ export async function saveVoiceSettings(_prev: VoiceState, formData: FormData): 
       if (!vapiPhoneNumberId) {
         const imported = await importTwilioNumber({
           number: profile.smsFromNumber,
-          assistantId: vapiAssistantId,
           name: `${org.name} inbound`,
+          serverUrl: voiceServerUrl(appUrl),
+          secretHeader: VOICE_SECRET_HEADER,
+          secret,
         });
         vapiPhoneNumberId = imported.id;
       }

@@ -33,6 +33,7 @@ export default async function ConversationsPage() {
         firstName: contacts.firstName,
         lastName: contacts.lastName,
         email: contacts.email,
+        phone: contacts.phone,
         company: contacts.company,
       })
       .from(conversations)
@@ -77,7 +78,7 @@ export default async function ConversationsPage() {
                         transitionTypes={["nav-forward"]}
                         className="block font-semibold text-ink no-underline hover:underline"
                       >
-                        {displayName(c.firstName, c.lastName, c.email)}
+                        {displayName(c.firstName, c.lastName, c.email ?? c.phone)}
                       </Link>
                       <span className="block text-label text-ink-muted">{c.company ?? c.email ?? ""}</span>
                     </Td>

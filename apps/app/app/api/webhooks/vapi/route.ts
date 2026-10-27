@@ -10,7 +10,8 @@ import { dispatchVoiceTool, type VoiceToolContext } from "@/lib/voice/tools";
 
 /**
  * Vapi server URL for inbound calls. Vapi sends `message.type` events here:
- *  - assistant-request: pick the assistant for this call (open, after hours, or off)
+ *  - assistant-request: sent because the imported number carries our server URL and
+ *    no fixed assistant; we answer with the assistant for this call (open, after hours, off)
  *  - tool-calls: run the agent's tools and return their results (required)
  *  - end-of-call-report: store the call, recording and summary (via Inngest)
  * Authenticated with the shared secret Vapi echoes back in `x-alevo-secret`.
@@ -86,7 +87,10 @@ export async function POST(req: Request) {
         const org = await orgFor(phoneNumberId, assistantId);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL;
         const secret = process.env.VOICE_WEBHOOK_SECRET;
-        if (!org || !appUrl || !secret) return Response.json({});
+        // `error` is spoken to the caller, then Vapi ends the call.
+        if (!org || !appUrl || !secret) {
+          return Response.json({ error: "Sorry, this number isn't taking calls right now. Please text it instead." });
+        }
         const assistant = buildAssistantBody({
           profile: org.profile,
           orgName: org.orgName,
@@ -163,7 +167,8 @@ export async function POST(req: Request) {
             typeof message.durationSeconds === "number"
               ? Math.round(message.durationSeconds)
               : secondsBetween(startedAt, endedAt),
-          summary: str(message.summary),
+          // Newer reports carry the summary under `analysis`; older ones at the top level.
+          summary: str(obj(message.analysis).summary) ?? str(message.summary),
           transcript: str(artifact.transcript) ?? str(message.transcript),
           customerNumber: str(obj(call.customer).number),
           toNumber: str(obj(call.phoneNumber).number) ?? str(obj(message.phoneNumber).number),

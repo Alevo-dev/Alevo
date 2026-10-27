@@ -126,6 +126,11 @@
   .animate-rise {
     animation: ds-rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
+  /* Donut ring: starts at 12 o'clock (-90deg) and settles in from a slight shrink. */
+  .animate-spin-in {
+    transform: rotate(-90deg);
+    animation: ds-spin-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both;
+  }
   /* Gentle hover for decorative floating cards (auth art). */
   .animate-bob {
     animation: ds-bob 6s ease-in-out infinite;
@@ -156,6 +161,7 @@
     .animate-grow-y,
     .animate-draw,
     .animate-rise,
+    .animate-spin-in,
     .animate-bob,
     .skeleton::after {
       animation: none;
@@ -184,6 +190,16 @@
   }
   to {
     stroke-dashoffset: 0;
+  }
+}
+@keyframes ds-spin-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-90deg) scale(1);
   }
 }
 @keyframes ds-rise {

@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { and, desc, eq, sql } from "drizzle-orm";
-import { contacts, conversations, meetings, type Channel } from "@alevo/db";
+import { and, desc, eq, sql, type SQLWrapper } from "drizzle-orm";
+import { calls, contacts, conversations, meetings } from "@alevo/db";
 import { getCurrentOrg, withOrg } from "@alevo/auth";
 import { getAgentOn } from "@/lib/agent-on";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill, StatusDot } from "@/components/ui/pill";
-import { StatTile } from "@/components/ui/stat-tile";
-import { displayName, fmtCount, fmtShort } from "@/lib/format";
+import { displayName, fmtShort } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
+import { ChannelDonut } from "./channel-donut";
+import { KpiTiles, toSeries } from "./kpi-tiles";
 
 // Reads the session + DB, so it must render per-request.
 export const dynamic = "force-dynamic";
@@ -36,65 +37,121 @@ export default async function DashboardPage() {
     );
   }
 
-  // The window is computed in SQL so the render stays pure (no clock reads).
-  const since = sql.raw(`now() - interval '${WINDOW_DAYS} days'`);
+  // "Last 7 days" = today plus the six before it, as calendar days in the
+  // org's timezone, so the tiles' day bars line up with what the user calls a
+  // day. Computed in SQL so the render stays pure (no clock reads).
+  const tz = await getOrgTimezone();
+  const today = sql`(now() at time zone ${tz})::date`;
+  const windowStart = sql`(${today} - ${WINDOW_DAYS - 1}::int)::timestamp at time zone ${tz}`;
+  // Whole days ago (0 = today) for a timestamptz column.
+  const daysAgo = (col: SQLWrapper) =>
+    sql<number>`(${today} - (${col} at time zone ${tz})::date)`.mapWith(Number);
   // Explicit active-org scope on every read (platform admins bypass RLS).
-  const inOrg = (col: typeof conversations.orgId | typeof meetings.orgId) =>
-    sql`${col} = (select app.current_org_id())`;
+  const inOrg = (
+    col:
+      typeof conversations.orgId | typeof meetings.orgId | typeof calls.orgId,
+  ) => sql`${col} = (select app.current_org_id())`;
+  const count = sql<number>`count(*)`.mapWith(Number);
 
-  const [org, tz, [totals], [booked], byChannel, recent, agentOn] = await Promise.all([
-    getCurrentOrg(),
-    getOrgTimezone(),
-    withOrg((tx) =>
-      tx
-        .select({
-          all: sql<number>`count(*)`.mapWith(Number),
-          leads: sql<number>`count(*) filter (where ${conversations.createdAt} >= ${since})`.mapWith(Number),
-          qualified: sql<number>`count(*) filter (where ${conversations.createdAt} >= ${since} and ${conversations.status} in ('booked','handed_off'))`.mapWith(Number),
-          open: sql<number>`count(*) filter (where ${conversations.status} in ('new','active'))`.mapWith(Number),
-        })
-        .from(conversations)
-        .where(inOrg(conversations.orgId)),
-    ),
-    withOrg((tx) =>
-      tx
-        .select({ n: sql<number>`count(*)`.mapWith(Number) })
-        .from(meetings)
-        .where(
-          and(inOrg(meetings.orgId), sql`${meetings.createdAt} >= ${since}`, sql`${meetings.status} <> 'cancelled'`),
-        ),
-    ),
-    withOrg((tx) =>
-      tx
-        .select({ channel: conversations.channel, n: sql<number>`count(*)`.mapWith(Number) })
-        .from(conversations)
-        .where(and(inOrg(conversations.orgId), sql`${conversations.createdAt} >= ${since}`))
-        .groupBy(conversations.channel)
-        .orderBy(desc(sql`count(*)`)),
-    ),
-    withOrg((tx) =>
-      tx
-        .select({
-          id: conversations.id,
-          status: conversations.status,
-          channel: conversations.channel,
-          fitScore: conversations.fitScore,
-          createdAt: conversations.createdAt,
-          firstName: contacts.firstName,
-          lastName: contacts.lastName,
-          email: contacts.email,
-          company: contacts.company,
-        })
-        .from(conversations)
-        .innerJoin(contacts, eq(contacts.id, conversations.contactId))
-        .where(inOrg(conversations.orgId))
-        .orderBy(desc(conversations.createdAt))
-        .limit(6),
-    ),
-    getAgentOn(),
-  ]);
+  const [org, convDaily, meetingDaily, callDaily, byChannel, recent, agentOn] =
+    await Promise.all([
+      getCurrentOrg(),
+      withOrg((tx) =>
+        tx
+          .select({
+            ago: daysAgo(conversations.createdAt).as("ago"),
+            leads: count,
+            qualified:
+              sql<number>`count(*) filter (where ${conversations.status} in ('booked','handed_off'))`.mapWith(
+                Number,
+              ),
+          })
+          .from(conversations)
+          .where(
+            and(
+              inOrg(conversations.orgId),
+              sql`${conversations.createdAt} >= ${windowStart}`,
+            ),
+          )
+          .groupBy(sql`ago`),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({ ago: daysAgo(meetings.createdAt).as("ago"), n: count })
+          .from(meetings)
+          .where(
+            and(
+              inOrg(meetings.orgId),
+              sql`${meetings.createdAt} >= ${windowStart}`,
+              sql`${meetings.status} <> 'cancelled'`,
+            ),
+          )
+          .groupBy(sql`ago`),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({
+            ago: daysAgo(
+              sql`coalesce(${calls.startedAt}, ${calls.createdAt})`,
+            ).as("ago"),
+            n: count,
+          })
+          .from(calls)
+          .where(
+            and(
+              inOrg(calls.orgId),
+              sql`coalesce(${calls.startedAt}, ${calls.createdAt}) >= ${windowStart}`,
+            ),
+          )
+          .groupBy(sql`ago`),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({ channel: conversations.channel, n: count })
+          .from(conversations)
+          .where(
+            and(
+              inOrg(conversations.orgId),
+              sql`${conversations.createdAt} >= ${windowStart}`,
+            ),
+          )
+          .groupBy(conversations.channel)
+          .orderBy(desc(sql`count(*)`)),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({
+            id: conversations.id,
+            status: conversations.status,
+            channel: conversations.channel,
+            fitScore: conversations.fitScore,
+            createdAt: conversations.createdAt,
+            firstName: contacts.firstName,
+            lastName: contacts.lastName,
+            email: contacts.email,
+            company: contacts.company,
+          })
+          .from(conversations)
+          .innerJoin(contacts, eq(contacts.id, conversations.contactId))
+          .where(inOrg(conversations.orgId))
+          .orderBy(desc(conversations.createdAt))
+          .limit(6),
+      ),
+      getAgentOn(),
+    ]);
 
-  const channelTotal = byChannel.reduce((sum, c) => sum + c.n, 0);
+  const series = {
+    leads: toSeries(
+      convDaily.map((r) => ({ ago: r.ago, n: r.leads })),
+      WINDOW_DAYS,
+    ),
+    qualified: toSeries(
+      convDaily.map((r) => ({ ago: r.ago, n: r.qualified })),
+      WINDOW_DAYS,
+    ),
+    meetings: toSeries(meetingDaily, WINDOW_DAYS),
+    calls: toSeries(callDaily, WINDOW_DAYS),
+  };
 
   return (
     <div className="space-y-8">
@@ -102,8 +159,9 @@ export default async function DashboardPage() {
         title="Dashboard"
         description={
           <>
-            <StatusDot tone={agentOn ? "brand" : "muted"} live={agentOn} />
-            {agentOn ? "Live." : "The agent is off."} {org?.name ?? "Your workspace"}, last {WINDOW_DAYS} days
+            <StatusDot tone={agentOn ? "success" : "muted"} live={agentOn} />
+            {agentOn ? "Live." : "The agent is off."}{" "}
+            {org?.name ?? "Your workspace"}, last {WINDOW_DAYS} days
           </>
         }
       >
@@ -114,41 +172,53 @@ export default async function DashboardPage() {
         )}
       </PageHeader>
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Key figures">
-        <StatTile label="Leads in" value={totals?.leads ?? 0} />
-        <StatTile label="Qualified" value={totals?.qualified ?? 0} hint="Booked or handed to a rep" />
-        <StatTile label="Meetings booked" value={booked?.n ?? 0} />
-        <StatTile label="Open conversations" value={totals?.open ?? 0} hint="Being worked now" />
-      </section>
+      <KpiTiles days={WINDOW_DAYS} {...series} />
 
-      {totals?.all === 0 ? (
+      {recent.length === 0 ? (
         <Card>
           <CardHeader
             title="No leads yet"
             hint="Share your hosted lead form, or send a test message from a conversation, and activity shows up here."
           />
           {org && (
-            <Link href={`/f/${org.id}`} className={buttonClass("secondary", "md", "mt-4")}>
+            <Link
+              href={`/f/${org.id}`}
+              className={buttonClass("secondary", "md", "mt-4")}
+            >
               Open your lead form
             </Link>
           )}
         </Card>
       ) : (
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card>
-            <CardHeader title="Recent activity" aside={<Link href="/conversations">All conversations</Link>} />
+            <CardHeader
+              title="Recent activity"
+              aside={<Link href="/conversations">All conversations</Link>}
+            />
             <ol className="mt-2 divide-y divide-hairline">
               {recent.map((c, i) => {
                 const status = CONVERSATION_STATUS[c.status];
                 return (
-                  <li key={c.id} style={{ animationDelay: `${i * 60}ms` }} className="animate-rise grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[132px_minmax(0,1fr)_auto]">
-                    <span className="tabular font-mono text-label text-ink-muted">{fmtShort(c.createdAt, tz)}</span>
+                  <li
+                    key={c.id}
+                    style={{ animationDelay: `${i * 60}ms` }}
+                    className="animate-rise grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[132px_minmax(0,1fr)_auto]"
+                  >
+                    <span className="tabular font-mono text-label text-ink-muted">
+                      {fmtShort(c.createdAt, tz)}
+                    </span>
                     <span className="min-w-0 truncate text-sm">
-                      <Link href={`/conversations/${c.id}`} transitionTypes={["nav-forward"]} className="font-medium text-ink no-underline hover:underline">
+                      <Link
+                        href={`/conversations/${c.id}`}
+                        transitionTypes={["nav-forward"]}
+                        className="font-medium text-ink no-underline hover:underline"
+                      >
                         {displayName(c.firstName, c.lastName, c.email)}
                       </Link>
                       <span className="text-ink-muted">
-                        {c.company ? `, ${c.company}` : ""}, {CHANNEL_LABEL[c.channel]}
+                        {c.company ? `, ${c.company}` : ""},{" "}
+                        {CHANNEL_LABEL[c.channel]}
                         {c.fitScore != null ? `, score ${c.fitScore}` : ""}
                       </span>
                     </span>
@@ -162,36 +232,20 @@ export default async function DashboardPage() {
           </Card>
 
           <Card>
-            <CardHeader title="Where leads come from" hint={`Last ${WINDOW_DAYS} days`} />
-            {channelTotal === 0 ? (
-              <p className="mt-6 text-sm text-ink-muted">No new leads in this window.</p>
+            <CardHeader
+              title="Where leads come from"
+              hint={`Last ${WINDOW_DAYS} days`}
+            />
+            {byChannel.length === 0 ? (
+              <p className="mt-6 text-sm text-ink-muted">
+                No new leads in this window.
+              </p>
             ) : (
-              <ul className="mt-6 space-y-4" aria-label="Leads by channel">
-                {byChannel.map((c, i) => (
-                  <ChannelBar key={c.channel} channel={c.channel} n={c.n} total={channelTotal} index={i} />
-                ))}
-              </ul>
+              <ChannelDonut rows={byChannel} />
             )}
           </Card>
         </section>
       )}
     </div>
-  );
-}
-
-function ChannelBar({ channel, n, total, index }: { channel: Channel; n: number; total: number; index: number }) {
-  const pct = Math.round((n / total) * 100);
-  return (
-    <li className="text-sm">
-      <div className="flex items-center justify-between gap-3">
-        <span>{CHANNEL_LABEL[channel]}</span>
-        <span className="tabular font-mono text-label text-ink-muted">
-          {fmtCount(n)}, {pct}%
-        </span>
-      </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-raised" role="img" aria-label={`${CHANNEL_LABEL[channel]}: ${pct} percent`}>
-        <div className="animate-grow-x h-full rounded-full bg-brand" style={{ width: `${pct}%`, animationDelay: `${index * 90}ms` }} />
-      </div>
-    </li>
   );
 }

@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-22
+**Last updated:** 2026-10-26
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -244,6 +244,7 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 
 **Shared (6–8h)** — Slice 1 ✅ (booking core)
 - [x] Booking adapter interface (`availableSlots`, `book`) + `meetings` table (0013). `cancel`/`reschedule`/`handleWebhook` deferred
+- [x] Booking push on every channel: once qualified, the agent offers 2–3 concrete times in the next 24–72h (email / SMS / nudges / voice) without being asked — `lib/booking/offer.ts`, 2026-10-26
 - [x] Qualifier `check_availability` / `book_meeting` tools call the org's adapter (added only when booking is connected); on success → `meetings` row + conversation `booked`; `book_meeting` sends the confirmation itself (never relies on the model to follow up)
 - [x] Meetings view: `/meetings` tab (contact / time / status / join link) + booked-meeting detail on the conversation thread
 - [x] Consent capture on every inbound touch (form / email reply / SMS → `recordConsent`, idempotent) + revocation on unsubscribe / bounce / complaint / STOP (`revokeConsent*`); stored in `consents` (0007)
@@ -270,17 +271,17 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [x] Qualifier sends the MSP's Calendly link (`send_booking_link`, with `utm_source`/`utm_content` tags); on voice, the agent says it will text the link and sends it after the call
 - [x] Meeting counted when detected via the Calendly `invitee.created` webhook (`/api/webhooks/calendly`, signature-verified) → `meetings` row (`provider = calendly`) + conversation `booked`; `invitee.canceled` reopens it. Reschedule/cancel handled by Calendly's own links.
 
-### Sprint 4 — Inbound voice (25–35h) — 🟡 built, awaiting one live test call (Vapi key + number); not yet verified against a real call
+### Sprint 4 — Inbound voice (25–35h) — 🟡 first live call 2026-10-26 (webhook, tools, end-of-call verified); timezone / after-hours booking / caller name / R2 411 fixed the same day, re-test pending
 - [~] Per-org Twilio number provisioning — the org's existing number (Agent → phone number) is imported into Vapi; buying a new number is not built
 - [x] Vapi assistant from org profile + KB — profile-built prompt; KB via the `lookup_knowledge` tool (same retrieval as the Qualifier)
 - [x] Recording-consent disclosure at call start (in the greeting, every mode); caller consent recorded on the voice channel
 - [~] Flow: greet → qualify → book on call → take a message / escalate. Built. Not built: new business vs existing client split, warm-transfer
 - [x] Post-call webhook: recording to R2, transcript stored, call record + summary in the thread, voice minutes metered, Slack alert (via Inngest `process-voice-call`)
-- [x] Per-org after-hours behaviour: outside booking hours (weekdays, org timezone) the agent takes a message (voicemail-style or detailed)
+- [x] Per-org after-hours behaviour: outside booking hours (weekdays, org timezone — app default when unset) the agent takes a message (voicemail-style or detailed); with a calendar connected and "take details" it still qualifies and books
 
 ### Sprint 5 — PSA write-back, dashboard, notifications (20–25h)
 - [ ] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking
-- [ ] Dashboard: leads in, qualified, meetings booked, missed calls recovered (weekly) — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11)
+- [ ] Dashboard: leads in, qualified, meetings booked, missed calls recovered (weekly) — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11). *Partly done 2026-10-26: the four tiles match the mockup (7-day mini bars in org-timezone days, share lines, featured Leads tile, Missed calls recovered from `calls`) and "Where leads come from" is the donut + legend. Still to do: leads-per-day and meetings-per-week charts, speed-to-lead, usage meter, live feed.*
 - [ ] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at`, shown to the tenant and alerted internally above ~60s
 - [ ] Usage meter: conversations, voice minutes, outbound dials vs plan allowance
 - [ ] Super-admin view: same numbers across all orgs

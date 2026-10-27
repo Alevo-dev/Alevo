@@ -1,5 +1,11 @@
 import type { OrgProfile } from "@alevo/db";
+import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/cadence/send-window";
 import type { VoiceMode } from "./prompt";
+
+/** The org's timezone, falling back to the app default like the rest of the app (never UTC). */
+export function profileTimeZone(profile: OrgProfile): string {
+  return isValidTimeZone(profile.timezone) ? profile.timezone : DEFAULT_TIMEZONE;
+}
 
 /**
  * Office hours for inbound voice: weekdays, between the booking window's start
@@ -8,7 +14,7 @@ import type { VoiceMode } from "./prompt";
  */
 export function isOpenNow(profile: OrgProfile, now: Date = new Date()): boolean {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: profile.timezone ?? "UTC",
+    timeZone: profileTimeZone(profile),
     weekday: "short",
     hour: "numeric",
     hour12: false,

@@ -1,10 +1,13 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { contacts, conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
+import { conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
 import { getBookingAdapter, bookingConfigFromProfile } from "@/lib/booking";
+import { formatSlot, offerSlots } from "@/lib/booking/offer";
+import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
 import { retrieveKbContext } from "@/lib/kb/retrieve";
 import { notifySlack } from "@/lib/notifications/slack";
+import { profileTimeZone } from "./schedule";
 
 export type VoiceToolContext = {
   orgId: string;
@@ -15,7 +18,6 @@ export type VoiceToolContext = {
   conversationId: string;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function scoped(ctx: VoiceToolContext) {
   return and(eq(conversations.id, ctx.conversationId), eq(conversations.orgId, ctx.orgId));
@@ -35,6 +37,15 @@ export async function dispatchVoiceTool(
   ctx: VoiceToolContext,
 ): Promise<string> {
   switch (name) {
+    case CONTACT_DETAILS_TOOL.name: {
+      const saved = await saveContactDetails(ctx.orgId, ctx.contactId, {
+        name: str(args.name),
+        email: str(args.email),
+        company: str(args.company),
+      });
+      return saved.length ? `Saved ${saved.join(", ")}.` : "Nothing new to save.";
+    }
+
     case "lookup_knowledge": {
       const question = str(args.question);
       if (!question) return "Ask the caller what they want to know first.";
@@ -56,26 +67,41 @@ export async function dispatchVoiceTool(
 
     case "take_message": {
       const name = str(args.name);
-      const reason = str(args.reason) || "No reason given";
+      const reason = str(args.reason);
       const callback = str(args.callback_number);
+      // Vapi sometimes fires a tool call with empty arguments and the model retries
+      // with the real ones a few seconds later. Write nothing for the empty one.
+      if (!name && !reason && !callback) {
+        return "Error: no details received. Call take_message again with the reason, the caller's name and their callback number.";
+      }
+      if (name) await saveContactDetails(ctx.orgId, ctx.contactId, { name });
       const body = [
         "Message taken on a call",
         name && `Name: ${name}`,
         callback && `Callback: ${callback}`,
-        `Reason: ${reason}`,
+        `Reason: ${reason || "No reason given"}`,
       ]
         .filter(Boolean)
         .join("\n");
+      // One message per call; a fuller retry replaces the earlier one. The ref is
+      // distinct from the end-of-call summary's (`call:<id>:summary`).
       await withService((tx) =>
-        tx.insert(messages).values({
-          orgId: ctx.orgId,
-          conversationId: ctx.conversationId,
-          direction: "inbound",
-          author: "contact",
-          channel: "voice",
-          body,
-          providerRef: `call:${ctx.callRef}`,
-        }),
+        tx
+          .insert(messages)
+          .values({
+            orgId: ctx.orgId,
+            conversationId: ctx.conversationId,
+            direction: "inbound",
+            author: "contact",
+            channel: "voice",
+            body,
+            providerRef: `call:${ctx.callRef}:message`,
+          })
+          .onConflictDoUpdate({
+            target: [messages.orgId, messages.providerRef],
+            targetWhere: sql`${messages.providerRef} is not null`,
+            set: { body },
+          }),
       );
       await notifySlack(ctx.orgId, body).catch((e) => Sentry.captureException(e));
       return "Message recorded. Let the caller know someone will follow up.";
@@ -84,26 +110,18 @@ export async function dispatchVoiceTool(
     case "check_availability": {
       const adapter = await getBookingAdapter(ctx.orgId, bookingConfigFromProfile(ctx.profile));
       if (!adapter) return "Booking isn't connected. Take a message instead.";
-      const tz = ctx.profile.timezone ?? "UTC";
-      const now = new Date();
-      let slots;
+      const tz = profileTimeZone(ctx.profile);
+      let offer;
       try {
-        slots = await adapter.availableSlots(now.toISOString(), new Date(now.getTime() + 7 * DAY_MS).toISOString(), tz);
+        offer = await offerSlots(adapter, tz);
       } catch (err) {
         Sentry.captureException(err);
         return "Couldn't check the calendar right now. Take a message instead.";
       }
-      if (slots.length === 0) return "No open times in the next 7 days. Take a message instead.";
-      const fmt = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
-      const lines = slots.slice(0, 6).map((s) => `- ${fmt.format(new Date(s.startIso))} (start: ${s.startIso})`);
-      return `Open times. Offer two or three by their day and time, then call book_meeting with the chosen start:\n${lines.join("\n")}`;
+      if (offer.window === "none") return "No open times in the next 7 days. Take a message instead.";
+      const lines = offer.slots.map((s) => `- ${formatSlot(s.startIso, tz, "spoken")} (start: ${s.startIso})`);
+      const note = offer.window === "7d" ? "Nothing open in the next three days, so these are the soonest this week. " : "";
+      return `${note}Open times. Offer two of them by day and time (the rest if neither suits), then call book_meeting with the chosen start:\n${lines.join("\n")}`;
     }
 
     case "book_meeting": {
@@ -121,18 +139,16 @@ export async function dispatchVoiceTool(
         startIso,
         attendeeName,
         attendeeEmail: email,
-        attendeeTimeZone: ctx.profile.timezone ?? "UTC",
+        attendeeTimeZone: profileTimeZone(ctx.profile),
         conversationId: ctx.conversationId,
         orgId: ctx.orgId,
         orgName: ctx.orgName,
       });
       if (!result.ok) return `Booking failed (${result.error}). Offer another time or take a message.`;
 
+      // The real name only (never the "Caller" placeholder) plus the email they gave.
+      await saveContactDetails(ctx.orgId, ctx.contactId, { name: str(args.name), email });
       await withService(async (tx) => {
-        await tx
-          .update(contacts)
-          .set({ email, firstName: attendeeName, updatedAt: new Date() })
-          .where(and(eq(contacts.id, ctx.contactId), eq(contacts.orgId, ctx.orgId)));
         await tx
           .insert(meetings)
           .values({

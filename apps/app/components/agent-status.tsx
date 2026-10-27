@@ -7,7 +7,15 @@ import { cx } from "@/lib/cx";
  * - Default (sidebar): a row like the theme control — "Agent: Online / Offline".
  * - `compact` (phone top bar): a blinking dot when online; dot + "Offline" when off.
  */
-export function AgentStatus({ on, compact = false, className }: { on: boolean; compact?: boolean; className?: string }) {
+export function AgentStatus({
+  on,
+  compact = false,
+  className,
+}: {
+  on: boolean;
+  compact?: boolean;
+  className?: string;
+}) {
   const label = on ? "Online" : "Offline";
 
   if (compact) {
@@ -20,7 +28,7 @@ export function AgentStatus({ on, compact = false, className }: { on: boolean; c
           className,
         )}
       >
-        <StatusDot tone={on ? "brand" : "muted"} live={on} />
+        <StatusDot tone={on ? "success" : "muted"} live={on} />
         {on ? null : <span>{label}</span>}
       </Link>
     );
@@ -29,10 +37,13 @@ export function AgentStatus({ on, compact = false, className }: { on: boolean; c
   return (
     <Link
       href="/workspace/agent"
-      className={cx("flex items-center justify-between gap-3 text-label text-ink-muted no-underline hover:text-ink", className)}
+      className={cx(
+        "flex items-center justify-between gap-3 text-label text-ink-muted no-underline hover:text-ink",
+        className,
+      )}
     >
       <span className="inline-flex items-center gap-2 font-medium text-ink">
-        <StatusDot tone={on ? "brand" : "muted"} live={on} />
+        <StatusDot tone={on ? "success" : "muted"} live={on} />
         Agent: {label}
       </span>
       <span>Manage</span>

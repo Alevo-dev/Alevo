@@ -40,11 +40,18 @@ export async function updateAssistant(id: string, body: Record<string, unknown>)
   await json(await vapi(`/assistant/${encodeURIComponent(id)}`, { method: "PATCH", body }), "update assistant");
 }
 
-/** Import an existing Twilio number and attach it to an assistant. Returns the phone-number id. */
+/**
+ * Import an existing Twilio number. No assistant is attached: the number points
+ * at our server URL instead, so Vapi sends `assistant-request` on every call and
+ * the webhook answers with the assistant for the current mode (open, after hours,
+ * or off). Returns the phone-number id.
+ */
 export async function importTwilioNumber(params: {
   number: string;
-  assistantId: string;
   name: string;
+  serverUrl: string;
+  secretHeader: string;
+  secret: string;
 }): Promise<{ id: string }> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
@@ -57,8 +64,8 @@ export async function importTwilioNumber(params: {
         number: params.number,
         twilioAccountSid: sid,
         twilioAuthToken: token,
-        assistantId: params.assistantId,
         name: params.name,
+        server: { url: params.serverUrl, headers: { [params.secretHeader]: params.secret } },
       },
     }),
     "import phone number",

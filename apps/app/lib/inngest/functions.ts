@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import * as Sentry from "@sentry/nextjs";
 import { orgSubscriptions, plans, withService } from "@alevo/db";
 import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
@@ -199,7 +200,8 @@ export const ingestKbDocument = inngest.createFunction(
 /**
  * Runs once per finished inbound call (from the Vapi end-of-call report). The
  * recording download is its own step, since it calls a vendor and can retry on
- * its own; the database writes and alerts are one step after it.
+ * its own; if it still fails, the call is recorded without a recording rather
+ * than lost. The database writes and alerts are one step after it.
  */
 export const processVoiceCall = inngest.createFunction(
   {
@@ -210,7 +212,10 @@ export const processVoiceCall = inngest.createFunction(
   },
   async ({ event, step }) => {
     const data = event.data as VoiceCallEndedData;
-    const recordingKey = await step.run("store-recording", () => storeRecording(data));
+    const recordingKey = await step.run("store-recording", () => storeRecording(data)).catch((err: unknown) => {
+      Sentry.captureException(err);
+      return null;
+    });
     return step.run("record-call", () => recordCall(data, recordingKey));
   },
 );

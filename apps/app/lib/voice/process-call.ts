@@ -73,15 +73,18 @@ export async function recordCall(data: VoiceCallEndedData, recordingKey: string 
   await Promise.all([
     link &&
       withService((tx) =>
-        tx.insert(messages).values({
-          orgId: data.orgId,
-          conversationId: link.conversationId,
-          direction: "inbound",
-          author: "contact",
-          channel: "voice",
-          body: data.summary?.trim() || "Call ended with no summary.",
-          providerRef: `call:${data.callRef}`,
-        }),
+        tx
+          .insert(messages)
+          .values({
+            orgId: data.orgId,
+            conversationId: link.conversationId,
+            direction: "inbound",
+            author: "contact",
+            channel: "voice",
+            body: data.summary?.trim() || "Call ended with no summary.",
+            providerRef: `call:${data.callRef}:summary`,
+          })
+          .onConflictDoNothing(),
       ),
     link && recordConsent(data.orgId, link.contactId, "voice", "inbound_call", { source: "voice" }).catch(() => {}),
     recordUsage(data.orgId, "voice_minutes", minutes),

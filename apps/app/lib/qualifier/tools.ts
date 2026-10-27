@@ -6,6 +6,8 @@ import { notifySlack } from "@/lib/notifications/slack";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
 import { getBookingAdapter, type BookingConfig } from "@/lib/booking";
+import { formatSlot, offerSlots } from "@/lib/booking/offer";
+import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
 const SETTABLE_STATUS = ["active", "disqualified", "handed_off"] as const;
@@ -24,6 +26,11 @@ export const QUALIFIER_TOOLS: Anthropic.Tool[] = [
       },
       required: ["message"],
     },
+  },
+  {
+    name: CONTACT_DETAILS_TOOL.name,
+    description: CONTACT_DETAILS_TOOL.description,
+    input_schema: { type: "object", properties: CONTACT_DETAILS_TOOL.properties },
   },
   {
     name: "record_fit_score",
@@ -94,7 +101,7 @@ export const BOOKING_TOOLS: Anthropic.Tool[] = [
   {
     name: "check_availability",
     description:
-      "List the org's open meeting slots for the next week. Call this before proposing a time; then propose one or two to the contact.",
+      "List open meeting times to offer the contact: a few spread over the next 24–72 hours (a week if the calendar is full). Call it as soon as the lead is qualified, then propose two or three of them.",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -294,6 +301,16 @@ export async function dispatchTool(
       return `Reply ${note}.`;
     }
 
+    case CONTACT_DETAILS_TOOL.name: {
+      const field = (k: string) => String(input[k] ?? "").trim();
+      const saved = await saveContactDetails(target.orgId, target.contactId, {
+        name: field("name"),
+        email: field("email"),
+        company: field("company"),
+      });
+      return saved.length ? `Saved ${saved.join(", ")}.` : "Nothing new to save.";
+    }
+
     case "record_fit_score": {
       const score = clampScore(input.score);
       if (score === null) return "Error: score must be a number between 0 and 100.";
@@ -347,29 +364,17 @@ export async function dispatchTool(
       const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
       if (!adapter) return "Booking isn't connected for this org — hand off instead.";
       const tz = target.contactTimezone ?? "UTC";
-      const now = new Date();
-      const to = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      let slots;
+      let offer;
       try {
-        slots = await adapter.availableSlots(now.toISOString(), to.toISOString(), tz);
+        offer = await offerSlots(adapter, tz);
       } catch (err) {
         Sentry.captureException(err);
         return "Couldn't fetch availability right now — try again or hand off.";
       }
-      if (slots.length === 0) return "No open slots in the next 7 days — hand off to a human.";
-      const fmt = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        timeZoneName: "short",
-      });
-      const lines = slots
-        .slice(0, 6)
-        .map((s) => `- ${fmt.format(new Date(s.startIso))} — ${s.startIso}`);
-      return `Open times (propose one to the contact, then call book_meeting with its ISO start):\n${lines.join("\n")}`;
+      if (offer.window === "none") return "No open slots in the next 7 days — hand off to a human.";
+      const lines = offer.slots.map((s) => `- ${formatSlot(s.startIso, tz, "written")} — ${s.startIso}`);
+      const note = offer.window === "7d" ? "Nothing open in the next 72 hours, so these are the soonest times this week. " : "";
+      return `${note}Open times in the contact's timezone (${tz}). Offer two or three of them, then call book_meeting with the chosen ISO start:\n${lines.join("\n")}`;
     }
 
     case "book_meeting": {

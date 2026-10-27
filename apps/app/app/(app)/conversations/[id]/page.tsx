@@ -20,13 +20,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const [row] = await withOrg((tx) =>
     tx
-      .select({ firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email })
+      .select({ firstName: contacts.firstName, lastName: contacts.lastName, email: contacts.email, phone: contacts.phone })
       .from(conversations)
       .innerJoin(contacts, eq(contacts.id, conversations.contactId))
       .where(and(eq(conversations.id, id), sql`${conversations.orgId} = (select app.current_org_id())`))
       .limit(1),
   );
-  return { title: row ? displayName(row.firstName, row.lastName, row.email) : "Conversation" };
+  return { title: row ? displayName(row.firstName, row.lastName, row.email ?? row.phone) : "Conversation" };
 }
 
 const AUTHOR_LABEL = { contact: "Contact", assistant: "Alevo agent", human: "Rep" } as const;
@@ -116,7 +116,7 @@ export default async function ConversationThread({ params }: { params: Promise<{
     suppressedReason = row?.reason ?? null;
   }
 
-  const name = displayName(conv.firstName, conv.lastName, conv.email);
+  const name = displayName(conv.firstName, conv.lastName, conv.email ?? conv.phone);
   const status = CONVERSATION_STATUS[conv.status];
   const isOpen = ["new", "active"].includes(conv.status);
 

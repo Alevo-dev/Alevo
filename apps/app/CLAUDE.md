@@ -241,6 +241,16 @@ still active, it arms the follow-up cadence (see Durable workflows below).
   **manual** tool-use loop so every tool call is gated/recorded, not the SDK
   auto-runner). Model **`claude-sonnet-5`**, adaptive thinking, effort `medium`.
   Anthropic code lives only here — read the `claude-api` skill before touching it.
+- **Booking is the goal, on every channel.** The Qualifier (email / SMS / chat), the
+  cadence nudges and the voice agent all push a qualified lead toward a meeting
+  without being asked: once the criteria check out (typically fit >= 60) the agent
+  asks to put a call on the calendar and OFFERS TIMES in the same turn. The offer
+  comes from `lib/booking/offer.ts` (`offerSlots`: a few slots spread over the next
+  24-72 hours with 2h notice, widening to a week if that window is full;
+  `formatSlot` written vs. spoken) — both `check_availability` tools use it. Calendly
+  mode sends the link in the same turn; no calendar at all → promise a callback
+  within a business day and hand off. The prompts, the tool descriptions and the
+  nudge directive all say this; keep them in step if you change one.
 - **Tools (MVP):** `reply_to_contact`, `record_fit_score`, `set_status`
   (`active`/`disqualified`/`handed_off`), `escalate_to_human` (→ Slack). When
   booking is connected (see below), the Qualifier can reach the **`booked`**
@@ -322,6 +332,44 @@ each org sets its own number in Workspace → Agent (`org_profiles.sms_from_numb
   `/api/webhooks/twilio` (POST); set `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`.
   (Per-tenant subaccounts + A2P 10DLC per plan.md Sprint 0 — MVP uses one account
   with a per-org number.)
+
+## Inbound voice (Vapi)
+
+The same agent answers calls on the org's Twilio number. `lib/voice/`: `vapi.ts` (raw
+REST client, the only Vapi importer), `assistant.ts` (assistant body from the
+profile), `prompt.ts` (greeting + system prompt per mode), `schedule.ts` (mode +
+timezone), `tools.ts` (tool dispatch), `contact.ts`, `process-call.ts`. Verified
+against a live call on 2026-10-26.
+
+- **Routing is per call.** The Twilio number is imported into Vapi with OUR server URL
+  (`/api/webhooks/vapi` + the `x-alevo-secret` header) and **no assistant attached**, so
+  Vapi sends `assistant-request` on every call and the webhook answers with the assistant
+  for the current mode (open / after hours / closed). `assistant-request` is NOT a valid
+  assistant-level `serverMessages` entry (Vapi 400s) — the assistant lists only
+  `tool-calls` + `end-of-call-report`. Turning calls off needs no Vapi call. The saved
+  assistant (`vapi_assistant_id`) exists to validate the body at Save and to show in
+  Vapi's dashboard; calls don't use it directly.
+- **Mode** = `voiceModeNow(profile)`: weekdays within the booking hours in the org's
+  timezone, via `profileTimeZone` (falls back to `DEFAULT_TIMEZONE`, never UTC — a null
+  timezone once made 3pm Ottawa read as 7pm UTC = "closed").
+- **Booking after hours too.** `bookingOnCall(mode, afterHoursStyle, bookingConnected)`:
+  open calls always; after hours when the org takes details (not plain voicemail). The
+  greeting says the office is closed, then the agent qualifies and offers times anyway.
+- **Who called:** `save_contact_details` (`lib/contact-details.ts`, shared with the
+  Qualifier) writes name / email / company onto the contact as soon as the agent learns
+  them; `take_message` and `book_meeting` save the name too. Conversations fall back to
+  the phone number when there is no name or email. Transcriber is Deepgram nova-3; the
+  prompt tells the agent to ask for a spelling once rather than loop on a name.
+- **Sounding human:** Vapi speaks a stock filler at the start of every synchronous tool
+  call unless the tool has its own `request-start` message. Bookkeeping tools
+  (`save_contact_details`, `record_fit_score`, `set_status`) run `async` (silent); the rest
+  carry one natural line ("give me a few seconds while I get that booked"). The prompt
+  wraps up with "anything else I can help with?" → thanks → `endCall`
+  (`endCallFunctionEnabled: true`): the agent hangs up, never the caller.
+- **After the call:** `end-of-call-report` → Inngest `process-voice-call`: the recording
+  step may fail (it is caught → `recordingKey: null`) but the call row, thread summary,
+  minutes and Slack alert are always written. `putObject` sends `content-length` (R2
+  answers 411 to chunked uploads).
 
 ## Booking (Cal.com + Calendly + Google/M365)
 

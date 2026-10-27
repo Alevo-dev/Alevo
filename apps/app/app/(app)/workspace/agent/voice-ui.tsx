@@ -44,7 +44,7 @@ export function VoiceForm({ initial, phoneNumber }: { initial: VoiceValues; phon
           <SettingRow
             label="Outside office hours"
             htmlFor="afterHours"
-            hint="Weekdays, within the booking hours, in the organization's timezone."
+            hint="Office hours are weekdays within the booking hours, in the default timezone set above. With a calendar connected, the agent still offers meeting times after hours when it takes details."
             error={e("afterHours")}
           >
             <Select id="afterHours" name="afterHours" options={AFTER_HOURS_OPTIONS} defaultValue={v("afterHours")} />
