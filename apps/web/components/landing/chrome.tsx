@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import "./styles.css";
 import { appLinks } from "@/lib/site";
+import { legal } from "@/lib/legal";
 
 const LOGO = "/uploads/logo1.png";
 const GRAD = "linear-gradient(120deg,#38b6ff,#a06bff)";
@@ -107,21 +108,34 @@ function SiteHeader() {
   );
 }
 
-function SiteFooter() {
+/** The one site footer: brand + business details + legal links. Used by the shell and the landing page. */
+export function SiteFooter() {
   return (
     <footer style={{ borderTop: "1px solid rgba(var(--ink),.06)" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px", display: "flex", flexWrap: "wrap", gap: 24, alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "var(--dim)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src={LOGO} alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
-          <span style={{ color: "var(--text)", fontWeight: 600 }}>Alevo</span>
-          <span>© 2026</span>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px", display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start", justifyContent: "space-between", fontSize: 13, color: "var(--dim)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={LOGO} alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
+            <span style={{ color: "var(--text)", fontWeight: 600 }}>Alevo</span>
+            <span>© 2026 {legal.name}</span>
+          </div>
+          {/* Business details (lines render only when set in env). */}
+          <address style={{ fontStyle: "normal", lineHeight: 1.6 }}>
+            {legal.address ? <div>{legal.address}</div> : null}
+            <div>
+              <a href={`mailto:${legal.email.support}`} className="lk-dim">{legal.email.support}</a>
+              {legal.phone ? <> · <a href={`tel:${legal.phone.replace(/[^+\d]/g, "")}`} className="lk-dim">{legal.phone}</a></> : null}
+            </div>
+          </address>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+        <nav aria-label="Legal" style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
           <Link href="/privacy" className="lk-dim">Privacy</Link>
           <Link href="/terms" className="lk-dim">Terms</Link>
+          <Link href="/refunds" className="lk-dim">Refunds</Link>
+          <Link href="/cookies" className="lk-dim">Cookies</Link>
           <Link href="/security" className="lk-dim">Security</Link>
           <Link href="/contact" className="lk-dim">Contact</Link>
-        </div>
+        </nav>
       </div>
     </footer>
   );

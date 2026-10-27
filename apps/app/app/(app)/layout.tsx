@@ -9,6 +9,8 @@ import { AgentStatus } from "@/components/agent-status";
 import { UserMenu } from "@/components/user-menu";
 import { MobileMenu } from "@/components/mobile-menu";
 import { getAgentOn } from "@/lib/agent-on";
+import { getCurrentUsage } from "@/lib/usage/current";
+import { UsageBanner } from "@/components/usage-banner";
 
 /** The org's plan for the sidebar card (explicitly scoped to the active org). */
 async function loadPlan(): Promise<PlanCard> {
@@ -30,7 +32,7 @@ async function loadPlan(): Promise<PlanCard> {
 /** Shell for every authenticated, org-scoped route: sidebar + content column. */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { orgId } = await auth();
-  const [plan, agentOn] = orgId ? await Promise.all([loadPlan(), getAgentOn()]) : [null, false];
+  const [plan, agentOn, usage] = orgId ? await Promise.all([loadPlan(), getAgentOn(), getCurrentUsage()]) : [null, false, []];
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
@@ -53,7 +55,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <UserMenu />
           </div>
         </div>
-        <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">
+          <UsageBanner rows={usage} />
+          {children}
+        </main>
       </div>
     </div>
   );

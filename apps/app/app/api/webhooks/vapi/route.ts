@@ -7,6 +7,7 @@ import { buildAssistantBody, VOICE_SECRET_HEADER } from "@/lib/voice/assistant";
 import { ensureVoiceContact } from "@/lib/voice/contact";
 import { bookingLinked, voiceModeNow } from "@/lib/voice/schedule";
 import { dispatchVoiceTool, type VoiceToolContext } from "@/lib/voice/tools";
+import { overAllowance } from "@/lib/usage/limits";
 
 /**
  * Vapi server URL for inbound calls. Vapi sends `message.type` events here:
@@ -90,6 +91,10 @@ export async function POST(req: Request) {
         // `error` is spoken to the caller, then Vapi ends the call.
         if (!org || !appUrl || !secret) {
           return Response.json({ error: "Sorry, this number isn't taking calls right now. Please text it instead." });
+        }
+        // Voice-minute allowance used up → calls pause until an upgrade (plan.md §6).
+        if (await overAllowance(org.profile.orgId, "voice_minutes")) {
+          return Response.json({ error: "Sorry, we can't take calls right now. Please text this number or email us and we'll get back to you." });
         }
         const assistant = buildAssistantBody({
           profile: org.profile,

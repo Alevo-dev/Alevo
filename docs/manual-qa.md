@@ -828,3 +828,33 @@ the org timezone: today plus the six before it.
 - [ ] Loading skeleton (throttle or cold load): tiles are the taller shape with a bar row.
 - [ ] Reduced motion (Windows: Settings → Accessibility → Visual effects → Animation effects off): bars and donut appear without the intro animation.
 - [ ] Phone width: tiles two per row; donut centred with the legend beneath.
+
+---
+
+# Compliance pass (2026-10-27)
+
+Legal pages, business details, email footers, data requests, plan limits. Dashboards: **Vercel** (env vars), **Supabase** (`org_profiles.business_address`, `usage_counters`), **Resend** (sent mail), **Slack**.
+
+## Marketing site (getalevo.com)
+- [ ] Footer shows "© 2026 Alevo Inc.", the postal address "33 Griffith Street, Carleton Place, ON K7C 0R9, Canada", admin@getalevo.com and +1 807 302 5386 (hard-coded in `apps/web/lib/legal.ts`). Links: Privacy, Terms, Refunds, Cookies, Security, Contact. Terms and Privacy end with the same entity + contact.
+- [ ] `/refunds` and `/cookies` render in both themes and appear in `/sitemap.xml`.
+- [ ] Terms: "Trials, billing and cancellation" says 30-day trial, cancel anytime, no refunds, links the Refund Policy; "Plan allowances and overage" describes pause-at-limit and opt-in overage; "Who you are contracting with" shows the legal name.
+- [ ] Privacy: cookie bullet links `/cookies`; the sub-processor list renders; "Requesting a copy or deletion of your data" has the three cases; Contact shows the legal entity.
+- [ ] Pricing: every trial mention says **30-day**; the fine-print box lists trial / cancel / refund link, pause at limit, and the three overage rates.
+- [ ] Landing: the hero ends with the "illustrative examples" note; every "Start 30-day free trial" CTA still links to sign-up.
+- [ ] Cookie banner: appears on first visit at the bottom; Accept or Decline hides it and it stays hidden after reload; `/cookies` shows the saved choice and lets you flip it; keyboard: Tab reaches both buttons, Enter activates. Phone width: text wraps, buttons stay on one row.
+- [ ] Contact form fine print links the privacy policy.
+
+## App (app.getalevo.com)
+- [ ] Workspace → Business profile has **Business address** under Company name with the anti-spam hint; Save persists (`org_profiles.business_address`); clearing it stores NULL.
+- [ ] With an address saved, an email the Qualifier sends ends with "Sent by <Company> · <address>", the Unsubscribe link, and "Reply to this email to request a copy or deletion of your data" + a privacy policy link. Without an address only the company name shows.
+- [ ] Reply to an agent email with "please delete my data": the agent confirms once, Slack gets "Data request: …" (escalation) and the conversation becomes **Handed to a rep**. No further qualifying.
+- [ ] Public lead form (`/f/<orgId>`) shows the "Your details go to <Company> and are processed by Alevo" line with a working privacy link.
+
+## Plan limits
+- [ ] Seed: in Supabase set the org's `usage_counters` row for `inbound_conversations` this month to allowance − 1 (Starter 500 → 499). Submit the lead form: the counter hits 500, Slack posts "Plan limit reached — AI conversations: 500 of 500 …" and every owner/admin gets the "AI conversations limit reached" email (requires `RESEND_API_KEY` + `EMAIL_FROM_ADDRESS`).
+- [ ] The new conversation exists in the inbox with its message, but the Qualifier does NOT reply (Inngest run shows `skipped: over-allowance`).
+- [ ] The shell shows the red usage notice on every page: "AI conversations: 500 of 500 used this month (100%). The agent has paused this until next month or an upgrade." with the Compare plans link. At 400–499 it is the amber variant.
+- [ ] Set `voice_minutes` to the allowance and call the number: the caller hears "we can't take calls right now, please text this number or email us" and the call ends.
+- [ ] Lower the counter back under 80%: the banner disappears, the Qualifier works the next inbound message.
+- [ ] Alerts fire once: crossing 80% posts once, crossing 100% posts once, further usage posts nothing.

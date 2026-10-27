@@ -10,7 +10,7 @@ export {
 export { recordAudit, type AuditEntry } from "./audit";
 export { recordWebhookDelivery, type WebhookProvider, type WebhookOutcome } from "./webhook-deliveries";
 export { claimWebhookEvent, releaseWebhookEvent } from "./webhook-events";
-export { recordUsage } from "./usage";
+export { currentPeriod, getUsage, recordUsage, type UsageRow } from "./usage";
 export { isSuppressed, addSuppression } from "./suppressions";
 export { recordConsent, revokeConsentForContact, revokeConsentForEmail } from "./consents";
 export * from "./schema";

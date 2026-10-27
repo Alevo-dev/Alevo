@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-26
+**Last updated:** 2026-10-27
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -279,11 +279,18 @@ Rule: Alevo doesn't rebuild scheduling features. MSPs with no booking system are
 - [x] Post-call webhook: recording to R2, transcript stored, call record + summary in the thread, voice minutes metered, Slack alert (via Inngest `process-voice-call`)
 - [x] Per-org after-hours behaviour: outside booking hours (weekdays, org timezone — app default when unset) the agent takes a message (voicemail-style or detailed); with a calendar connected and "take details" it still qualifies and books
 
+### Compliance pass — 2026-10-27 ✅
+Audit against the standard "don't get sued" list (legal pages, data, honesty, accessibility, business details). Decisions: **30-day** free trial (was 90), no refunds / cancel anytime, plan limits pause-and-prompt with opt-in overage later, cookie banner now.
+- [x] Marketing site: Refund Policy (`/refunds`) + Cookie Policy (`/cookies`) pages; footer with legal name / address / support contact (hard-coded in `apps/web/lib/legal.ts`: Alevo Inc., 33 Griffith Street, Carleton Place ON K7C 0R9, admin@getalevo.com, +1 807 302 5386); Terms rewritten for trial, cancellation, allowances + overage; Privacy adds the sub-processor list, a "request a copy or deletion" section and the cookie policy link; pricing fine print (trial, pause-at-limit, overage rates, refunds); cookie banner that gates any future analytics; "illustrative examples" note under the landing mockups; privacy link on the contact form
+- [x] App: `org_profiles.business_address` (0020) under Business profile → every agent email footer names the sender + address, unsubscribe, data-request line + privacy link; Qualifier handles data-deletion requests (confirm → escalate → hand off); public lead form links the privacy policy and says how to request deletion
+- [x] Plan limits enforced (see Sprint 5 usage meter)
+- [ ] Still open: accessibility pass with a tool (contrast, keyboard) on both sites; opt-in overage + monthly cap (Stripe); the "no card for the trial" claim on Pricing must stay true when billing lands
+
 ### Sprint 5 — PSA write-back, dashboard, notifications (20–25h)
 - [ ] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking
 - [ ] Dashboard: leads in, qualified, meetings booked, missed calls recovered (weekly) — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11). *Partly done 2026-10-26: the four tiles match the mockup (7-day mini bars in org-timezone days, share lines, featured Leads tile, Missed calls recovered from `calls`) and "Where leads come from" is the donut + legend. Still to do: leads-per-day and meetings-per-week charts, speed-to-lead, usage meter, live feed.*
 - [ ] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at`, shown to the tenant and alerted internally above ~60s
-- [ ] Usage meter: conversations, voice minutes, outbound dials vs plan allowance
+- [~] Usage meter: conversations, voice minutes, outbound dials vs plan allowance. *2026-10-27: limits enforced — alerts (Slack + owner email) at 80%, the agent pauses at 100% (Qualifier skips, voice says "can't take calls"), shell banner from 80%. Still to do: a usage meter card with bars, and opt-in overage + cap once Stripe lands.*
 - [ ] Super-admin view: same numbers across all orgs
 - [ ] Slack: qualified lead, meeting booked, escalation requested
 

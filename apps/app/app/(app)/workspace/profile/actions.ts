@@ -8,6 +8,7 @@ import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth
 /** The "who we are" half of org_profiles: what the agent grounds replies in. */
 export type BusinessProfileValues = {
   companyName: string;
+  businessAddress: string;
   offering: string;
   idealCustomer: string;
   qualifyingCriteria: string;
@@ -15,7 +16,7 @@ export type BusinessProfileValues = {
   tone: string;
   signoff: string;
 };
-export type BusinessProfileErrors = Partial<Record<"companyName" | "offering" | "idealCustomer", string>>;
+export type BusinessProfileErrors = Partial<Record<"companyName" | "businessAddress" | "offering" | "idealCustomer", string>>;
 export type ActionState = {
   ok?: boolean;
   error?: string;
@@ -27,6 +28,7 @@ function readValues(formData: FormData): BusinessProfileValues {
   const s = (k: string) => String(formData.get(k) ?? "").trim();
   return {
     companyName: s("companyName"),
+    businessAddress: s("businessAddress"),
     offering: s("offering"),
     idealCustomer: s("idealCustomer"),
     qualifyingCriteria: s("qualifyingCriteria"),
@@ -60,6 +62,7 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     const nullable = (v: string) => (v ? v : null);
     const set = {
       companyName: nullable(values.companyName),
+      businessAddress: nullable(values.businessAddress),
       offering: nullable(values.offering),
       idealCustomer: nullable(values.idealCustomer),
       qualifyingCriteria: nullable(values.qualifyingCriteria),

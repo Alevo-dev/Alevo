@@ -227,6 +227,8 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   `vapi_assistant_id` / `vapi_phone_number_id`.
 - **0019** `org_profiles.booking_tool` — the ONE chosen booking tool (null = off),
   backfilled from the old precedence. See Booking below.
+- **0020** `org_profiles.business_address` — the org's postal address, printed in
+  every agent email footer (CAN-SPAM / CASL). Edited under Workspace → Business profile.
 
 ## The Qualifier (Claude agent)
 
@@ -290,7 +292,14 @@ importer of the `resend` SDK.
   address, not headers.
 - **Compliance:** every send carries `List-Unsubscribe` + `List-Unsubscribe-Post`
   (RFC 8058 one-click → `/api/unsubscribe?t=<signed token>`, public) and `org_id`
-  / `conversation_id` tags. `email.bounced` / `email.complained` webhooks →
+  / `conversation_id` tags. The footer (`emailFooter` in `resend.ts`) names the
+  sender ("Sent by <Org> · <business_address>" — the MSP is the sender, so it is
+  THEIR address, from Workspace → Business profile), the unsubscribe link, and
+  "reply to request a copy or deletion of your data" + the privacy policy link.
+  The Qualifier prompt handles a data request by confirming, escalating with
+  "Data request: …" and handing off — it never argues or keeps qualifying.
+  `sendPlatformEmail` is the plain transactional sender (usage alerts) — no
+  unsubscribe footer, from "Alevo". `email.bounced` / `email.complained` webhooks →
   `addSuppression` (org from the tag, else a unique contact-email match). The
   Qualifier calls `isSuppressed()` before emailing and skips suppressed addresses.
   Suppression token is an HMAC over {org,email} with `SECRETS_MASTER_KEY`.
@@ -523,6 +532,30 @@ booking (Sprint 3), and PSA write-back (Sprint 5).
   Immediate replies to a fresh inbound are never gated (speed-to-lead).
 - Local: `npx inngest-cli dev` (auto-discovers `/api/inngest`). Prod: the Vercel
   integration sets `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`.
+
+## Plan limits (usage allowances)
+
+Agreed policy (plan.md §6, 2026-10-27): **nothing is billed automatically.** At 80% of
+any allowance the owners/admins get a Slack + email heads-up; at 100% the metered
+activity PAUSES and they are asked to upgrade (pricing page). Opt-in overage with a
+monthly cap at published rates ($0.75 / conversation, $0.40 / voice minute, $0.03 /
+prospecting email) lands with Stripe — the legal pages already describe both behaviours.
+
+- `lib/usage/levels.ts` — pure math (`usageLevel`, `crossedThreshold`, `pct`, labels;
+  tested in `tests/usage-limits.test.ts`). `lib/usage/limits.ts` — I/O: `meterUsage`
+  (replaces direct `recordUsage` calls: records, then alerts once on the increment that
+  crosses 80% / 100%) and `overAllowance(orgId, metric)` (the gate). `@alevo/db`
+  exposes `recordUsage` (returns the new total), `getUsage(orgId)` (service path) and
+  `currentPeriod`. `lib/usage/current.ts` is the RLS, per-request-cached read for the
+  shell.
+- **Gates:** `loadQualifierContext` skips `over-allowance` on `inbound_conversations`
+  (the lead stays in the inbox for a person); the Vapi `assistant-request` answers a
+  spoken "can't take calls right now" when `voice_minutes` is used up. Form / SMS /
+  voice still RECORD the conversation and consent — only the agent's work pauses.
+- **Shell:** `components/usage-banner.tsx` in `(app)/layout.tsx` — silent below 80%,
+  warning notice from 80%, danger once paused. Never a toast.
+- An allowance of 0 means "not metered" (ok), so Starter's 0 outbound dials never
+  blocks anything.
 
 ## Platform-admin bootstrap
 

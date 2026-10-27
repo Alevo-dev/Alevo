@@ -37,6 +37,21 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
           <SettingRow label="Company name" htmlFor="companyName" error={e("companyName")}>
             <Input id="companyName" name="companyName" defaultValue={v("companyName")} invalid={!!e("companyName")} placeholder="Northwind IT" />
           </SettingRow>
+          <SettingRow
+            label="Business address"
+            htmlFor="businessAddress"
+            hint="Printed in the footer of every email the agent sends. Anti-spam law requires a postal address."
+            error={e("businessAddress")}
+          >
+            <Textarea
+              id="businessAddress"
+              name="businessAddress"
+              rows={2}
+              defaultValue={v("businessAddress")}
+              invalid={!!e("businessAddress")}
+              placeholder="120 Main St, Suite 300, Columbus OH 43215"
+            />
+          </SettingRow>
           <SettingRow label="What you offer" htmlFor="offering" hint="What you sell or do." error={e("offering")}>
             <Textarea
               id="offering"

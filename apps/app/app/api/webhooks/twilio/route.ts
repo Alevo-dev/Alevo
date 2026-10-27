@@ -6,11 +6,11 @@ import {
   messages,
   orgProfiles,
   recordConsent,
-  recordUsage,
   revokeConsentForContact,
   withService,
 } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
+import { meterUsage } from "@/lib/usage/limits";
 import { isOptOutMessage, verifyTwilioSignature } from "@/lib/sms/twilio";
 import { trackDeliveries } from "@/lib/webhooks/track";
 
@@ -137,7 +137,7 @@ export const POST = trackDeliveries("twilio", async (req, track) => {
     // conversation (rule 11); consent + the Qualifier hand-off only when we
     // actually recorded a new message. The best-effort ones never fail the webhook.
     await Promise.all([
-      result.createdConversation ? recordUsage(orgId, "inbound_conversations") : null,
+      result.createdConversation ? meterUsage(orgId, "inbound_conversations") : null,
       result.isNewMessage
         ? recordConsent(orgId, result.contactId, "sms", "inbound_message", { source: "sms" }).catch((e) =>
             Sentry.captureException(e),

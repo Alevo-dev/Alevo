@@ -17,6 +17,8 @@ export const orgProfiles = pgTable(
       .unique()
       .references(() => organizations.id, { onDelete: "cascade" }),
     companyName: text("company_name"),
+    // Postal address printed in every email footer (CAN-SPAM / CASL; migration 0020).
+    businessAddress: text("business_address"),
     offering: text("offering"),
     idealCustomer: text("ideal_customer"),
     qualifyingCriteria: text("qualifying_criteria"),

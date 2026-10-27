@@ -3,6 +3,7 @@ import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { siteConfig } from "@/lib/site";
+import { CookieBanner } from "@/components/landing/cookie-banner";
 
 // Editorial serif for h1–h4 (a base rule applies it). Body text is Geist everywhere:
 // every page sits inside `.alevo`, so a separate body face would download unused.
@@ -126,6 +127,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           storageKey="alevo-theme"
         >
           {children}
+          <CookieBanner />
         </ThemeProvider>
       </body>
     </html>

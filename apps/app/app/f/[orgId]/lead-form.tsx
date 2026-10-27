@@ -7,7 +7,7 @@ import { submitLead, type LeadState } from "./actions";
 
 const INITIAL: LeadState = {};
 
-export function LeadForm({ orgId }: { orgId: string }) {
+export function LeadForm({ orgId, company }: { orgId: string; company: string }) {
   const [state, action, pending] = useActionState(submitLead, INITIAL);
 
   // Capture the visitor's timezone so follow-up nudges land in their daytime.
@@ -70,6 +70,14 @@ export function LeadForm({ orgId }: { orgId: string }) {
       <Button type="submit" variant="primary" loading={pending} className="w-full">
         {pending ? "Sending…" : "Send"}
       </Button>
+
+      <p className="text-center text-label text-ink-muted">
+        Your details go to {company} and are processed by Alevo. See the{" "}
+        <a href="https://getalevo.com/privacy" target="_blank" rel="noopener noreferrer">
+          privacy policy
+        </a>
+        . Reply to any message to ask for a copy or deletion of your data.
+      </p>
     </form>
   );
 }

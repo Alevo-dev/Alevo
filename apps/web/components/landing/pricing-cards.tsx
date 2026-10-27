@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { legal } from "@/lib/legal";
 import Link from "next/link";
 import { appLinks } from "@/lib/site";
 
@@ -17,7 +18,7 @@ const tiers = [
     monthly: "$1,500",
     annual: "$1,200",
     href: appLinks.signup,
-    cta: "Start 90-day free trial",
+    cta: "Start 30-day free trial",
     highlight: false,
     check: "#38b6ff",
     features: ["AI chatbot on your website", "Form lead capture and scoring", "Inbound call answering, 1 number", "500 AI conversations / month", "1,000 emails / month", "1 CRM and 1 calendar integration", "Email support"],
@@ -28,7 +29,7 @@ const tiers = [
     monthly: "$2,500",
     annual: "$2,000",
     href: appLinks.signup,
-    cta: "Start 90-day free trial",
+    cta: "Start 30-day free trial",
     highlight: true,
     check: "#8f8cff",
     features: ["Everything in Starter", "2,500 AI conversations / month", "AI cold calling, 1,000 minutes", "10,000 emails with sequences for new and existing customers", "Unlimited CRM and booking integrations", "Custom voice, persona and playbooks", "Live transfer and rep handoff rules", "Analytics and call recordings"],
@@ -93,8 +94,25 @@ export function PricingCards() {
       </div>
 
       <p style={{ textAlign: "center", marginTop: 28, fontSize: 14, color: "var(--muted)" }}>
-        Every paid plan starts with a 90-day free trial — you only pay once Alevo is booking meetings.
+        Every paid plan starts with a {legal.trialDays}-day free trial — you only pay once Alevo is booking meetings.
       </p>
+
+      {/* The fine print: what happens at the plan limits, and how to leave. No surprises. */}
+      <div style={{ maxWidth: 760, margin: "32px auto 0", padding: "20px 24px", borderRadius: 18, border: "1px solid rgba(var(--ink),.08)", background: "rgba(var(--ink),.025)", fontSize: 13.5, lineHeight: 1.6, color: "var(--muted)" }}>
+        <p style={{ margin: 0 }}>
+          <strong style={{ color: "var(--text)" }}>No card for the trial, no auto-charge.</strong> We remind you before the first charge. Cancel anytime from your workspace and keep access to the end of the paid period; fees paid are not refunded (<Link href="/refunds" className="lk-dim" style={{ textDecoration: "underline" }}>refund policy</Link>).
+        </p>
+        <p style={{ margin: "10px 0 0" }}>
+          <strong style={{ color: "var(--text)" }}>At a plan limit Alevo pauses and asks you to upgrade.</strong> Nothing is billed automatically. If you choose to turn on overage, usage past your allowance is billed at{" "}
+          {legal.overage.map((o, i) => (
+            <span key={o.unit}>
+              {i > 0 ? (i === legal.overage.length - 1 ? " and " : ", ") : ""}
+              {o.price} per {o.unit.toLowerCase()}
+            </span>
+          ))}
+          , up to a monthly cap you set.
+        </p>
+      </div>
     </div>
   );
 }

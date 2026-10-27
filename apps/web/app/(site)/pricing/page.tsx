@@ -5,7 +5,7 @@ import { PricingCards } from "@/components/landing/pricing-cards";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Plans that scale with your pipeline — inbound answering, outbound sequences and calling. Every paid plan starts with a 90-day free trial.",
+    "Plans that scale with your pipeline — inbound answering, outbound sequences and calling. Every paid plan starts with a 30-day free trial.",
 };
 
 export default function PricingPage() {
@@ -14,7 +14,7 @@ export default function PricingPage() {
       <PageHead
         eyebrow="Pricing"
         title="Plans that scale with your pipeline."
-        subtitle="Start with a 90-day free trial on any paid plan. Upgrade when Alevo is already booking meetings for you."
+        subtitle="Start with a 30-day free trial on any paid plan. Upgrade when Alevo is already booking meetings for you."
       />
       <Section style={{ paddingTop: 40 }}>
         <PricingCards />

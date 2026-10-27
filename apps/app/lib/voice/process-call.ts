@@ -1,7 +1,8 @@
 import "server-only";
 import { eq, and } from "drizzle-orm";
-import { calls, conversations, messages, recordConsent, recordUsage, withService } from "@alevo/db";
+import { calls, conversations, messages, recordConsent, withService } from "@alevo/db";
 import { putObject } from "@/lib/r2";
+import { meterUsage } from "@/lib/usage/limits";
 import { notifySlack } from "@/lib/notifications/slack";
 import type { VoiceCallEndedData } from "@/lib/inngest/client";
 import { fetchCallRecording, isVapiConfigured } from "./vapi";
@@ -87,7 +88,7 @@ export async function recordCall(data: VoiceCallEndedData, recordingKey: string 
           .onConflictDoNothing(),
       ),
     link && recordConsent(data.orgId, link.contactId, "voice", "inbound_call", { source: "voice" }).catch(() => {}),
-    recordUsage(data.orgId, "voice_minutes", minutes),
+    meterUsage(data.orgId, "voice_minutes", minutes),
     notifySlack(data.orgId, `Call ended (${outcome.replace("_", " ")}, ${minutes} min). ${summary}`).catch(() => {}),
   ]);
 

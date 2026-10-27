@@ -58,7 +58,10 @@ export function ContactForm() {
       <button type="submit" disabled={pending} className="btn-grad" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 48, borderRadius: 999, border: 0, fontWeight: 600, fontSize: 15, color: "#06070b", background: "linear-gradient(120deg,#38b6ff,#a06bff)", cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
         {pending ? "Sending…" : "Send message"}
       </button>
-      <p style={{ fontSize: 12, color: "var(--dim)", margin: 0 }}>By submitting, you agree to be contacted about Alevo. We&rsquo;ll never share your details.</p>
+      <p style={{ fontSize: 12, color: "var(--dim)", margin: 0 }}>
+        By submitting, you agree to be contacted about Alevo. We&rsquo;ll never share your details. See how we handle them in our{" "}
+        <a href="/privacy" className="lk-dim" style={{ textDecoration: "underline" }}>privacy policy</a>.
+      </p>
     </form>
   );
 }

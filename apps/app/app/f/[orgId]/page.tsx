@@ -41,7 +41,7 @@ export default async function LeadFormPage({ params }: { params: Promise<{ orgId
           Tell us a bit about what you need and we&apos;ll get back to you fast.
         </p>
         <div className="mt-6">
-          <LeadForm orgId={org.id} />
+          <LeadForm orgId={org.id} company={org.name} />
         </div>
       </Card>
     </main>

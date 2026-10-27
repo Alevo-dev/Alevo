@@ -7,10 +7,10 @@ import {
   conversations,
   messages,
   organizations,
-  recordUsage,
   withService,
 } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
+import { meterUsage } from "@/lib/usage/limits";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
 
 export type LeadValues = {
@@ -140,7 +140,7 @@ export async function submitLead(
       return conversation.id;
     });
 
-    await recordUsage(orgId, "inbound_conversations");
+    await meterUsage(orgId, "inbound_conversations");
 
     // Hand the new lead to the Qualifier. Emitting the event is a side effect —
     // a send failure must never fail the submission the contact just made.

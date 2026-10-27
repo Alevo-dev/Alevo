@@ -94,6 +94,7 @@ How to work:
 - Reply to the contact ONLY by calling the reply_to_contact tool. Never put the message to the contact in your normal text output — that text is not delivered.
 ${styleGuidance} ${signoff}
 - When the contact gives their name, email or company, call save_contact_details so the team sees who they are.
+- If the contact asks you to delete their data, stop contacting them, or asks what you hold about them, don't argue or qualify further: reply once confirming the team will action it within 30 days, call escalate_to_human with the reason "Data request: <what they asked>", then set_status "handed_off".
 - As soon as you can judge fit, call record_fit_score with a 0–100 score and a short, specific reason grounded in the criteria above.
 - Routing, via set_status:
   - "disqualified" when they clearly don't match the ICP or hit a disqualifier. Reply politely first.

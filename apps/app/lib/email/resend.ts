@@ -95,6 +95,8 @@ export async function sendQualifierEmail(params: {
   subject: string;
   body: string;
   inReplyTo?: string | null;
+  /** The org's postal address (Workspace → Business profile). CAN-SPAM / CASL want it in every footer. */
+  businessAddress?: string | null;
 }): Promise<SendResult> {
   const { from } = env();
   if (!isEmailConfigured() || !from) return { ok: false, error: "email-not-configured" };
@@ -114,12 +116,9 @@ export async function sendQualifierEmail(params: {
     headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;
     headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
   }
-  const text = unsubscribeUrl
-    ? `${params.body}\n\n—\nDon't want these emails? Unsubscribe: ${unsubscribeUrl}`
-    : params.body;
-  const html = unsubscribeUrl
-    ? `${toHtml(params.body)}\n<p style="color:#888;font-size:12px;margin-top:16px">Don't want these emails? <a href="${unsubscribeUrl}">Unsubscribe</a>.</p>`
-    : toHtml(params.body);
+  const footer = emailFooter({ orgName: params.orgName, businessAddress: params.businessAddress, unsubscribeUrl });
+  const text = `${params.body}\n\n—\n${footer.text}`;
+  const html = `${toHtml(params.body)}\n${footer.html}`;
 
   try {
     const { data, error } = await resend().emails.send({
@@ -135,6 +134,53 @@ export async function sendQualifierEmail(params: {
         { name: "org_id", value: params.orgId },
         { name: "conversation_id", value: params.conversationId },
       ],
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, id: data?.id };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "send-failed" };
+  }
+}
+
+/**
+ * Footer on every agent email: who sent it and from where (CAN-SPAM / CASL), how
+ * to stop (unsubscribe), and how to get a copy of or delete their data (GDPR /
+ * PIPEDA). The address line is omitted until the org enters one.
+ */
+function emailFooter(p: { orgName: string; businessAddress?: string | null; unsubscribeUrl: string | null }) {
+  const sender = [p.orgName, p.businessAddress?.trim()].filter(Boolean).join(" · ");
+  const privacyUrl = "https://getalevo.com/privacy";
+  const textLines = [
+    `Sent by ${sender}`,
+    p.unsubscribeUrl ? `Don't want these emails? Unsubscribe: ${p.unsubscribeUrl}` : null,
+    `Reply to this email to request a copy or deletion of your data. Privacy: ${privacyUrl}`,
+  ].filter(Boolean);
+  const htmlLines = [
+    `Sent by ${escapeHtml(sender)}`,
+    p.unsubscribeUrl ? `Don't want these emails? <a href="${p.unsubscribeUrl}">Unsubscribe</a>.` : null,
+    `Reply to this email to request a copy or deletion of your data. <a href="${privacyUrl}">Privacy policy</a>.`,
+  ].filter(Boolean);
+  return {
+    text: textLines.join("\n"),
+    html: `<p style="color:#888;font-size:12px;line-height:1.6;margin-top:16px">${htmlLines.join("<br>")}</p>`,
+  };
+}
+
+/**
+ * A plain transactional email from Alevo itself to a workspace member (usage
+ * alerts, billing notices). Not a marketing email: no unsubscribe footer. Sent
+ * from the same verified address with "Alevo" as the display name.
+ */
+export async function sendPlatformEmail(params: { to: string[]; subject: string; body: string }): Promise<SendResult> {
+  const { from } = env();
+  if (!isEmailConfigured() || !from || params.to.length === 0) return { ok: false, error: "email-not-configured" };
+  try {
+    const { data, error } = await resend().emails.send({
+      from: formatAddress("Alevo", from),
+      to: params.to,
+      subject: params.subject,
+      text: params.body,
+      html: toHtml(params.body),
     });
     if (error) return { ok: false, error: error.message };
     return { ok: true, id: data?.id };

@@ -24,6 +24,7 @@ import {
   type QualifierEffects,
 } from "./tools";
 import { retrieveKbContext } from "@/lib/kb/retrieve";
+import { overAllowance } from "@/lib/usage/limits";
 
 /** The Qualifier runs on Sonnet 5 (near-Opus agentic quality at Sonnet cost). */
 const MODEL = "claude-sonnet-5";
@@ -76,6 +77,9 @@ export async function loadQualifierContext(
       .limit(1);
     if (!profile) return { skip: "no-profile" };
     if (!profile.enabled) return { skip: "disabled" };
+    // Plan limit reached → the agent pauses; the lead sits in the inbox for a person
+    // (plan.md §6: nothing is billed automatically, the owner is asked to upgrade).
+    if (await overAllowance(orgId, "inbound_conversations")) return { skip: "over-allowance" };
 
     const [contact] = await tx
       .select({
@@ -226,6 +230,7 @@ export async function runQualifier(
     bookingConfig: bookingConfigFromProfile(ctx.profile),
     calendlyUrl: ctx.profile.calendlyUrl,
     orgName: ctx.profile.companyName?.trim() || "Alevo",
+    businessAddress: ctx.profile.businessAddress,
   };
   const effects: QualifierEffects = {
     replied: false,

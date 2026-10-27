@@ -94,6 +94,8 @@ export type DispatchTarget = {
   bookingConfig: BookingConfig;
   calendlyUrl: string | null;
   orgName: string;
+  /** Printed in every email footer (CAN-SPAM / CASL). */
+  businessAddress: string | null;
 };
 
 /** Booking tools — added to the Qualifier's toolset only when booking is connected. */
@@ -249,6 +251,7 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
       subject: `Your inquiry with ${target.orgName}`,
       body,
       inReplyTo: lastInbound?.ref ?? null,
+      businessAddress: target.businessAddress,
     });
     if (sent.ok) {
       channel = "email";
