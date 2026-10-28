@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useOrganization } from "@clerk/nextjs";
-import { Upload } from "lucide-react";
+import { Check, Copy, Upload } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { initials } from "@/lib/format";
 import { toast } from "@/lib/ui/use-action-toast";
-import { deleteOrg, leaveOrg } from "@/app/(app)/workspace/org-actions";
+import { deleteOrg, leaveOrg, loadOrgIdentity } from "@/app/(app)/workspace/org-actions";
 import { AccountRow, LinkButton, Pane } from "@/components/account/rows";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
+import { IconButton } from "@/components/ui/icon-button";
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
@@ -77,6 +78,10 @@ export function GeneralTab() {
         )}
       </AccountRow>
 
+      <AccountRow label="Workspace ID">
+        <WorkspaceId />
+      </AccountRow>
+
       <AccountRow label="Leave workspace">
         <LinkButton danger onClick={() => setLeaveOpen(true)} disabled={!organization}>
           Leave workspace
@@ -114,6 +119,60 @@ export function GeneralTab() {
 }
 
 type Org = NonNullable<ReturnType<typeof useOrganization>["organization"]>;
+
+/**
+ * The Alevo workspace id (our uuid), read through a server action because the
+ * dialog otherwise only sees Clerk's organization. Copyable: it is the `data-org`
+ * value in the website form and chat widget snippets.
+ */
+function WorkspaceId() {
+  const [id, setId] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Set state from the resolved promise, and ignore a late result after unmount.
+  useEffect(() => {
+    let active = true;
+    void loadOrgIdentity().then((r) => {
+      if (!active) return;
+      if ("id" in r) setId(r.id);
+      else setFailed(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function copy() {
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      toast.success("Copied.");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy. Select the text and copy it instead.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <code className="min-w-0 truncate rounded-sm bg-raised px-2 py-1 font-mono text-sm text-ink">
+          {id ?? (failed ? "Unavailable" : "…")}
+        </code>
+        <IconButton aria-label="Copy workspace ID" onClick={copy} disabled={!id}>
+          {copied ? (
+            <Check className="size-4" strokeWidth={1.75} aria-hidden="true" />
+          ) : (
+            <Copy className="size-4" strokeWidth={1.75} aria-hidden="true" />
+          )}
+        </IconButton>
+      </div>
+      <Hint>The data-org value in your website form and chat widget snippets.</Hint>
+    </div>
+  );
+}
 
 /** Inline name + logo editor — Clerk mutations; the webhook mirrors to our DB. */
 function ProfileEditor({ organization, onDone, onCancel }: { organization: Org; onDone: () => void; onCancel: () => void }) {

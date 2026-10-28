@@ -503,6 +503,19 @@ Dashboards: **App** `/dashboard`, **Supabase** (orgs, memberships, conversations
 - [ ] Upload a logo. File > 10MB → "The logo must be 10MB or less."
 - [ ] Change name, click Save. Toast: "Workspace updated." Logo + name update in real-time in the header.
 
+### Calendar connect errors as toasts (2026-10-28)
+- [ ] Integrations → Google Calendar → Connect, then cancel on Google's consent screen → back on Integrations a red toast "Couldn't connect your calendar" with "You cancelled the sign-in before granting access." and the URL is plain `/workspace/integrations` (no `?calendar_error=`).
+- [ ] The toast does NOT disappear on its own; it goes only when you click its ×.
+- [ ] Reload the page → the toast does not come back.
+- [ ] A successful connect still shows the green 4s toast with the Agent link.
+- [ ] Open `/workspace/integrations?calendar_error=bad_state` by hand → toast "The sign-in link had expired. Try again." and the query is cleared.
+
+### General tab: Workspace ID (2026-10-28)
+- [ ] **Workspace ID** row shows the Alevo uuid in mono (not Clerk's `org_…`), loaded a moment after the dialog opens.
+- [ ] Click the copy icon → toast "Copied.", icon flips to a check for 2s; the clipboard holds the exact uuid.
+- [ ] It equals `data-org` in Integrations → Lead capture → Website form / Chat widget snippets.
+- [ ] Visible to every role (a rep sees it too).
+
 ### General tab: Leave workspace
 - [ ] **Leave workspace,** click the red link.
 - [ ] Confirm: "Leave this workspace?" Click the red button.

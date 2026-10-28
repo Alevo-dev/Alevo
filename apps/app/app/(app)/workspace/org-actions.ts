@@ -38,6 +38,7 @@ export type InviteView = {
 
 export type MembersResult = { members: MemberView[]; pending: InviteView[] } | { error: string };
 export type OrgActionResult = { ok?: boolean; error?: string };
+export type OrgIdentity = { id: string } | { error: string };
 
 function fail(error: unknown): { error: string } {
   return { error: error instanceof Error ? error.message : "Something went wrong" };
@@ -94,6 +95,20 @@ export async function loadMembers(): Promise<MembersResult> {
       })),
       pending: invites,
     };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/**
+ * The active workspace's Alevo id (our uuid, not Clerk's `org_…`) — the value the
+ * form and chat snippets carry as `data-org`. Any member may read it.
+ */
+export async function loadOrgIdentity(): Promise<OrgIdentity> {
+  try {
+    await requireRole("viewer");
+    const org = await getCurrentOrg();
+    return org ? { id: org.id } : { error: "No active organization" };
   } catch (error) {
     return fail(error);
   }

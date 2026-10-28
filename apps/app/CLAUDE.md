@@ -133,7 +133,8 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   has a **Manage** item opening `components/workspace/organization-dialog.tsx` — a two-pane
   modal (mirrors the account dialog) with **General** (`general-tab.tsx`: org name/logo via
   Clerk `organization.update`/`setLogo` — mirrored by the `organization.updated` webhook —
-  plus Leave / Delete) and **Members** (`members-tab.tsx`: load via the `loadMembers` server
+  a copyable **Workspace ID** row (our uuid via the `loadOrgIdentity` server action, the
+  `data-org` of the form / chat snippets), plus Leave / Delete) and **Members** (`members-tab.tsx`: load via the `loadMembers` server
   action, search, Members/Invitations sub-tabs, invite + role/remove/revoke reusing
   `workspace/members/actions.ts`). Leave/Delete run through guarded server actions
   (`workspace/org-actions.ts` → `leaveActiveOrg`/`deleteActiveOrg`) that sync our DB (delete
@@ -445,7 +446,10 @@ by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
   **Workspace → Integrations** (its Manage dialog holds everything that makes it
   usable — Cal.com: event type ID + API key + webhook secret (`calcom-form.tsx`);
   Google / Microsoft 365: Connect (a link into the OAuth start route) + Disconnect
-  (`calendar-connect.tsx`; the callback returns to Integrations); Calendly: link +
+  (`calendar-connect.tsx`; the callback returns to Integrations, where
+  `connect-result.tsx` turns `?calendar_connected=` / `?calendar_error=` into a toast
+  and clears the query — the error toast stays until closed, never inline, never
+  left in the address bar); Calendly: link +
   signing key (`calendly-form.tsx`)). Each dialog opens with a `SetupStatus`
   reminder: not ready (what's missing) / connected but not chosen / in use.
   `lib/booking/connected.ts` is the one definition of "connected"

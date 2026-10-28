@@ -154,8 +154,7 @@ export default async function SecretsPage({
 
   return (
     <div className="space-y-10">
-      <ConnectResult connected={calendar_connected} />
-      {calendar_error && <Notice tone="danger">Couldn&apos;t connect your calendar: {calendar_error}</Notice>}
+      <ConnectResult connected={calendar_connected} error={calendar_error} />
 
       {/* Side by side on desktop, stacked on mobile. */}
       <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
