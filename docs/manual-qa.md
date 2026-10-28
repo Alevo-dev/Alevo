@@ -984,7 +984,7 @@ Run `npx supabase db push` first (migration 0024 adds the indexes; the pages wor
 
 **Admin console** (`:3002`, as a platform admin)
 - [ ] The console has the app's left rail: Alevo mark + Admin pill on top, Overview · Organizations · Activity · Settings (current page highlighted), then the theme control and "Open the app" at the bottom (where the app keeps its agent status). The top bar holds only the account button; on a phone it is burger + brand, and the burger opens the same rail as a drawer.
-- [ ] Overview: Recent activity shows at most 25 rows with a footer "Newest 25 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer than 26 rows the footers are absent.
+- [ ] Overview: Recent activity shows at most 10 rows with a footer "Newest 10 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer rows than the card holds (11 / 26) the footers are absent.
 - [ ] `/activity`: 25 rows newest first with a By column (actor email or "System"), footer "25 on this page" with Newer (disabled) and Older. Older: the next 25, no row repeated, Newer enabled; Newer brings back exactly the first page; the URL carries `?cursor=older.<id>` and survives a refresh.
 - [ ] `/organizations`: same walk; header dot + "X of N agents on"; the count stays the same on every page.
 - [ ] Edit the cursor in the URL to a random UUID: "Nothing on this page. Back to the newest." with the link; garbage like `?cursor=abc` just shows the first page.

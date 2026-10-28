@@ -651,7 +651,7 @@ The super-admin console (`apps/admin`, `/dashboard`) shows the same funnel acros
 every org (`funnelByOrg(days)` in `packages/db/src/metrics.ts`, service path, clock
 read in SQL) with the same 7 / 30 / 90 switch, p95 flagged over 60s. Dev data for
 both: `supabase/seed-dev-dashboard.sql`. Its lists are one page each (busiest 25 in the
-funnel, newest 25 orgs, newest 25 audit rows) with a "View all" footer into
+funnel, newest 25 orgs, newest 10 audit rows) with a "View all" footer into
 `/organizations` and `/activity`, which page through the rest (`lib/orgs.ts`,
 `lib/activity.ts`; shared tables in `components/`).
 

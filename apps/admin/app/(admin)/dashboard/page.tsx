@@ -17,6 +17,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Across all organizations" };
 
 const NUM = "tabular text-right font-mono";
+/** The Overview's activity card is a glance, not the log: the newest few, the rest on /activity. */
+const RECENT = 10;
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ window?: string }> }) {
   const days = parseWindow((await searchParams).window);
@@ -29,7 +31,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     funnelByOrg(days),
     funnelSeries(days),
     orgsPage(null),
-    activityPage(null),
+    activityPage(null, RECENT),
   ]);
 
   // Busiest orgs first; the newest quiet ones fill the remaining seats so a
