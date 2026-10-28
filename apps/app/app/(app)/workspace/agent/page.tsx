@@ -35,6 +35,7 @@ export default async function AgentPage() {
     sendWindowStartHour: row?.sendWindowStartHour ?? 8,
     sendWindowEndHour: row?.sendWindowEndHour ?? 20,
     smsFromNumber: row?.smsFromNumber ?? "",
+    emailAlerts: row?.emailAlerts ?? true,
   };
   const profileReady = Boolean(row?.companyName && row.offering && row.idealCustomer);
 

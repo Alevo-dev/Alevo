@@ -55,6 +55,11 @@ export function tzLabel(tz = DEFAULT_TIMEZONE, at: Date = new Date()): string {
   return part?.value ?? timeZone;
 }
 
+/** A contact with no name or address yet: a website-chat visitor until the agent learns who they are. */
+export function anonymousLabel(channel: string | null | undefined): string | undefined {
+  return channel === "chat" ? "Website visitor" : undefined;
+}
+
 export function displayName(
   firstName: string | null | undefined,
   lastName: string | null | undefined,

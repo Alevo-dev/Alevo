@@ -2,6 +2,13 @@ import { EmptyRow, Table, Td, Th, Tr } from "@alevo/ui/table";
 import type { ActivityRow } from "@/lib/activity";
 import { fmtWhen } from "@/lib/metrics-format";
 
+/** Rows without an org are platform actions (Admin → Settings); name them instead of a dash. */
+function orgLabel(a: ActivityRow) {
+  if (a.orgName) return a.orgName;
+  if (a.orgId) return a.orgId.slice(0, 8);
+  return "Internal admin";
+}
+
 /**
  * The audit log as a table. `actor` adds who did it (the dedicated page); the
  * dashboard card leaves it out for width.
@@ -37,7 +44,7 @@ export function ActivityTable({
               <Td className="tabular whitespace-nowrap font-mono text-label text-ink-muted">{fmtWhen(a.createdAt)}</Td>
               <Td className="font-mono text-label text-ink">{a.action}</Td>
               <Td className="max-w-[220px] truncate text-ink-muted">{a.target ?? "—"}</Td>
-              <Td className="text-ink-muted">{a.orgName ?? (a.orgId ? a.orgId.slice(0, 8) : "—")}</Td>
+              <Td className="text-ink-muted">{orgLabel(a)}</Td>
               {actor && <Td className="text-ink-muted">{a.actor ?? "System"}</Td>}
             </Tr>
           ))

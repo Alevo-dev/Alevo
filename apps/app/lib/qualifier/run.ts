@@ -204,7 +204,7 @@ export async function runQualifier(
   // conversational (one question at a time).
   const emailStyle =
     (ctx.channel === "form" || ctx.channel === "email") && Boolean(ctx.contact.email);
-  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle);
+  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle, ctx.channel === "chat");
   // Cal.com / Google / M365 are API booking (slots + book); Calendly is link mode.
   const bookingTools =
     ctx.bookingMode === "calcom" || ctx.bookingMode === "google" || ctx.bookingMode === "m365"
@@ -238,6 +238,7 @@ export async function runQualifier(
     status: null,
     escalated: false,
     booked: false,
+    bookingFailed: false,
   };
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {

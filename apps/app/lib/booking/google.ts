@@ -10,6 +10,7 @@ import {
   CancelResult,
   RescheduleResult,
 } from "./types";
+import { vendorError } from "@/lib/http/vendor-error";
 import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
@@ -41,7 +42,7 @@ async function freeBusy(
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ timeMin: fromIso, timeMax: toIso, items: [{ id: calendarId }] }),
   }, { idempotent: true }); // a read, despite the POST
-  if (!res.ok) throw new Error(`Google free/busy failed (${res.status})`);
+  if (!res.ok) throw await vendorError(res, "Google free/busy");
   const json = (await res.json()) as {
     calendars?: Record<string, { busy?: { start: string; end: string }[] }>;
   };
@@ -81,7 +82,7 @@ export async function makeGoogleAdapter(
         // Double-booking guard: re-check the exact slot right before writing.
         const busy = await freeBusy(token, cfg.calendarId, params.startIso, endIso);
         if (isBusy(params.startIso, cfg.lengthMin, busy)) {
-          return { ok: false, error: "that time was just taken" };
+          return { ok: false, error: "that time was just taken", conflict: true };
         }
         const res = await vendorFetch(`${BASE}/calendars/${cal}/events?conferenceDataVersion=1`, {
           method: "POST",

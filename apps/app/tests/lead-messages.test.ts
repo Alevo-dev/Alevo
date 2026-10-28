@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { crossedStrongFit, meetingBookedMessage, qualifiedLeadMessage, unansweredLeadMessage } from "../lib/notifications/lead-messages";
+import {
+  bookingFailedEmail,
+  bookingFailedMessage,
+  crossedStrongFit,
+  emailFromSlack,
+  meetingBookedMessage,
+  qualifiedLeadMessage,
+  unansweredLeadMessage,
+} from "../lib/notifications/lead-messages";
 import { isAnswered } from "../lib/qualifier/unanswered";
 
 const lead = {
@@ -50,6 +58,34 @@ describe("messages", () => {
       "Lead needs a person: Ada Lovelace, Acme via Email — the agent is turned off.\nNo contact details on file; see the conversation.",
     );
     expect(unansweredLeadMessage(lead, "over-allowance")).toContain("the plan's conversation allowance is used up");
+  });
+  it("says a qualified lead could not be booked, what the calendar said, and who owes them a time", () => {
+    const detail = "Google free/busy failed (403): Google Calendar API has not been used in project 886 before or it is disabled.";
+    expect(bookingFailedMessage(lead, { step: "availability", detail })).toBe(
+      `Booking failed for a qualified lead: Ada Lovelace (ada@acme.com), Acme via Email — the agent couldn't read the calendar to offer times. Fit 82/100. Handed to a person.\nCalendar said: ${detail}\nReach them: ada@acme.com · +1 555 0100\nhttps://app.getalevo.com/conversations/abc`,
+    );
+    expect(bookingFailedMessage({ ...lead, link: null, email: null, phone: null }, { step: "booking", detail: null })).toBe(
+      "Booking failed for a qualified lead: Ada Lovelace, Acme via Email — the agent couldn't book the time they picked. Fit 82/100. Handed to a person.\nNo contact details on file; see the conversation.",
+    );
+  });
+  it("emails the booking failure with the org in the subject and the two places to fix it", () => {
+    const mail = bookingFailedEmail(lead, { step: "booking", detail: "Google booking failed (403)" }, "Northwind MSP");
+    expect(mail.subject).toBe("Booking failed for Ada Lovelace (Northwind MSP)");
+    expect(mail.body).toContain("couldn't book the time they picked, so the lead is now handed to a person.");
+    expect(mail.body).toContain("The calendar said: Google booking failed (403)");
+    expect(mail.body).toContain("Open the conversation: https://app.getalevo.com/conversations/abc");
+    expect(mail.body).toContain("Workspace → Integrations");
+    expect(mail.body).toContain("Workspace → Agent → Notifications");
+    expect(bookingFailedEmail(lead, { step: "availability", detail: null }, null).subject).toBe("Booking failed for Ada Lovelace");
+  });
+  it("turns any Slack post into an email: emoji codes gone, first line as the subject", () => {
+    expect(emailFromSlack(":rotating_light: Lead escalated — needs a human now\nAda Lovelace (ada@acme.com)\nFit score: 82/100")).toEqual({
+      subject: "Lead escalated — needs a human now",
+      body: "Lead escalated — needs a human now\nAda Lovelace (ada@acme.com)\nFit score: 82/100",
+    });
+    expect(emailFromSlack(qualifiedLeadMessage(lead)).subject).toBe("Qualified lead: Ada Lovelace (ada@acme.com), Acme via Email. Fit 82/100.");
+    expect(emailFromSlack("Meeting booked: Ada — Oct 28, 2026, 10:00 AM.").body).toBe("Meeting booked: Ada — Oct 28, 2026, 10:00 AM.");
+    expect(emailFromSlack(`${"x".repeat(100)}\nmore`).subject).toBe(`${"x".repeat(89)}…`);
   });
 });
 

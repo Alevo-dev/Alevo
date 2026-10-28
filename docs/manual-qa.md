@@ -991,12 +991,34 @@ Slack webhook saved under Integrations → Slack; `CADENCE_FAST=1` in `.env.loca
 - [ ] Dashboard → Meetings booked card: with no outcomes marked the header says "Show rate: mark outcomes" linking to Meetings. Mark one meeting showed and one no-show under Meetings → the card reads "Show rate 50%". Switch 7 / 30 / 90 — meetings are counted by their start time inside the window.
 - [ ] Vendor retries: with the dev server running, point `VOYAGE_API_KEY` at a bad key and add a KB text document — the ingest fails once with a 401 (no retry on a real answer). Set the Slack webhook to an unreachable host — "Send test" returns the network error within ~15s instead of hanging.
 
+# Website chat widget (2026-10-28)
+
+Migration 0025 applied. Agent ON under Workspace → Agent (otherwise the widget says "Leave a message and your email" and the no-reply fallback hands the lead to Slack). Inngest dev server running.
+
+**Settings** (Workspace → Integrations → Lead capture → Chat widget → Manage)
+- [ ] Card reads "Off" until the switch is saved on; the dialog has the switch, Greeting, Colour (swatch follows a valid hex, red error on `blue`), one Save + Cancel that appear only after a change, and the one-line snippet with Copy.
+- [ ] Save with the switch on → toast, card reads "On"; the audit log shows `chat.settings_saved`.
+
+**Widget** (paste the snippet into any HTML page, or open `scratchpad/chat-test/index.html` over http)
+- [ ] With the widget off: no bubble at all. On: a round bubble in the org colour bottom-right; `data-position="left"` moves it.
+- [ ] Open: header with the company name and "Usually replies in under a minute", the greeting as the first bubble, composer focused, Escape closes, the launcher's aria-label flips.
+- [ ] Send "Hi, we're a 40-person law firm looking for IT support": your bubble appears on the right, typing dots show, and within ~15s the agent answers (Inngest `qualify-conversation` run). It asks for your name and email early.
+- [ ] Reload the page and open the chat: the whole thread is back (localStorage token). Open the page in a second tab: same thread.
+- [ ] In the app, Conversations shows the lead with channel "Chat"; the thread page lists the messages; once you gave a name/email the contact shows them. The dashboard's lead-source donut has a Chat slice.
+- [ ] Give your email, close the tab, wait 3 minutes, then post as the contact from the thread page's tester: the agent's reply is recorded as **email** (sent by Resend) rather than chat, because the visitor had left.
+- [ ] Clear localStorage for the page and send again: a new conversation starts. Edit the stored token to garbage and send: the widget resets with "That conversation has ended" and starts fresh on the next send.
+- [ ] Send 11 first messages from fresh sessions within 10 minutes (clear storage between): the 11th gets "Too many messages" inline, nothing stored. Posting the same message 61 times in a session trips the message limit the same way.
+- [ ] Phone width: the panel fills the screen, the launcher hides while open, the close button works.
+- [ ] `curl -X POST http://localhost:3001/api/chat/<orgId>/messages -H 'content-type: application/json' -d '{"message":""}'` → 400; with the widget off → 404; `GET .../messages` without a bearer token → 401; `OPTIONS` → 204 with `access-control-allow-origin: *`.
+- [ ] Mark the conversation handed off (reply as contact with "please have someone call me" or set status): the widget shows "We've passed this on to the team".
+
 # Paginated lists (2026-10-27)
 
 Run `npx supabase db push` first (migration 0024 adds the indexes; the pages work without it, just slower at scale). To see paging you need more than 25 rows: `supabase/seed-dev-dashboard.sql` plus a few form submissions, or a quick `insert into audit_log (action) select 'test.' || g from generate_series(1, 60) g` (delete them after).
 
 **Admin console** (`:3002`, as a platform admin)
 - [ ] The console has the app's left rail: Alevo mark + Admin pill on top, Overview · Organizations · Activity · Settings (current page highlighted), then the theme control and "Open the app" at the bottom (where the app keeps its agent status). The top bar holds only the account button; on a phone it is burger + brand, and the burger opens the same rail as a drawer.
+- [ ] Overview / Activity: a platform action (e.g. `platform.secret_set` after saving the Slack webhook in Settings) shows **Internal admin** in the Org column, never a dash.
 - [ ] Overview: Recent activity shows at most 10 rows with a footer "Newest 10 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer rows than the card holds (11 / 26) the footers are absent.
 - [ ] `/activity`: 25 rows newest first with a By column (actor email or "System"), footer "25 on this page" with Newer (disabled) and Older. Older: the next 25, no row repeated, Newer enabled; Newer brings back exactly the first page; the URL carries `?cursor=older.<id>` and survives a refresh.
 - [ ] `/organizations`: same walk; header dot + "X of N agents on"; the count stays the same on every page.
@@ -1023,3 +1045,31 @@ Dashboard, with a few leads in the window:
 - [ ] Speed to lead (needs two answered periods): hover the sparkline — crosshair + dot, "42s median · Oct 24"; a quiet day says "no replies".
 - [ ] Where leads come from: hover a ring segment or a legend row — the segment thickens, the centre number switches to that channel, tooltip "2 leads · Email, 67% of 3".
 - [ ] Admin → Overview tiles: bars say "3 days ago" / "2 weeks ago" on the 90-day window.
+
+# Calendar "Test connection" (2026-10-28)
+
+Workspace → Integrations → Google Calendar (or Microsoft 365) → Manage, with the calendar connected:
+- [ ] A **Test connection** row sits under the Connected block (admins only; absent while not connected). Click: spinner, then a green notice "Reached Google Calendar for <account>: N open 30-minute slots in the next 72 hours." N matches what the agent would offer (working hours, weekdays, 2h notice).
+- [ ] Disable the Google Calendar API in the Cloud project (or test before enabling it): the notice is red, quotes Google's reason ("Google Calendar API has not been used in project … or it is disabled") and ends with "Enable the Google Calendar API in the Google Cloud project …". Nothing is written anywhere; no toast.
+- [ ] Revoke Alevo's access at myaccount.google.com → Security → Third-party access, then test: red notice with "expired or revoked … Disconnect, then connect it again."
+- [ ] A rep (viewer / rep role) sees Connected but no Test connection button.
+- [ ] Sentry (when a DSN is set) / the dev console shows the full vendor reason for a failed availability check from a real lead, not just "(403)".
+
+# Lead alerts by email + booking failed (2026-10-28)
+
+Migrations 0026 + 0027 applied. Slack connected under Integrations, Resend configured. Owners/admins of the workspace have real addresses.
+- [ ] Workspace → Agent has a **Notifications** card with an **Email the team** switch (on by default). Flip it → the Save bar appears; Save → "Agent settings saved.", reload keeps it.
+- [ ] With it on, each of these posts to Slack AND lands as one email "Alevo — <first line of the Slack post>" from Alevo in every owner's and admin's inbox (reps get nothing): a lead's first strong-fit score, a meeting booked, a hand-off ("Lead handed off — ready for a human", no emoji in the email), an escalation, the no-reply fallback ("Lead needs a person …"), a voice call summary ("Call ended …").
+- [ ] Switch it off, Save: the same events still post to Slack, no email. The plan-limit emails (80% / 100%) still arrive.
+- [ ] Booking failed: Booking ON through Google Calendar; break the calendar (disable the Google Calendar API in the Cloud project, or revoke Alevo's access); a new lead gets qualified until the agent goes to offer times → status "Handed to a rep", the agent tells the contact a colleague will reach out to set a time and does not offer times; Slack gets "Booking failed for a qualified lead: … — the agent couldn't read the calendar to offer times. Fit N/100. Handed to a person." then "Calendar said: Google free/busy failed (403): …", "Reach them: …" and the link. Only one Slack post for that lead — no second "Lead handed off". The email is the longer one: subject "Alevo — Booking failed for <lead> (<company name>)", with the calendar's words, the link, and the two places to fix it.
+- [ ] Fix the calendar (enable the API), new lead: times offered and booked as before; nothing posts about a failure. A slot taken between offer and booking ("that time was just taken") makes the agent offer another time and never alerts.
+- [ ] Voice: with the calendar broken, call in and ask for a time: the agent says a colleague will call back and takes a message; Slack + email as above.
+
+# Slack card health (2026-10-28)
+
+Migrations 0028 + 0029 applied. Integrations → Slack connected.
+- [ ] Manage → paste a webhook (any valid-looking one), Save: the card pill reads **Untested** (amber) and the Needs attention row says the webhook is saved but nothing has been sent — open Manage and Send test. Send test with a working webhook → Connected; the row disappears.
+- [ ] Manage → replace the webhook with a dead one (a Slack webhook you deleted, or any `https://hooks.slack.com/services/…` that 403s), Save, Send test: the inline error quotes Slack ("Slack failed (403): invalid_token" or similar); close the dialog — the card pill reads **Needs attention** (red) and a "Needs attention" row at the top of the page repeats the reason and says to paste a fresh webhook.
+- [ ] Trigger any real alert while it is broken (e.g. a qualified lead): the card stays Needs attention; nothing crashes.
+- [ ] Paste the real webhook, Save: the card reads Untested (not Connected). Send test → green, now Connected.
+- [ ] With the real webhook, Send test then break the channel on Slack's side (delete the webhook in the Slack app config) and Send test again: Needs attention. Clearing the webhook with the Clear button → Not connected, no issue row.

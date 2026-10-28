@@ -6,9 +6,14 @@ import { deleteOrgSecret, orgProfiles, recordAudit } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isSecretKey } from "@/lib/secrets-registry";
 import { readSecretFields, storeSecrets, validateSecrets, type SecretErrors } from "@/lib/secrets/save";
-import { notifySlack } from "@/lib/notifications/slack";
+import { notifySlack, resetSlackHealth } from "@/lib/notifications/slack";
 import { normalizeSite } from "@/lib/psa/connectwise-map";
 import { loadConnectWise } from "@/lib/psa/connectwise";
+import { makeGoogleAdapter } from "@/lib/booking/google";
+import { makeM365Adapter } from "@/lib/booking/m365";
+import { calendarTestDetail, calendarTestHint } from "@/lib/booking/calendar-test";
+import { BOOKING_TOOL_LABEL } from "@/lib/booking/connected";
+import { isHexColor, MAX_GREETING_CHARS } from "@/lib/chat/rules";
 
 export type ActionState = {
   ok?: boolean;
@@ -67,6 +72,7 @@ export async function saveSecrets(_prev: SaveSecretsState, formData: FormData): 
     const errors = validateSecrets(entries);
     if (Object.keys(errors).length > 0) return { errors };
     await storeSecrets(org.id, actorId, entries);
+    if (entries.some((e) => e.key === "slack_webhook_url")) await resetSlackHealth(org.id); // new URL → Untested until Send test
     revalidatePath("/workspace/integrations");
     return { ok: true };
   } catch (error) {
@@ -78,6 +84,7 @@ export async function sendTestSlack(_prev: ActionState, _formData: FormData): Pr
   try {
     const { org } = await adminContext();
     const result = await notifySlack(org.id, `:wave: Test notification from Alevo — ${org.name}.`);
+    revalidatePath("/workspace/integrations"); // the card follows the result: Connected or Needs attention (Untested before any send)
     if (!result.ok) return { error: result.error ?? "Failed to send" };
     return { ok: true };
   } catch (error) {
@@ -93,6 +100,7 @@ export async function clearSecret(_prev: ActionState, formData: FormData): Promi
     await deleteOrgSecret(org.id, key);
     // Without its API key Cal.com can't book, so it can't stay the booking tool.
     if (key === "calcom_api_key") await unchooseBookingTool(org.id, "calcom");
+    if (key === "slack_webhook_url") await resetSlackHealth(org.id);
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "secret.cleared", target: key });
     revalidateBoth();
     return { ok: true };
@@ -198,6 +206,44 @@ export async function disconnectCalendar(_prev: ActionState, _formData: FormData
   }
 }
 
+export type CalendarTestState = { ok?: boolean; error?: string; detail?: string };
+
+/**
+ * Round-trip to the connected calendar: refresh the token, read free/busy for
+ * the next 72 hours, count the open slots. The same calls the agent makes when
+ * a lead asks for a time — so a disabled API or a revoked grant shows up here,
+ * not in a lead's thread.
+ */
+export async function testCalendar(_prev: CalendarTestState, _formData: FormData): Promise<CalendarTestState> {
+  try {
+    const { org } = await adminContext();
+    const [profile] = await withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1));
+    const provider = profile?.calendarProvider === "google" || profile?.calendarProvider === "m365" ? profile.calendarProvider : null;
+    if (!profile || !provider) return { error: "No calendar is connected." };
+    const label = BOOKING_TOOL_LABEL[provider];
+    const cfg = {
+      calendarId: profile.calendarId ?? "",
+      lengthMin: profile.bookingLengthMin,
+      hoursStart: profile.bookingHoursStart,
+      hoursEnd: profile.bookingHoursEnd,
+      timeZone: profile.timezone ?? "UTC",
+    };
+    const adapter = provider === "google" ? await makeGoogleAdapter(org.id, cfg) : await makeM365Adapter(org.id, cfg);
+    if (!adapter) return { error: `The ${label} connection is incomplete. Disconnect, then connect it again.` };
+    const now = Date.now();
+    const slots = await adapter.availableSlots(
+      new Date(now + 2 * 3_600_000).toISOString(),
+      new Date(now + 72 * 3_600_000).toISOString(),
+      cfg.timeZone,
+    );
+    return { ok: true, detail: calendarTestDetail(label, profile.calendarAccountEmail, slots.length, cfg.lengthMin) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Something went wrong";
+    const hint = calendarTestHint(message);
+    return { error: hint ? `${message} ${hint}` : message };
+  }
+}
+
 export type ConnectWiseState = {
   ok?: boolean;
   error?: string;
@@ -258,5 +304,34 @@ export async function testConnectWise(_prev: ConnectWiseTestState, _formData: Fo
     return { ok: true, detail: `Connected to ${site} (Manage ${version}). Member ${member} found.` };
   } catch (error) {
     return fail(error);
+  }
+}
+
+export type ChatWidgetState = {
+  ok?: boolean;
+  error?: string;
+  errors?: { greeting?: string; accent?: string };
+  values?: { enabled: boolean; greeting: string; accent: string };
+};
+
+/** The website chat widget: on/off, greeting and colour, on the org profile. */
+export async function saveChatWidget(_prev: ChatWidgetState, formData: FormData): Promise<ChatWidgetState> {
+  const enabled = formData.get("enabled") === "on";
+  const greeting = String(formData.get("greeting") ?? "").trim();
+  const accent = String(formData.get("accent") ?? "").trim().toLowerCase();
+  const values = { enabled, greeting, accent };
+  try {
+    const { org, actorId } = await adminContext();
+    const errors: ChatWidgetState["errors"] = {};
+    if (greeting.length > MAX_GREETING_CHARS) errors.greeting = `Keep the greeting under ${MAX_GREETING_CHARS} characters.`;
+    if (accent && !isHexColor(accent)) errors.accent = "Enter a hex colour like #2e9be6.";
+    if (Object.keys(errors).length > 0) return { errors, values };
+
+    await upsertProfile(org.id, { chatEnabled: enabled, chatGreeting: greeting || null, chatAccent: accent || null });
+    await recordAudit({ orgId: org.id, actorUserId: actorId, action: "chat.settings_saved", target: enabled ? "enabled" : "disabled" });
+    revalidatePath("/workspace/integrations");
+    return { ok: true, values };
+  } catch (error) {
+    return { ...fail(error), values };
   }
 }

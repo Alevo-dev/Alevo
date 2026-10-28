@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cursorHref, Pager } from "@/components/ui/pager";
 import { Pill } from "@/components/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
-import { displayName, fmtDateTime, tzLabel } from "@/lib/format";
+import { anonymousLabel, displayName, fmtDateTime, tzLabel } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
 
@@ -97,7 +97,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                         transitionTypes={["nav-forward"]}
                         className="block font-semibold text-ink no-underline hover:underline"
                       >
-                        {displayName(c.firstName, c.lastName, c.email ?? c.phone)}
+                        {displayName(c.firstName, c.lastName, c.email ?? c.phone ?? anonymousLabel(c.channel))}
                       </Link>
                       <span className="block text-label text-ink-muted">{c.company ?? c.email ?? ""}</span>
                     </Td>

@@ -48,6 +48,57 @@ export function meetingBookedMessage(lead: LeadLine, meeting: { when: string | n
   return lines.filter((l): l is string => Boolean(l)).join("\n");
 }
 
+/** What broke while booking: reading the calendar, or the booking call itself. */
+export type BookingFailure = { step: "availability" | "booking"; detail: string | null };
+
+function reachLine(lead: LeadLine): string {
+  const reach = [lead.email, lead.phone].filter((v): v is string => Boolean(v)).join(" · ");
+  return reach ? `Reach them: ${reach}` : "No contact details on file; see the conversation.";
+}
+
+const BROKE: Record<BookingFailure["step"], string> = {
+  availability: "couldn't read the calendar to offer times",
+  booking: "couldn't book the time they picked",
+};
+
+/**
+ * The agent had a qualified lead ready to book and the calendar failed. Says
+ * who, what broke (with the calendar's own words), that a person now owes them
+ * a time, and how to reach them.
+ */
+export function bookingFailedMessage(lead: LeadLine, failure: BookingFailure): string {
+  const lines = [
+    `Booking failed for a qualified lead: ${who(lead)} via ${lead.channel} — the agent ${BROKE[failure.step]}. Fit ${lead.fitScore ?? "?"}/100. Handed to a person.`,
+    failure.detail ? `Calendar said: ${failure.detail}` : null,
+    reachLine(lead),
+    lead.link,
+  ];
+  return lines.filter((l): l is string => Boolean(l)).join("\n");
+}
+
+/** The same alert as an email, with the two places to fix it. */
+export function bookingFailedEmail(lead: LeadLine, failure: BookingFailure, orgName: string | null): { subject: string; body: string } {
+  const where = orgName ? ` (${orgName})` : "";
+  const body = [
+    `The agent had ${who(lead)} qualified via ${lead.channel} (fit ${lead.fitScore ?? "?"}/100) but ${BROKE[failure.step]}, so the lead is now handed to a person.`,
+    failure.detail ? `The calendar said: ${failure.detail}` : null,
+    reachLine(lead),
+    lead.link ? `Open the conversation: ${lead.link}` : null,
+    "Check the calendar under Workspace → Integrations (Manage → Test connection). You can turn these emails off under Workspace → Agent → Notifications.",
+  ];
+  return { subject: `Booking failed for ${lead.name}${where}`, body: body.filter((l): l is string => Boolean(l)).join("\n\n") };
+}
+
+/**
+ * The email twin of a Slack post: Slack emoji codes dropped, the first line as
+ * the subject (cut at 90 characters).
+ */
+export function emailFromSlack(text: string): { subject: string; body: string } {
+  const body = text.replace(/:[a-z_+-][a-z0-9_+-]*:\s*/g, "").trim();
+  const first = body.split("\n")[0]?.trim() ?? "";
+  return { subject: first.length > 90 ? `${first.slice(0, 89).trimEnd()}…` : first, body };
+}
+
 /** Why a lead went unanswered. The Qualifier's skip reasons map onto these. */
 export type UnansweredReason = "disabled" | "over-allowance" | "suppressed" | "no-reply";
 
@@ -64,11 +115,6 @@ const WHY: Record<UnansweredReason, string> = {
  */
 export function unansweredLeadMessage(lead: LeadLine, reason: UnansweredReason, after?: string): string {
   const why = reason === "no-reply" && after ? `${WHY[reason]} after ${after}` : WHY[reason];
-  const reach = [lead.email, lead.phone].filter((v): v is string => Boolean(v)).join(" · ");
-  const lines = [
-    `Lead needs a person: ${who(lead)} via ${lead.channel} — ${why}.`,
-    reach ? `Reach them: ${reach}` : "No contact details on file; see the conversation.",
-    lead.link,
-  ];
+  const lines = [`Lead needs a person: ${who(lead)} via ${lead.channel} — ${why}.`, reachLine(lead), lead.link];
   return lines.filter((l): l is string => Boolean(l)).join("\n");
 }

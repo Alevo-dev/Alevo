@@ -17,6 +17,7 @@ import { appUrl } from "@/lib/app-url";
 import { CalcomForm } from "./calcom-form";
 import { CalendarConnect } from "./calendar-connect";
 import { CalendlyForm } from "./calendly-form";
+import { ChatWidgetForm } from "./chat-widget-form";
 import { ConnectResult } from "./connect-result";
 import { ConnectWiseForm } from "./connectwise-form";
 import { ConnectTool } from "./connect-tool";
@@ -33,6 +34,8 @@ export const metadata: Metadata = { title: "Integrations" };
 
 const CALENDAR_DESCRIPTION = "Alevo books on one calendar at a time. Only a refresh token is stored, encrypted.";
 const FORM_DESCRIPTION = "Put the form on your website, or point your own form at Alevo. Every submission opens a conversation the agent works.";
+const CHAT_DESCRIPTION =
+  "A chat bubble on your website. Visitors talk to the agent, which answers from your knowledge base, captures their details and books the meeting, like any other channel.";
 const CONNECTWISE_DESCRIPTION =
   "When a lead is handed to a person or books a meeting, Alevo creates or finds the company and contact in Manage, logs an activity, and opens an opportunity on a booking. Keys are stored encrypted.";
 
@@ -75,6 +78,8 @@ export default async function SecretsPage({
     emailConfigured: isEmailConfigured(),
     booking,
     connectwise,
+    chat: { enabled: profile?.chatEnabled ?? false },
+    slack: { lastError: profile?.slackLastError ?? null, verified: profile?.slackVerifiedAt != null },
   });
   const attention = services.filter((s) => s.issue);
   const listed = services.filter((s) => s.listed);
@@ -89,6 +94,16 @@ export default async function SecretsPage({
     switch (service.id) {
       case "form":
         return <EmbedSnippets orgId={orgId} origin={appUrl()} company={orgName} />;
+      case "chat":
+        return (
+          <ChatWidgetForm
+            enabled={profile?.chatEnabled ?? false}
+            greeting={profile?.chatGreeting ?? ""}
+            accent={profile?.chatAccent ?? ""}
+            snippet={`<script src="${appUrl()}/chat.js" data-org="${orgId}" async></script>`}
+            canModify={canModify}
+          />
+        );
       case "calcom":
         return (
           <>
@@ -148,6 +163,8 @@ export default async function SecretsPage({
       ? CALENDAR_DESCRIPTION
       : service.id === "form"
         ? FORM_DESCRIPTION
+        : service.id === "chat"
+          ? CHAT_DESCRIPTION
         : service.id === "connectwise"
           ? CONNECTWISE_DESCRIPTION
           : undefined;
@@ -178,8 +195,8 @@ export default async function SecretsPage({
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="inline-flex items-center gap-2 text-label font-medium text-ink">
-                      <StatusDot tone="warning" />
-                      Warning
+                      <StatusDot tone={s.status.tone} />
+                      {s.status.label}
                     </span>
                     {s.managed && (
                       <ManageDialog name={s.name} label="Review" description={dialogDescription(s)}>

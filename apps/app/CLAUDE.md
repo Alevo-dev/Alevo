@@ -264,6 +264,9 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
   speed-to-lead watch. `@alevo/db` exposes `set/get/deletePlatformSecret` +
   `platformSecretStatus`; service path only; the admin app needs the same
   `SECRETS_MASTER_KEY` as the app.
+- **0025** website chat: `org_profiles.chat_enabled` / `chat_greeting` / `chat_accent` +
+  `chat_sessions` (one row per visitor session: the HASH of the token the browser holds,
+  `last_seen_at` bumped on every poll; service path only, no policies). See Website chat.
 - **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
   `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
   `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
@@ -307,14 +310,31 @@ still active, it arms the follow-up cadence (see Durable workflows below).
   duplicate-reply risk until idempotency keys land; the Anthropic SDK retries
   transient API errors in-process.
 
-**Org Slack notifications** (`lib/notifications/`). `notifySlack(orgId, text)` posts to
-the org's webhook (Integrations → Slack), best-effort. What posts: a lead's first
+**Org notifications — Slack + email** (`lib/notifications/`). `notifyOrg(orgId, text,
+email?)` (`notify.ts`) posts to the org's Slack webhook (`notifySlack`, Integrations →
+Slack) AND emails the same text to the owners/admins (`ownerEmails`, `owner-emails.ts`;
+first line = subject, Slack emoji codes stripped — `emailFromSlack` — or a richer
+`{subject, body}` such as `bookingFailedEmail`) unless `org_profiles.email_alerts` is off:
+the "Email the team" switch under Workspace → Agent → Notifications (migrations
+0026–0027, default on). Plan-limit emails ignore the switch (billing); the Integrations
+"Test" button is Slack-only. Best-effort throughout. **Slack card health**
+(`org_profiles.slack_last_error` / `slack_verified_at`, migrations 0028–0029): a saved
+webhook is **Untested** until the first successful post stamps `slack_verified_at`
+(the issue row says to Send test); a failed post keeps Slack's own reason (via
+`vendorError`) and the card reads **Needs attention**; saving or clearing the webhook
+resets both (`resetSlackHealth`). Pure status logic in `services.ts`. What posts: a lead's first
 strong-fit score (`crossedStrongFit`, ≥ 70, from `record_fit_score` in the Qualifier
 and voice tools), a meeting booked (`notifyMeetingBooked` from `book_meeting`, the voice
 booking, a Cal.com booking Alevo didn't make, and Calendly), hand-off / escalation
 (`notifyHandoff` in the tools), the no-reply fallback (`notifyUnansweredLead`, see
-Durable workflows), and the plan-limit alerts. Message text is pure in
-`lead-messages.ts` (tested); `lead-events.ts` loads the records.
+Durable workflows), **booking failed** (`notifyBookingFailed`: `check_availability`
+threw or `book_meeting` failed for a reason other than a slot conflict, in the
+Qualifier and voice tools → the lead is marked handed off and the org gets "Booking
+failed for a qualified lead … Calendar said: <vendor reason>"; the model is told to
+promise a human follow-up, and its later `set_status('handed_off')` skips the generic
+hand-off post via `effects.bookingFailed`), the voice call summaries / messages, and
+the plan-limit alerts. Message text is pure in `lead-messages.ts` (tested);
+`lead-events.ts` loads the records.
 
 ## Email channel (Resend)
 
@@ -484,6 +504,16 @@ by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
   recording the `meetings` row the same way. **No webhook** — contact-initiated
   changes on these calendars don't sync back (basic, single-calendar by design).
   Deliberately not built: round-robin, buffers, notice rules (→ Cal.com).
+  **Test connection** (`testCalendar`, on the Integrations card once connected) makes
+  the same free/busy call for the next 72 hours and reports the open-slot count, or
+  the vendor's own reason plus a fix (`lib/booking/calendar-test.ts`, pure, tested:
+  Calendar API not enabled in the Cloud project → enable it; `invalid_grant` /
+  access denied → reconnect). Failed vendor responses throw
+  `vendorError(res, label)` (`lib/http/vendor-error.ts`) so Sentry and the admin
+  see "Google free/busy failed (403): Google Calendar API has not been used in
+  project …", never just the status. The Cloud project that owns the OAuth client
+  must have the **Google Calendar API enabled** — OAuth consent alone is not enough
+  (bit us 2026-10-28: tokens refreshed fine, every calendar call 403'd).
 - **Calendly (link mode):** `send_booking_link` sends the org's `calendly_url`
   (with `utm_source=alevo` + `utm_content=<conversationId>` appended) for the lead
   to self-book — no slot/booking API. When the lead books, Calendly's
@@ -539,6 +569,35 @@ field reading/validation and `spam.ts` the checks, both pure (`tests/lead-form.t
   10 min (IP hashed), 300 per org per hour. The limiter **fails open** on an error.
   The consent row records the source: `hosted_form` / `embed` / `api`.
 
+## Website chat (widget)
+
+Sprint 7.1. One script tag on the customer's site (`public/chat.js`, vanilla, no build)
+draws a bubble; the visitor talks to the Qualifier over the `chat` channel. Settings
+(on/off, greeting, colour) live under Integrations → Lead capture → **Chat widget**
+(`chat-widget-form.tsx`, `saveChatWidget`); the card shows On / Off.
+
+- **Endpoints** (`app/api/chat/[orgId]/`, public in `proxy.ts`, open CORS, bearer token):
+  `GET` = config (404 while the widget is off; cached 60s). `POST messages` without a
+  token = `startChat` (anonymous contact `source: chat`, `chat` conversation with the
+  message, a `chat` consent with the widget's disclosure line verbatim, a `chat_sessions`
+  row, `inbound_conversations` metered, `conversation/message.received`); returns the
+  token the browser keeps in localStorage. With a token = `postChatMessage`. `GET
+  messages?after=<iso>` = the thread + conversation status, and bumps `last_seen_at`.
+  An unknown token answers 401 `{ restart: true }` and the widget starts over.
+- **Logic** in `lib/chat/`: `rules.ts` is pure (limits, `cleanMessage`, token + hash,
+  `visitorPresent`; `tests/chat.test.ts`), `service.ts` is the DB side (service path,
+  scoped to the org in code; rate limits via `hitRateLimit`, fail open: 10 new chats /
+  60 messages per IP per 10 min, 2000 per org per hour).
+- **Where the reply goes** (`deliverMessage` in `lib/qualifier/tools.ts`): a visitor
+  whose widget polled in the last 2 minutes is "present" → the reply is only recorded
+  (channel `chat`) and the widget shows it. Otherwise it falls through to email when the
+  contact gave one (the widget still shows it if they return); with no email it is just
+  recorded. The system prompt tells the agent to ask for name + email early on chat.
+- **Widget behaviour**: polls every 2s for 90s after a send (typing dots), then every
+  10s while open, never while the tab is hidden; dedupes by message id; shows a system
+  line on `handed_off` / `booked`; full-screen under 480px; reduced motion respected.
+  The Qualifier's 8s debounce is the floor on reply time.
+
 ## Consent (compliance)
 
 Consent is data, not a checkbox (plan.md rule 8). The `consents` table (0007)
@@ -546,7 +605,8 @@ records one active row per (contact, channel); `@alevo/db` exposes `recordConsen
 / `revokeConsentForContact` / `revokeConsentForEmail`.
 
 - **Captured** on every inbound touch: hosted form (lead action), email reply
-  (`/api/webhooks/resend`), SMS inbound (`/api/webhooks/twilio`). `recordConsent`
+  (`/api/webhooks/resend`), SMS inbound (`/api/webhooks/twilio`), website chat
+  (`startChat`, basis `chat_initiated`, the widget's disclosure line verbatim). `recordConsent`
   is idempotent — one active consent per channel.
 - **Revoked** on opt-out: email unsubscribe (`/api/unsubscribe`) + bounce /
   complaint (resend webhook) → `revokeConsentForEmail`; SMS STOP (twilio webhook)

@@ -24,7 +24,8 @@ export function inviteText(p: Pick<BookParams, "attendeeName" | "orgName">) {
 
 export type BookResult =
   | { ok: true; uid: string; startIso: string; endIso: string | null; joinUrl: string | null }
-  | { ok: false; error: string };
+  /** `conflict`: the slot was taken between offer and book — offer another, nothing is broken. */
+  | { ok: false; error: string; conflict?: true };
 
 export type CancelResult = { ok: true } | { ok: false; error: string };
 

@@ -28,6 +28,7 @@ export function buildSystemPrompt(
   knowledge: string[] = [],
   bookingMode: BookingMode = null,
   emailStyle = false,
+  chat = false,
 ): string {
   const company = profile.companyName?.trim() || "our company";
   const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim();
@@ -83,6 +84,12 @@ export function buildSystemPrompt(
     ? `- You are replying by EMAIL — write a complete, well-structured email, not a chat line. In your first reply, ask for everything you need to qualify in a single message: adapt to the criteria above, but typically company size / headcount, industry, region, current IT setup or provider, timeline, and what prompted them to reach out. Open with a brief greeting, group the questions as a short numbered or bulleted list, and close with a sign-off. Do not drip one question at a time across emails. When you offer meeting times, list them as short bullets.`
     : `- You are on a real-time channel (SMS / chat / voice) — keep replies short and human, and ask ONE question at a time; don't interrogate. When you offer meeting times, keep it to one short line per option.`;
 
+  // Website chat: the visitor starts anonymous, so get a name and email early
+  // (follow-up by email is what keeps the lead once they close the tab).
+  const chatGuidance = chat
+    ? `\n- You are the live chat on our website. The visitor is anonymous until they tell you who they are: after answering their first message, ask for their name and email so a person can follow up if the chat ends, then carry on qualifying.`
+    : "";
+
   return `You are an inbound sales development representative for ${company}. You engage leads who reached out, qualify them against our criteria, and get the good ones booked onto a call. A qualified lead with a meeting on the calendar is the outcome you work toward in every conversation.
 
 ${context || "(No business profile has been configured yet — qualify conservatively and hand off anything promising to a human.)"}${kb}
@@ -93,7 +100,7 @@ ${who || "(no contact details captured)"}
 How to work:
 - Reply to the contact ONLY by calling the reply_to_contact tool. Never put the message to the contact in your normal text output — that text is not delivered.
 ${styleGuidance} ${signoff}
-- When the contact gives their name, email or company, call save_contact_details so the team sees who they are.
+- When the contact gives their name, email or company, call save_contact_details so the team sees who they are.${chatGuidance}
 - If the contact asks you to delete their data, stop contacting them, or asks what you hold about them, don't argue or qualify further: reply once confirming the team will action it within 30 days, call escalate_to_human with the reason "Data request: <what they asked>", then set_status "handed_off".
 - As soon as you can judge fit, call record_fit_score with a 0–100 score and a short, specific reason grounded in the criteria above.
 - Routing, via set_status:

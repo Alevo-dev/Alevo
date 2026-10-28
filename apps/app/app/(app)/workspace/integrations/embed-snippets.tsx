@@ -55,7 +55,7 @@ export function EmbedSnippets({ orgId, origin, company }: { orgId: string; origi
   );
 }
 
-function Snippet({ title, hint, code }: { title: string; hint: string; code: string }) {
+export function Snippet({ title, hint, code }: { title: string; hint: string; code: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {

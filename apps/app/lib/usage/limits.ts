@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
-import { and, eq, inArray } from "drizzle-orm";
-import { getUsage, memberships, recordUsage, users, withService, type UsageMetric, type UsageRow } from "@alevo/db";
+import { getUsage, recordUsage, type UsageMetric, type UsageRow } from "@alevo/db";
 import { sendPlatformEmail } from "@/lib/email/resend";
+import { ownerEmails } from "@/lib/notifications/owner-emails";
 import { notifySlack } from "@/lib/notifications/slack";
 
 /**
@@ -38,17 +38,6 @@ export async function meterUsage(orgId: string, metric: UsageMetric, delta = 1):
   } catch (err) {
     Sentry.captureException(err);
   }
-}
-
-async function ownerEmails(orgId: string): Promise<string[]> {
-  const rows = await withService((tx) =>
-    tx
-      .select({ email: users.email })
-      .from(memberships)
-      .innerJoin(users, eq(users.id, memberships.userId))
-      .where(and(eq(memberships.orgId, orgId), inArray(memberships.role, ["owner", "admin"]))),
-  );
-  return rows.map((r) => r.email).filter((e): e is string => Boolean(e));
 }
 
 async function alertOwners(orgId: string, row: UsageRow, level: UsageLevel) {

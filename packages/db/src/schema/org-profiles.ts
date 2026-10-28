@@ -4,7 +4,7 @@
  * One row per org (`org_id` unique → upsert-friendly). Edited by admins in
  * Settings → Qualifier; read by the Qualifier when it reasons over a lead.
  */
-import { boolean, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { organizations, timestamps } from "./identity";
 import { bookingProvider } from "./meetings";
 
@@ -51,6 +51,9 @@ export const orgProfiles = pgTable(
     bookingLengthMin: integer("booking_length_min").notNull().default(30),
     bookingHoursStart: integer("booking_hours_start").notNull().default(9),
     bookingHoursEnd: integer("booking_hours_end").notNull().default(17),
+    // Email the owners/admins every org alert that goes to Slack (migrations 0026
+    // + 0027; Workspace → Agent → Notifications → "Email the team"). Default on.
+    emailAlerts: boolean("email_alerts").notNull().default(true),
     // The one booking tool the org chose (migration 0019); null = booking off.
     // The chosen tool must also be configured (Cal.com key + event type, a
     // connected calendar, or a Calendly link) before the agent books through it.
@@ -69,6 +72,17 @@ export const orgProfiles = pgTable(
     connectwiseSite: text("connectwise_site"),
     connectwiseCompanyId: text("connectwise_company_id"),
     connectwiseMember: text("connectwise_member"),
+    // Website chat widget (migration 0025): the switch, greeting and bubble colour.
+    chatEnabled: boolean("chat_enabled").notNull().default(false),
+    chatGreeting: text("chat_greeting"),
+    chatAccent: text("chat_accent"),
+    // Slack card health (migrations 0028–0029). A saved webhook is "Untested"
+    // until a post succeeds (`slackVerifiedAt`); the last failed post keeps the
+    // card at "Needs attention" with Slack's reason. Saving or clearing the
+    // webhook resets both.
+    slackLastError: text("slack_last_error"),
+    slackLastErrorAt: timestamp("slack_last_error_at", { withTimezone: true }),
+    slackVerifiedAt: timestamp("slack_verified_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [index("org_profiles_org_id_idx").on(t.orgId)],

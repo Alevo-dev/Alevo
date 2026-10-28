@@ -10,7 +10,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill, StatusDot } from "@/components/ui/pill";
 import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow, showRatePct } from "@/lib/dashboard/window";
-import { displayName, fmtShort } from "@/lib/format";
+import { anonymousLabel, displayName, fmtShort } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { getCurrentUsage } from "@/lib/usage/current";
 import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
@@ -281,7 +281,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                       transitionTypes={["nav-forward"]}
                       className="font-medium text-ink no-underline hover:underline"
                     >
-                      {displayName(c.firstName, c.lastName, c.email)}
+                      {displayName(c.firstName, c.lastName, c.email ?? anonymousLabel(c.channel))}
                     </Link>
                     <span className="text-ink-muted">
                       {c.company ? `, ${c.company}` : ""}, {CHANNEL_LABEL[c.channel]}

@@ -3,13 +3,14 @@ import { and, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
-import { notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
+import { notifyBookingFailed, notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
+import type { BookingFailure } from "@/lib/notifications/lead-messages";
 import { crossedStrongFit } from "@/lib/notifications/lead-messages";
 import { getBookingAdapter, bookingConfigFromProfile } from "@/lib/booking";
 import { formatSlot, offerSlots } from "@/lib/booking/offer";
 import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
 import { retrieveKbContext } from "@/lib/kb/retrieve";
-import { notifySlack } from "@/lib/notifications/slack";
+import { notifyOrg } from "@/lib/notifications/notify";
 import { profileTimeZone } from "./schedule";
 
 export type VoiceToolContext = {
@@ -28,6 +29,14 @@ function scoped(ctx: VoiceToolContext) {
 
 function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
+}
+
+/** The calendar failed mid-call: alert the org (Slack + email), hand the caller to a person. */
+async function bookingBroke(ctx: VoiceToolContext, failure: BookingFailure): Promise<string> {
+  if (await notifyBookingFailed(ctx.orgId, ctx.conversationId, failure)) {
+    await requestPsaWriteback(ctx.orgId, ctx.conversationId, "handed_off");
+  }
+  return "The calendar isn't working right now. The team has been told. Tell the caller a colleague will call them back to set a time, and take a message.";
 }
 
 /**
@@ -64,7 +73,7 @@ export async function dispatchVoiceTool(
           .set({ status: "handed_off", updatedAt: new Date() })
           .where(and(scoped(ctx), sql`${conversations.status} <> 'booked'`)),
       );
-      await notifySlack(ctx.orgId, `Call escalated: ${reason}`).catch((e) => Sentry.captureException(e));
+      await notifyOrg(ctx.orgId, `Call escalated: ${reason}`).catch((e) => Sentry.captureException(e));
       await requestPsaWriteback(ctx.orgId, ctx.conversationId, "handed_off");
       return "Someone has been alerted and will join or call back shortly.";
     }
@@ -107,7 +116,7 @@ export async function dispatchVoiceTool(
             set: { body },
           }),
       );
-      await notifySlack(ctx.orgId, body).catch((e) => Sentry.captureException(e));
+      await notifyOrg(ctx.orgId, body).catch((e) => Sentry.captureException(e));
       return "Message recorded. Let the caller know someone will follow up.";
     }
 
@@ -120,7 +129,7 @@ export async function dispatchVoiceTool(
         offer = await offerSlots(adapter, tz);
       } catch (err) {
         Sentry.captureException(err);
-        return "Couldn't check the calendar right now. Take a message instead.";
+        return bookingBroke(ctx, { step: "availability", detail: err instanceof Error ? err.message : null });
       }
       if (offer.window === "none") return "No open times in the next 7 days. Take a message instead.";
       const lines = offer.slots.map((s) => `- ${formatSlot(s.startIso, tz, "spoken")} (start: ${s.startIso})`);
@@ -148,7 +157,10 @@ export async function dispatchVoiceTool(
         orgId: ctx.orgId,
         orgName: ctx.orgName,
       });
-      if (!result.ok) return `Booking failed (${result.error}). Offer another time or take a message.`;
+      if (!result.ok) {
+        if (result.conflict) return `Booking failed (${result.error}). Offer another time.`;
+        return bookingBroke(ctx, { step: "booking", detail: result.error });
+      }
 
       // The real name only (never the "Caller" placeholder) plus the email they gave.
       await saveContactDetails(ctx.orgId, ctx.contactId, { name: str(args.name), email });
@@ -207,7 +219,7 @@ export async function dispatchVoiceTool(
       if (updated.length === 0) return "The meeting is already booked, so the status stays booked. You're done.";
       if (status === "handed_off") {
         const note = str(args.note) || "A person needs to follow up";
-        await notifySlack(ctx.orgId, `Lead handed off after a call: ${note}`).catch((e) => Sentry.captureException(e));
+        await notifyOrg(ctx.orgId, `Lead handed off after a call: ${note}`).catch((e) => Sentry.captureException(e));
         await requestPsaWriteback(ctx.orgId, ctx.conversationId, "handed_off");
       }
       return status === "handed_off" ? "Lead marked for a person to follow up." : "Lead marked as not a fit.";

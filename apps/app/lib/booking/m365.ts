@@ -11,6 +11,7 @@ import {
   CancelResult,
   RescheduleResult,
 } from "./types";
+import { vendorError } from "@/lib/http/vendor-error";
 import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
@@ -38,7 +39,7 @@ async function calendarViewBusy(token: string, fromIso: string, toIso: string): 
   const res = await vendorFetch(`${GRAPH}/me/calendarView?${qs}`, {
     headers: { authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
   });
-  if (!res.ok) throw new Error(`Graph calendarView failed (${res.status})`);
+  if (!res.ok) throw await vendorError(res, "Graph calendarView");
   const json = (await res.json()) as {
     value?: { showAs?: string; start: { dateTime: string }; end: { dateTime: string } }[];
   };
@@ -113,7 +114,7 @@ export async function makeM365Adapter(
           .toISOString();
         const busy = await getScheduleBusy(token, mailbox, params.startIso, endIso);
         if (isBusy(params.startIso, cfg.lengthMin, busy)) {
-          return { ok: false, error: "that time was just taken" };
+          return { ok: false, error: "that time was just taken", conflict: true };
         }
         const event = {
           subject: inviteText(params).title,

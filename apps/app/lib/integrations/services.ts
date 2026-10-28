@@ -21,7 +21,7 @@ export type ServiceIcon =
 /** The page is split into these sections, in this order. */
 export type ServiceGroup = "capture" | "booking" | "communication" | "crm";
 export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string }[] = [
-  { id: "capture", title: "Lead capture", hint: "Where leads come in from your website: the hosted page, the embed, or your own form posting to Alevo." },
+  { id: "capture", title: "Lead capture", hint: "Where leads come in from your website: the form (hosted page, embed, or your own form posting to Alevo) and the chat bubble." },
   { id: "booking", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
   { id: "communication", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
   { id: "crm", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. ConnectWise today; HaloPSA and CRMs later." },
@@ -57,12 +57,18 @@ export type ServiceInput = {
   emailConfigured: boolean;
   booking: BookingSnapshot;
   connectwise: ConnectWiseSnapshot;
+  /** The website chat widget's switch (Integrations → Chat widget). */
+  chat: { enabled: boolean };
+  /** Slack card health from the profile: the last failed post, and whether any post ever succeeded since the webhook was saved. */
+  slack: { lastError: string | null; verified: boolean };
 };
 
 const CONNECTED = { label: "Connected", tone: "success" } as const;
 const IN_USE = { label: "Booking tool", tone: "brand" } as const;
 const NOT_CONNECTED = { label: "Not connected", tone: "muted" } as const;
 const NEEDS_SETUP = { label: "Needs setup", tone: "warning" } as const;
+const NEEDS_ATTENTION = { label: "Needs attention", tone: "danger" } as const;
+const UNTESTED = { label: "Untested", tone: "warning" } as const;
 const COMING_SOON = { label: "Coming soon", tone: "muted" } as const;
 const AGENT = "/workspace/agent";
 
@@ -119,7 +125,7 @@ function bookingService(tool: BookingTool, booking: BookingSnapshot, has: (key: 
 }
 
 /** Derives each service's state from what is actually stored, never from copy. */
-export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConfigured, booking, connectwise }: ServiceInput): ServiceView[] {
+export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConfigured, booking, connectwise, chat, slack }: ServiceInput): ServiceView[] {
   const has = (key: string) => setKeys.has(key);
 
   // ConnectWise is connected once every setting and both keys are stored; anything
@@ -141,6 +147,17 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       hint: "Hosted page, embed script, or API",
       icon: "alevo",
       status: { label: "Ready", tone: "success" },
+      keys: [],
+      managed: true,
+      listed: true,
+    },
+    {
+      id: "chat",
+      group: "capture",
+      name: "Chat widget",
+      hint: "Live chat on your site, answered by the agent",
+      icon: "alevo",
+      status: chat.enabled ? { label: "On", tone: "success" } : { label: "Off", tone: "muted" },
       keys: [],
       managed: true,
       listed: true,
@@ -181,10 +198,17 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       name: "Slack",
       hint: "Alerts for qualified leads",
       icon: "slack",
-      status: has("slack_webhook_url") ? CONNECTED : NOT_CONNECTED,
+      status: !has("slack_webhook_url") ? NOT_CONNECTED : slack.lastError ? NEEDS_ATTENTION : slack.verified ? CONNECTED : UNTESTED,
       keys: ["slack_webhook_url"],
       managed: true,
       listed: has("slack_webhook_url"),
+      issue: !has("slack_webhook_url")
+        ? undefined
+        : slack.lastError
+          ? `The last post to Slack failed — ${slack.lastError}. Alerts aren't reaching the channel: paste a fresh webhook under Manage, then Send test.`
+          : slack.verified
+            ? undefined
+            : "The Slack webhook is saved but nothing has been sent to it yet. Open Manage and Send test so you know alerts will reach the channel.",
     },
     {
       id: "connectwise",

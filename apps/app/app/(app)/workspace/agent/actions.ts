@@ -13,6 +13,8 @@ export type AgentValues = {
   sendWindowStartHour: number;
   sendWindowEndHour: number;
   smsFromNumber: string;
+  /** Email the owners/admins every alert that goes to Slack (org_profiles.email_alerts). */
+  emailAlerts: boolean;
 };
 export type AgentErrors = Partial<Record<"enabled" | "timezone" | "sendWindow" | "smsFromNumber", string>>;
 export type ActionState = {
@@ -38,6 +40,7 @@ function readValues(formData: FormData): AgentValues {
     sendWindowStartHour: hour(formData, "sendWindowStartHour", 8),
     sendWindowEndHour: hour(formData, "sendWindowEndHour", 20),
     smsFromNumber: s("smsFromNumber"),
+    emailAlerts: Boolean(formData.get("emailAlerts")),
   };
 }
 
@@ -78,6 +81,7 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
       sendWindowStartHour: values.sendWindowStartHour,
       sendWindowEndHour: values.sendWindowEndHour,
       smsFromNumber: nullable(values.smsFromNumber),
+      emailAlerts: values.emailAlerts,
     };
     await withOrg((tx) =>
       tx

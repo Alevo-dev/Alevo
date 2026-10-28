@@ -293,9 +293,9 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 - [x] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at` shown to the tenant (dashboard, 2026-10-27); internal daily alert (`speed-to-lead-watch`, orgs with p95 > 60s over ≥3 answered leads in 24h → the Slack webhook saved under Admin → Settings), 2026-10-27
 - [~] Usage meter: conversations, voice minutes, outbound dials vs plan allowance. *2026-10-27, hand-tested: limits enforced — alerts (Slack + owner email) at 80%, the agent pauses at 100% (Qualifier skips, voice says "can't take calls"), shell banner from 80%. Usage meter card with one bar per allowance on the dashboard (2026-10-27). Still to do: opt-in overage + cap once Stripe lands.*
 - [x] Super-admin view: same numbers across all orgs — `apps/admin` `/dashboard`, 7 / 30 / 90 switch, per-org funnel + p50 / p95 with slow orgs flagged; console restyled on the shared `@alevo/ui` package (2026-10-27, hand-tested). Lists paginated 2026-10-27: dashboard cards show one page of 25 with "View all" into `/organizations` and `/activity` (Newer / Older keyset pages, migration 0024 indexes); the app's Conversations and Meetings page the same way
-- [x] Slack: qualified lead, meeting booked, escalation requested — all four post to the org's Slack (`lib/notifications/lead-events.ts`): strong fit reached (first score ≥ 70), meeting booked (agent, voice, Cal.com external, Calendly), hand-off, escalation; plus the usage alerts and the **no-reply fallback** (`reply-watchdog`: 5 minutes without an outbound reply, or the agent off / paused / contact opted out → lead marked handed off + "Lead needs a person" with contact details) (2026-10-27)
+- [x] Slack: qualified lead, meeting booked, escalation requested — all four post to the org's Slack (`lib/notifications/lead-events.ts`): strong fit reached (first score ≥ 70), meeting booked (agent, voice, Cal.com external, Calendly), hand-off, escalation; plus the usage alerts and the **no-reply fallback** (`reply-watchdog`: 5 minutes without an outbound reply, or the agent off / paused / contact opted out → lead marked handed off + "Lead needs a person" with contact details) (2026-10-27). **Booking failed** (2026-10-28): the calendar failing under the agent (availability or booking, not a slot conflict) hands the lead off and posts "Booking failed for a qualified lead … Calendar said: …"; and **every org Slack alert** (qualified lead, booked, hand-off / escalation, needs a person, booking failed, call summaries) is also emailed to the owners/admins — "Email the team" switch under Workspace → Agent → Notifications (migrations 0026–0027); the Slack card is Untested until the first successful post, Needs attention with Slack's reason after a failed one (migrations 0028–0029)
 
-### Sprint 6 — Onboarding wizard (15–20h)
+### Sprint 6 — Onboarding wizard (15–20h) — ⏸ deferred 2026-10-28: the first clients are set up by hand (Workspace pages + Admin), the wizard comes after the first tenant is live
 - [ ] Company profile + brand basics
 - [ ] ICP builder (verticals, size, geography, must-haves, disqualifiers)
 - [ ] KB upload
@@ -307,11 +307,11 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 
 ### Sprint 7 — Chat widget, lead sourcing, email prospecting (55–70h)
 
-**Chat widget (~10h)**
-- [ ] Embeddable JS widget per org, served from the app; loads org branding
-- [ ] Web chat as a channel in `conversations`/`messages`, driven by the same Qualifier and Inngest flow
-- [ ] Captures name/email/phone mid-chat → contact + consent record; can hand off to SMS/email
-- [ ] Counts as an inbound conversation for usage
+**Chat widget (~10h)** — ✅ built 2026-10-28 (`public/chat.js`, `/api/chat/[orgId]`, Integrations → Chat widget; migration 0025)
+- [x] Embeddable JS widget per org, served from the app; loads org branding *(one script tag; company name, greeting and colour from the org profile; bubble bottom-right or left)*
+- [x] Web chat as a channel in `conversations`/`messages`, driven by the same Qualifier and Inngest flow *(`chat` channel; replies show in the widget while the visitor is on the page, fall through to email once they've left)*
+- [x] Captures name/email/phone mid-chat → contact + consent record; can hand off to SMS/email *(anonymous contact + `chat` consent at the first message; the agent asks for name + email early and saves them with `save_contact_details`)*
+- [x] Counts as an inbound conversation for usage
 
 **Email prospecting (~35–45h)**
 - [ ] Sending-provider adapter (Instantly or Smartlead): create workspace/campaign per tenant, add leads, pause/resume

@@ -3,14 +3,15 @@ import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { conversations, isSuppressed, meetings, messages, withService, type Channel } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
-import { notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
-import { crossedStrongFit } from "@/lib/notifications/lead-messages";
-import { notifySlack } from "@/lib/notifications/slack";
+import { notifyBookingFailed, notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
+import { crossedStrongFit, type BookingFailure } from "@/lib/notifications/lead-messages";
+import { notifyOrg } from "@/lib/notifications/notify";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
 import { getBookingAdapter, type BookingConfig } from "@/lib/booking";
 import { formatSlot, offerSlots } from "@/lib/booking/offer";
 import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
+import { chatVisitorPresent } from "@/lib/chat/service";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
 const SETTABLE_STATUS = ["active", "disqualified", "handed_off"] as const;
@@ -82,6 +83,8 @@ export type QualifierEffects = {
   status: SettableStatus | null;
   escalated: boolean;
   booked: boolean;
+  /** The calendar failed under the agent; the org was alerted and the lead handed off. */
+  bookingFailed: boolean;
 };
 
 export type DispatchTarget = {
@@ -161,9 +164,9 @@ function scoped(target: DispatchTarget) {
 }
 
 /**
- * Tell the org a lead needs a human (handoff or escalation). Best-effort: with
- * no Slack webhook configured `notifySlack` no-ops, and any failure is swallowed
- * so the agent turn never fails. Carries the fit score + a link to the thread.
+ * Tell the org a lead needs a human (handoff or escalation): Slack plus email
+ * to the owners/admins (`notifyOrg`). Best-effort: any failure is swallowed so
+ * the agent turn never fails. Carries the fit score + a link to the thread.
  */
 async function notifyHandoff(
   target: DispatchTarget,
@@ -190,10 +193,21 @@ async function notifyHandoff(
   const header = opts.urgent
     ? ":rotating_light: Lead escalated — needs a human now"
     : ":inbox_tray: Lead handed off — ready for a human";
-  await notifySlack(
-    target.orgId,
-    `${header}\n${who}\nFit score: ${score}${detail}${link}`,
-  ).catch(() => undefined);
+  await notifyOrg(target.orgId, `${header}\n${who}\nFit score: ${score}${detail}${link}`).catch(() => undefined);
+}
+
+/**
+ * The calendar failed under the agent (not a slot conflict). Alert the org once
+ * — Slack plus email — hand the lead to a person, and tell the model to promise
+ * a human follow-up instead of trying again.
+ */
+async function bookingBroke(target: DispatchTarget, effects: QualifierEffects, failure: BookingFailure): Promise<string> {
+  if (await notifyBookingFailed(target.orgId, target.conversationId, failure)) {
+    effects.bookingFailed = true;
+    effects.status = "handed_off";
+    await requestPsaWriteback(target.orgId, target.conversationId, "handed_off");
+  }
+  return "Booking isn't working right now. The team has been alerted and this lead is handed to a person: tell the contact a colleague will reach out shortly to set a time, and don't offer times again.";
 }
 
 /**
@@ -208,7 +222,13 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
   let providerRef: string | null = null;
   let note = "recorded in-app (no channel configured)";
 
-  if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
+  // Website chat: the visitor reads replies in the widget while they are on
+  // the page. Once they have left, the reply falls through to email (when we
+  // have one) so a follow-up is not lost; the widget still shows it if they return.
+  const chatLive = target.channel === "chat" && (await chatVisitorPresent(target.orgId, target.conversationId));
+  if (chatLive) {
+    note = "shown in the chat widget";
+  } else if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
     const sent = await sendSms({
       fromNumber: target.smsFromNumber,
       toPhone: target.contactPhone,
@@ -264,6 +284,8 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
       Sentry.captureMessage(`Qualifier email send failed: ${sent.error}`, "warning");
       note = `recorded, but email delivery failed (${sent.error})`;
     }
+  } else if (target.channel === "chat") {
+    note = "left in the chat (the visitor has gone and gave no email)";
   }
 
   await withService(async (tx) => {
@@ -350,7 +372,7 @@ export async function dispatchTool(
       // Alert the org the moment a lead is handed to a human (best-effort Slack),
       // and write the qualified lead back to the org's PSA.
       if (status === "handed_off") {
-        await notifyHandoff(target);
+        if (!effects.bookingFailed) await notifyHandoff(target); // the booking alert already said so
         await requestPsaWriteback(target.orgId, target.conversationId, "handed_off");
       }
       return `Conversation status set to ${status}.`;
@@ -383,7 +405,7 @@ export async function dispatchTool(
         offer = await offerSlots(adapter, tz);
       } catch (err) {
         Sentry.captureException(err);
-        return "Couldn't fetch availability right now — try again or hand off.";
+        return bookingBroke(target, effects, { step: "availability", detail: err instanceof Error ? err.message : null });
       }
       if (offer.window === "none") return "No open slots in the next 7 days — hand off to a human.";
       const lines = offer.slots.map((s) => `- ${formatSlot(s.startIso, tz, "written")} — ${s.startIso}`);
@@ -408,7 +430,10 @@ export async function dispatchTool(
         orgId: target.orgId,
         orgName: target.orgName,
       });
-      if (!result.ok) return `Booking failed (${result.error}). Offer another time or hand off.`;
+      if (!result.ok) {
+        if (result.conflict) return `Booking failed (${result.error}). Offer another time.`;
+        return bookingBroke(target, effects, { step: "booking", detail: result.error });
+      }
 
       // Confirm to the contact ourselves — never rely on the model to follow up.
       const when = new Intl.DateTimeFormat("en-US", {

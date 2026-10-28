@@ -131,6 +131,23 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
         </div>
       </Card>
 
+      <Card>
+        <CardHeader
+          title="Notifications"
+          hint={
+            <>
+              Every alert the agent raises — qualified lead, meeting booked, lead handed off or escalated, booking failed, lead needs a person,
+              call summaries — goes to your Slack channel when one is connected under <Link href="/workspace/integrations">Integrations</Link>.
+            </>
+          }
+        />
+        <div className="mt-6">
+          <SettingRow label="Email the team" htmlFor="emailAlerts" hint="Owners and admins get the same alerts by email. Plan-limit notices are always emailed.">
+            <Switch id="emailAlerts" name="emailAlerts" defaultChecked={Boolean(v("emailAlerts"))} />
+          </SettingRow>
+        </div>
+      </Card>
+
       <UnsavedBar visible={dirty} pending={pending} error={state.error} onDiscard={discard} />
       <LeaveDialog open={guard.pendingHref !== null} what="your agent changes" onStay={guard.stay} onLeave={guard.leave} />
     </form>
