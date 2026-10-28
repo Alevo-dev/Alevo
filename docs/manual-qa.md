@@ -503,6 +503,12 @@ Dashboards: **App** `/dashboard`, **Supabase** (orgs, memberships, conversations
 - [ ] Upload a logo. File > 10MB → "The logo must be 10MB or less."
 - [ ] Change name, click Save. Toast: "Workspace updated." Logo + name update in real-time in the header.
 
+### Speed to lead sparkline with quiet days (2026-10-28)
+- [ ] A workspace whose replies fall on non-adjacent days (e.g. Oct 22, 26, 28): the sparkline shows a violet dot on each of those days, joined by a dashed line across the quiet days. Before, it was blank with only a hover dot.
+- [ ] Two adjacent reply days are joined by the solid line (still animates in).
+- [ ] Hover a quiet day: crosshair + "no replies"; hover a reply day: the dot grows a ring and the tooltip shows the median.
+- [ ] Only one reply day in the window: the "Trend appears after a second period with replies" placeholder still shows.
+
 ### Calendar connect errors as toasts (2026-10-28)
 - [ ] Integrations → Google Calendar → Connect, then cancel on Google's consent screen → back on Integrations a red toast "Couldn't connect your calendar" with "You cancelled the sign-in before granting access." and the URL is plain `/workspace/integrations` (no `?calendar_error=`).
 - [ ] The toast does NOT disappear on its own; it goes only when you click its ×.
@@ -1020,14 +1026,14 @@ Run `npx supabase db push` first (migration 0024 adds the indexes; the pages wor
 - [ ] The console has the app's left rail: Alevo mark + Admin pill on top, Overview · Organizations · Activity · Settings (current page highlighted), then the theme control and "Open the app" at the bottom (where the app keeps its agent status). The top bar holds only the account button; on a phone it is burger + brand, and the burger opens the same rail as a drawer.
 - [ ] Overview / Activity: a platform action (e.g. `platform.secret_set` after saving the Slack webhook in Settings) shows **Internal admin** in the Org column, never a dash.
 - [ ] Overview: Recent activity shows at most 10 rows with a footer "Newest 10 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer rows than the card holds (11 / 26) the footers are absent.
-- [ ] `/activity`: 25 rows newest first with a By column (actor email or "System"), footer "25 on this page" with Newer (disabled) and Older. Older: the next 25, no row repeated, Newer enabled; Newer brings back exactly the first page; the URL carries `?cursor=older.<id>` and survives a refresh.
-- [ ] `/organizations`: same walk; header dot + "X of N agents on"; the count stays the same on every page.
-- [ ] Edit the cursor in the URL to a random UUID: "Nothing on this page. Back to the newest." with the link; garbage like `?cursor=abc` just shows the first page.
+- [ ] `/activity`: header "Newest first, 25 per page"; 25 rows with a By column (actor email or "System"), footer "Page 1 of N" with Previous (disabled) and Next. Next: the next 25, no row repeated, "Page 2 of N", Previous enabled; Previous brings back exactly the first page; the URL carries `?cursor=older.<id>.2` and survives a refresh.
+- [ ] `/organizations`: same walk; header dot + "X of N agents on. Newest first, 25 per page"; the count stays the same on every page.
+- [ ] A shared link whose row has since been deleted (edit the UUID in the cursor to a random one): "This page is empty — the log has changed since this link was made. Go to page 1." and the link works; garbage like `?cursor=abc` or yesterday's `older.<id>` shape just shows page 1.
 - [ ] Phone width: the footer wraps, buttons stay tappable, nothing scrolls sideways.
 
 **App** (`:3001`)
-- [ ] Conversations: header count is the real total (not the page size); 25 rows, footer "25 of N", Older / Newer walk as above; the lead-form link still works.
-- [ ] Meetings: the four figures count every meeting (not just the page); rows sort by start time with unscheduled ones by creation; Outcome and Manage controls still work on page 2; footer "25 of <booked>".
+- [ ] Conversations: header "N leads across your channels. Newest first, 25 per page" with the real total; 25 rows, footer "Page 1 of N", Previous / Next walk as above; the lead-form link still works.
+- [ ] Meetings: the four figures count every meeting (not just the page); rows sort by start time with unscheduled ones by creation; Outcome and Manage controls still work on page 2; footer "Page 1 of N" over every meeting including cancelled ones.
 - [ ] Both: with 25 rows or fewer, no footer at all.
 
 # Accessibility (2026-10-27)

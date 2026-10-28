@@ -43,7 +43,7 @@ describe("keyset pagination over audit_log", () => {
   });
 
   it("a cursor whose row is gone yields an empty page", async () => {
-    const gone = await page({ dir: "older", id: "00000000-0000-4000-8000-000000000000" });
-    expect(gone).toEqual({ rows: [], newer: null, older: null });
+    const gone = await page({ dir: "older", id: "00000000-0000-4000-8000-000000000000", page: 2 });
+    expect(gone).toEqual({ rows: [], newer: null, older: null, page: 2 });
   });
 });

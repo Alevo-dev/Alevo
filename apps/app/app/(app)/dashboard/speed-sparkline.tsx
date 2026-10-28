@@ -10,9 +10,11 @@ const W = 240;
 const H = 60;
 
 /**
- * The median reply time per bucket as one violet line, gaps where nothing was
- * answered. Every bucket is a hit band: hovering or focusing it draws a
- * crosshair + dot and shows the median (or "no replies") in a tooltip.
+ * The median reply time per bucket as one violet line: solid between
+ * consecutive buckets with replies, dashed across quiet buckets, and a dot on
+ * every bucket that had replies (so a lone busy day still shows). Every bucket
+ * is a hit band: hovering or focusing it draws a crosshair + dot and shows the
+ * median (or "no replies") in a tooltip.
  */
 export function SpeedSparkline({ points }: { points: SpeedPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
@@ -29,18 +31,17 @@ export function SpeedSparkline({ points }: { points: SpeedPoint[] }) {
   const x = (i: number) => (i * W) / (n - 1);
   const y = (s: number) => 4 + (H - 8) - (s / max) * (H - 8);
   const band = W / (n - 1);
-  // One path per run of consecutive known points, so a quiet day shows as a gap.
-  const runs: string[] = [];
-  let run: string[] = [];
-  points.forEach((p, i) => {
-    if (p.seconds == null) {
-      if (run.length > 1) runs.push(run.join(" "));
-      run = [];
-      return;
-    }
-    run.push(`${run.length ? "L" : "M"}${x(i).toFixed(1)} ${y(p.seconds).toFixed(1)}`);
+  // Solid segments join neighbouring buckets that both had replies; a dashed
+  // one bridges a quiet stretch so the eye can still follow the trend.
+  const dots = points.flatMap((p, i) => (p.seconds == null ? [] : [{ i, cx: x(i), cy: y(p.seconds) }]));
+  const solid: string[] = [];
+  const dashed: string[] = [];
+  dots.forEach((d, k) => {
+    const prev = dots[k - 1];
+    if (!prev) return;
+    const seg = `M${prev.cx.toFixed(1)} ${prev.cy.toFixed(1)} L${d.cx.toFixed(1)} ${d.cy.toFixed(1)}`;
+    (d.i - prev.i === 1 ? solid : dashed).push(seg);
   });
-  if (run.length > 1) runs.push(run.join(" "));
   const first = known[0]!;
   const last = known[known.length - 1]!;
   const current = active == null ? null : points[active];
@@ -56,10 +57,12 @@ export function SpeedSparkline({ points }: { points: SpeedPoint[] }) {
         {active != null && (
           <line x1={x(active)} x2={x(active)} y1={0} y2={H} stroke="var(--color-control)" strokeWidth="1" />
         )}
-        {runs.map((d, i) => (
+        {dashed.map((d) => (
+          <path key={d} d={d} fill="none" stroke="var(--color-violet)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" opacity="0.6" />
+        ))}
+        {solid.length > 0 && (
           <path
-            key={i}
-            d={d}
+            d={solid.join(" ")}
             fill="none"
             stroke="var(--color-violet)"
             strokeWidth="2.5"
@@ -68,6 +71,9 @@ export function SpeedSparkline({ points }: { points: SpeedPoint[] }) {
             pathLength="1"
             className="animate-draw"
           />
+        )}
+        {dots.map((d) => (
+          <circle key={d.i} cx={d.cx} cy={d.cy} r="2.5" fill="var(--color-violet)" />
         ))}
         {current?.seconds != null && active != null && (
           <circle cx={x(active)} cy={y(current.seconds)} r="4" fill="var(--color-surface)" stroke="var(--color-violet)" strokeWidth="2" />

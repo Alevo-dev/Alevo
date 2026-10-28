@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, count, eq, sql } from "drizzle-orm";
-import { contacts, conversations, finishPage, keysetOrder, keysetWhere, PAGE_SIZE, parseCursor } from "@alevo/db";
+import { contacts, conversations, finishPage, keysetOrder, keysetWhere, PAGE_SIZE, pageCount, parseCursor } from "@alevo/db";
 import { getCurrentOrg, withOrg } from "@alevo/auth";
 import { buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -56,7 +56,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Conversations" description={`${total} leads across your channels`}>
+      <PageHeader title="Conversations" description={`${total} leads across your channels. Newest first, ${PAGE_SIZE} per page.`}>
         {org && (
           <a href={`/f/${org.id}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
             Open lead form
@@ -80,7 +80,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
               <EmptyRow colSpan={5}>
                 {cursor ? (
                   <>
-                    Nothing on this page. <Link href="/conversations">Back to the newest</Link>.
+                    This page is empty — the list has changed since this link was made. <Link href="/conversations">Go to page 1</Link>.
                   </>
                 ) : (
                   "No conversations yet. Submit your lead form to create one."
@@ -113,7 +113,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
             )}
           </tbody>
         </Table>
-        <Pager newer={page.newer} older={page.older} href={cursorHref("/conversations")} label={`${page.rows.length} of ${total}`} />
+        <Pager prev={page.newer} next={page.older} page={page.page} pages={pageCount(total)} href={cursorHref("/conversations")} />
       </Card>
     </div>
   );

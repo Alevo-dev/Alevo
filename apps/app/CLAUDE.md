@@ -707,7 +707,8 @@ its anchor near the edges (never wraps, never leaves the card). Wired into the t
 chart (on the point, with "Up 2 from Oct 23" via `periodDelta`), the stat tiles'
 mini bars (`@alevo/ui/mini-bars`, pass `seriesLabels` + `unit`; without labels bars
 say "3 days ago"), the speed sparkline (`speed-sparkline.tsx`, crosshair + dot, "no
-replies" for gaps) and the source donut (segment lifts, centre swaps to the channel,
+replies" for gaps; a dot on every reply day, solid line between adjacent ones, dashed
+across quiet days) and the source donut (segment lifts, centre swaps to the channel,
 legend rows hover too). Hit targets are whole bands / columns, keyboard focusable,
 each with an `aria-label` + `role="img"`. A new chart uses the same primitive.
 
@@ -729,7 +730,9 @@ scroll. Keyset, not OFFSET: `packages/db/src/paginate.ts` exports `parseCursor`
 SQL, so microsecond timestamps compare exactly; `and()` it with the tenant scope),
 `keysetOrder` and `finishPage(rows, cursor)` (fetch `PAGE_SIZE + 1`, get `rows` plus
 `newer` / `older` cursors). `Pager` + `cursorHref` (`@alevo/ui/pager`) render
-Newer / Older as links in a `CardFooter`; any count the header needs is its own
+Previous / Next as links in a `CardFooter` reading "Page 3 of 12" (the page number
+rides in the cursor — `older.<id>.<page>` — and `pages` = `pageCount(total)`; a stale
+cursor says "This page is empty … Go to page 1"); any count the header needs is its own
 aggregate query. Paged today: Conversations, Meetings (sorted by
 `coalesce(start_at, created_at)`, figures from a filtered-count query), admin
 Organizations and Activity. Knowledge documents and members are bounded (plan

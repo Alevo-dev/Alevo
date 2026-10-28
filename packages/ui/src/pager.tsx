@@ -6,33 +6,43 @@ import { CardFooter } from "./card";
 import { cx } from "./cx";
 
 /**
- * Newer / Older for a table that pages by cursor (`@alevo/db` `finishPage`).
- * Each side is a link that puts the cursor in the URL (`href(cursor)`), so the
- * server page re-queries and the spot survives a refresh or a shared link.
- * Renders nothing when everything fits on one page.
+ * "Page 3 of 12" with Previous / Next for a table that pages by cursor
+ * (`@alevo/db` `finishPage`; `pages` from `pageCount(total)`). Each side is a
+ * link that puts the cursor in the URL (`href(cursor)`), so the server page
+ * re-queries and the spot survives a refresh or a shared link. Previous / Next
+ * rather than Newer / Older: once lists can be sorted and filtered the
+ * direction is whatever the sort says. Renders nothing when everything fits
+ * on one page.
  */
 export function Pager({
-  newer,
-  older,
+  prev,
+  next,
+  page,
+  pages,
   href,
-  label,
 }: {
-  newer: string | null;
-  older: string | null;
+  prev: string | null;
+  next: string | null;
+  /** The page being shown, 1-based (`Page.page`). */
+  page: number;
+  /** Total pages when the list has a count; omitted → "Page 3". */
+  pages?: number;
   href: (cursor: string | null) => string;
-  label?: ReactNode;
 }) {
-  if (!newer && !older) return null;
+  if (!prev && !next) return null;
   return (
     <CardFooter as="nav" aria-label="Pages">
-      <span className="text-label text-ink-muted">{label}</span>
+      <span className="text-label text-ink-muted">
+        Page {page}
+        {pages != null && ` of ${pages}`}
+      </span>
       <span className="flex items-center gap-2">
-        <PageLink href={newer ? href(newer) : null} rel="prev">
+        <PageLink href={prev ? href(prev) : null} rel="prev">
           <ChevronLeft className="size-4" aria-hidden="true" />
-          Newer
+          Previous
         </PageLink>
-        <PageLink href={older ? href(older) : null} rel="next">
-          Older
+        <PageLink href={next ? href(next) : null} rel="next">
+          Next
           <ChevronRight className="size-4" aria-hidden="true" />
         </PageLink>
       </span>

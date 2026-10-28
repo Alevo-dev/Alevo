@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PAGE_SIZE, parseCursor } from "@alevo/db";
+import { PAGE_SIZE, pageCount, parseCursor } from "@alevo/db";
 import { Card } from "@alevo/ui/card";
 import { PageHeader } from "@alevo/ui/page-header";
 import { cursorHref, Pager } from "@alevo/ui/pager";
@@ -23,7 +23,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
         description={
           <>
             <StatusDot tone={counts.live > 0 ? "success" : "muted"} live={counts.live > 0} />
-            {counts.live} of {counts.total} agents on, newest first, {PAGE_SIZE} to a page
+            {counts.live} of {counts.total} agents on. Newest first, {PAGE_SIZE} per page
           </>
         }
       />
@@ -33,14 +33,14 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
           empty={
             cursor ? (
               <>
-                Nothing on this page. <Link href="/organizations">Back to the newest</Link>.
+                This page is empty — the list has changed since this link was made. <Link href="/organizations">Go to page 1</Link>.
               </>
             ) : (
               "No organizations yet."
             )
           }
         />
-        <Pager newer={page.newer} older={page.older} href={cursorHref("/organizations")} label={`${page.rows.length} of ${counts.total}`} />
+        <Pager prev={page.newer} next={page.older} page={page.page} pages={pageCount(counts.total)} href={cursorHref("/organizations")} />
       </Card>
     </div>
   );

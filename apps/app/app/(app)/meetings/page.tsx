@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, eq, sql, type SQL } from "drizzle-orm";
-import { contacts, finishPage, keysetOrder, keysetWhere, meetings, PAGE_SIZE, parseCursor } from "@alevo/db";
+import { contacts, finishPage, keysetOrder, keysetWhere, meetings, PAGE_SIZE, pageCount, parseCursor } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -34,6 +34,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
     withOrg((tx) =>
       tx
         .select({
+          total: sql<number>`count(*)`.mapWith(Number),
           booked: countWhere(sql`${meetings.status} <> 'cancelled'`),
           showed: countWhere(sql`${meetings.outcome} = 'showed'`),
           noShows: countWhere(sql`${meetings.outcome} = 'no_show' or ${meetings.status} = 'no_show'`),
@@ -65,13 +66,13 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
     ),
   ]);
   const page = finishPage(fetched, cursor);
-  const figures = figureRows[0] ?? { booked: 0, showed: 0, noShows: 0, converted: 0 };
+  const figures = figureRows[0] ?? { total: 0, booked: 0, showed: 0, noShows: 0, converted: 0 };
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Meetings"
-        description={`Booked by the agent, with the outcome your reps record. Times in ${tzLabel(tz)}.`}
+        description={`Booked by the agent, with the outcome your reps record. Latest start first, ${PAGE_SIZE} per page. Times in ${tzLabel(tz)}.`}
       />
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Meeting figures">
@@ -98,7 +99,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
               <EmptyRow colSpan={6}>
                 {cursor ? (
                   <>
-                    Nothing on this page. <Link href="/meetings">Back to the latest</Link>.
+                    This page is empty — the list has changed since this link was made. <Link href="/meetings">Go to page 1</Link>.
                   </>
                 ) : (
                   "No meetings booked yet."
@@ -141,7 +142,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
             )}
           </tbody>
         </Table>
-        <Pager newer={page.newer} older={page.older} href={cursorHref("/meetings")} label={`${page.rows.length} of ${figures.booked}`} />
+        <Pager prev={page.newer} next={page.older} page={page.page} pages={pageCount(figures.total)} href={cursorHref("/meetings")} />
       </Card>
     </div>
   );

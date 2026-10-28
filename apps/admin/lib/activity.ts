@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { auditLog, finishPage, keysetOrder, keysetWhere, organizations, PAGE_SIZE, users, withService, type Cursor } from "@alevo/db";
 
 const KEY = { at: auditLog.createdAt, id: auditLog.id };
@@ -29,3 +29,9 @@ export function activityPage(cursor: Cursor | null, size = PAGE_SIZE) {
 }
 
 export type ActivityRow = Awaited<ReturnType<typeof activityPage>>["rows"][number];
+
+/** Every audit row there is — for "Page 3 of 12". One aggregate, not per page. */
+export async function activityCount(): Promise<number> {
+  const [row] = await withService((tx) => tx.select({ n: count() }).from(auditLog));
+  return row?.n ?? 0;
+}
