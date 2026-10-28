@@ -1,4 +1,5 @@
 import "server-only";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Voyage AI embeddings (Anthropic's recommended RAG embeddings). Raw HTTP — no
@@ -20,11 +21,11 @@ async function embed(texts: string[], inputType: "document" | "query"): Promise<
   const key = process.env.VOYAGE_API_KEY;
   if (!key) throw new Error("VOYAGE_API_KEY is not set");
 
-  const res = await fetch(VOYAGE_URL, {
+  const res = await vendorFetch(VOYAGE_URL, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: JSON.stringify({ input: texts, model: MODEL, input_type: inputType }),
-  });
+  }, { idempotent: true, retries: 3 }); // pure function of its input: safe to replay, and Voyage rate-limits (429)
   if (!res.ok) {
     throw new Error(`Voyage embeddings failed (${res.status}): ${await res.text()}`);
   }

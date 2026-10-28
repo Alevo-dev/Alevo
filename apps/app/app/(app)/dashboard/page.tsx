@@ -9,7 +9,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill, StatusDot } from "@/components/ui/pill";
-import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow } from "@/lib/dashboard/window";
+import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow, showRatePct } from "@/lib/dashboard/window";
 import { displayName, fmtShort } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { getCurrentUsage } from "@/lib/usage/current";
@@ -72,7 +72,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     sql`${conversations.createdAt} >= ${windowStart}`,
   );
 
-  const [org, [clock], convDaily, meetingDaily, callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn] =
+  const [org, [clock], convDaily, meetingDaily, [outcomes], callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn] =
     await Promise.all([
       getCurrentOrg(),
       withOrg((tx) => tx.select({ today: sql<string>`${today}::text` }).from(sql`(select 1) as t`)),
@@ -93,6 +93,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           .from(meetings)
           .where(and(inOrg(meetings.orgId), sql`${meetings.createdAt} >= ${windowStart}`, sql`${meetings.status} <> 'cancelled'`))
           .groupBy(sql`ago`),
+      ),
+      // Show rate: meetings that took place in the window and have an outcome marked.
+      withOrg((tx) =>
+        tx
+          .select({
+            showed: sql<number>`count(*) filter (where ${meetings.outcome} = 'showed')`.mapWith(Number),
+            held: count,
+          })
+          .from(meetings)
+          .where(and(inOrg(meetings.orgId), sql`${meetings.startAt} >= ${windowStart}`, sql`${meetings.outcome} <> 'pending'`)),
       ),
       withOrg((tx) =>
         tx
@@ -160,6 +170,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     meetings: toSeries(meetingDaily, buckets),
     calls: toSeries(callDaily, buckets),
   };
+  const showRate = showRatePct(outcomes?.showed ?? 0, outcomes?.held ?? 0);
   const todayIso = clock?.today ?? new Date().toISOString().slice(0, 10);
   const labels = bucketLabels(todayIso, days);
   const shorts = bucketShortLabels(todayIso, days);
@@ -188,7 +199,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
       </PageHeader>
 
-      <KpiTiles days={days} {...series} />
+      <KpiTiles days={days} labels={labels} period={bucket} {...series} />
 
       {/* Row 1 (mockup): leads area chart, 2/3; speed to lead, 1/3. */}
       <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" aria-label="Leads and response time">
@@ -202,7 +213,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {/* Row 2 (mockup): meetings columns, lead sources, plan usage. */}
       <section className="grid gap-6 lg:grid-cols-3" aria-label="Meetings, sources and usage">
         <Card>
-          <CardHeader title="Meetings booked" hint={`${per[0]!.toUpperCase()}${per.slice(1)}, last ${days} days`} />
+          <CardHeader
+            title="Meetings booked"
+            hint={`${per[0]!.toUpperCase()}${per.slice(1)}, last ${days} days`}
+            aside={
+              showRate != null ? (
+                <span className="text-label text-ink-muted">
+                  Show rate <strong className="tabular font-semibold text-ink">{showRate}%</strong>
+                  <span className="sr-only">, {outcomes?.showed ?? 0} of {outcomes?.held ?? 0} meetings held</span>
+                </span>
+              ) : (
+                <span className="text-label text-ink-muted">
+                  Show rate: <Link href="/meetings">mark outcomes</Link>
+                </span>
+              )
+            }
+          />
           <TrendChart points={points(series.meetings)} unit="meetings" kind="columns" tone="brand" width={400} />
         </Card>
         <Card>

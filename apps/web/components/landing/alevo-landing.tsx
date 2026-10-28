@@ -233,13 +233,13 @@ export function AlevoLanding() {
       <header style={{ position: "sticky", top: 0, zIndex: 50, backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(var(--bgrgb),.72)", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 32 }}>
           <a href="#top" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src={LOGO} alt="Alevo" style={{ width: 30, height: 30, objectFit: "contain" }} />
+            <img src={LOGO} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />
             <span style={{ fontWeight: 600, fontSize: 18, letterSpacing: "-.02em" }}>Alevo</span>
           </a>
           <nav data-navlinks="" style={{ display: "flex", gap: 28, fontSize: 14 }}>
             {NAV.map(([l, id]) =>
               activeId === id ? (
-                <a key={id} href={`#${id}`} style={{ color: "#38b6ff", fontWeight: 500 }}>{l}</a>
+                <a key={id} href={`#${id}`} style={{ color: "var(--blue-t)", fontWeight: 500 }}>{l}</a>
               ) : (
                 <a key={id} href={`#${id}`} className="lk-muted">{l}</a>
               ),
@@ -270,7 +270,7 @@ export function AlevoLanding() {
         <div className="mobile-menu">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
             <a href="#top" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <img src={LOGO} alt="Alevo" style={{ width: 30, height: 30, objectFit: "contain" }} />
+              <img src={LOGO} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />
               <span style={{ fontWeight: 600, fontSize: 18, letterSpacing: "-.02em" }}>Alevo</span>
             </a>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -299,6 +299,7 @@ export function AlevoLanding() {
         </div>
       </div>
 
+      <main>
       {/* HERO */}
       <section id="top" style={{ position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(var(--ink),.07) 1px,transparent 1px)", backgroundSize: "28px 28px", WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 30%,#000 30%,transparent 75%)", maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%,#000 30%,transparent 75%)", pointerEvents: "none" }} />
@@ -332,7 +333,7 @@ export function AlevoLanding() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
                 <img src={LOGO} alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
                 <span style={{ fontSize: 14, fontWeight: 600 }}>Alevo agent</span>
-                <span className="mono" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: ".08em", color: "#3ddc97" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3ddc97", animation: "pulse 1.6s infinite" }} />LIVE</span>
+                <span className="mono" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: ".08em", color: "var(--green-t)" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3ddc97", animation: "pulse 1.6s infinite" }} />LIVE</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
                 {[["Conversations today", convos], ["Meetings booked", meetings], ["Avg. first reply", "0.8s"]].map(([lbl, val], i) => (
@@ -365,7 +366,7 @@ export function AlevoLanding() {
       {/* INBOUND */}
       <section id="inbound" style={{ maxWidth: 1200, margin: "0 auto", padding: "100px 24px 60px" }}>
         <div data-reveal="" style={{ maxWidth: 720 }}>
-          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#38b6ff" }}>01 · INBOUND</div>
+          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--blue-t)" }}>01 · INBOUND</div>
           <h2 style={{ fontSize: "clamp(34px,4.4vw,54px)", lineHeight: 1.05, letterSpacing: "-.04em", fontWeight: 600, margin: "16px 0 0", textWrap: "balance" }}>Answers in seconds, on every channel your buyers use.</h2>
           <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "18px 0 0", textWrap: "pretty" }}>Website chat, form fills and phone calls all land with the same agent. It qualifies, answers questions from your playbook, and books the meeting before the lead goes cold.</p>
         </div>
@@ -432,7 +433,7 @@ export function AlevoLanding() {
                   <span style={{ fontSize: 13, fontWeight: 500 }}>Inbound call · (415) 555-0142</span>
                   <span style={{ fontSize: 11, color: "var(--dim)" }}>Answered on first ring</span>
                 </div>
-                <span className="mono" style={{ marginLeft: "auto", fontSize: 12, color: "#3ddc97", fontVariantNumeric: "tabular-nums" }}>00:{pad2(secs)}</span>
+                <span className="mono" style={{ marginLeft: "auto", fontSize: 12, color: "var(--green-t)", fontVariantNumeric: "tabular-nums" }}>00:{pad2(secs)}</span>
               </div>
               <div style={{ padding: "4px 0" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 3, height: 44 }}>
@@ -459,7 +460,7 @@ export function AlevoLanding() {
       {/* OUTBOUND */}
       <section id="outbound" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px 60px" }}>
         <div data-reveal="" style={{ maxWidth: 720 }}>
-          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#a06bff" }}>02 · OUTBOUND</div>
+          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--violet-t)" }}>02 · OUTBOUND</div>
           <h2 style={{ fontSize: "clamp(34px,4.4vw,54px)", lineHeight: 1.05, letterSpacing: "-.04em", fontWeight: 600, margin: "16px 0 0", textWrap: "balance" }}>Pipeline that builds itself while your team sleeps.</h2>
           <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "18px 0 0", textWrap: "pretty" }}>Alevo writes and sends personalized emails to new prospects and existing customers, and makes cold calls from your lists. Replies and outcomes flow straight back into your CRM.</p>
         </div>
@@ -526,7 +527,7 @@ export function AlevoLanding() {
       <section id="integrations" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px" }}>
         <div data-reveal="" style={{ borderRadius: 28, border: "1px solid rgba(var(--ink),.08)", background: "radial-gradient(ellipse 60% 80% at 50% 0%,rgba(110,140,255,.1),transparent 70%),rgba(var(--ink),.02)", padding: "clamp(28px,5vw,64px)", overflow: "hidden" }}>
           <div style={{ maxWidth: 680 }}>
-            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#3ddc97" }}>03 · INTEGRATIONS</div>
+            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--green-t)" }}>03 · INTEGRATIONS</div>
             <h2 style={{ fontSize: "clamp(34px,4.4vw,54px)", lineHeight: 1.05, letterSpacing: "-.04em", fontWeight: 600, margin: "16px 0 0", textWrap: "balance" }}>Plugs into the CRM and calendar you already run.</h2>
             <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "18px 0 0", textWrap: "pretty" }}>Two-way sync keeps contacts, deal stages, notes and bookings current. Alevo checks real availability before it offers a time, and reschedules or cancels when buyers ask.</p>
           </div>
@@ -602,7 +603,7 @@ export function AlevoLanding() {
       <section id="pricing" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px" }}>
         <div data-reveal="" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 24 }}>
           <div style={{ maxWidth: 620 }}>
-            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#38b6ff" }}>PRICING</div>
+            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--blue-t)" }}>PRICING</div>
             <h2 style={{ fontSize: "clamp(34px,4.4vw,54px)", lineHeight: 1.05, letterSpacing: "-.04em", fontWeight: 600, margin: "16px 0 0" }}>Plans that scale with your pipeline.</h2>
           </div>
           <div style={{ position: "relative", display: "flex", padding: 4, borderRadius: 999, border: "1px solid rgba(var(--ink),.1)", background: "rgba(var(--ink),.03)" }}>
@@ -661,7 +662,7 @@ export function AlevoLanding() {
       {/* FAQ */}
       <section id="faq" style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,380px),1fr))", gap: 48 }}>
         <div data-reveal="">
-          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#a06bff" }}>FAQ</div>
+          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--violet-t)" }}>FAQ</div>
           <h2 style={{ fontSize: "clamp(34px,4.4vw,54px)", lineHeight: 1.05, letterSpacing: "-.04em", fontWeight: 600, margin: "16px 0 0" }}>Questions, answered.</h2>
         </div>
         <div data-reveal="" style={{ borderTop: "1px solid rgba(var(--ink),.08)" }}>
@@ -691,6 +692,7 @@ export function AlevoLanding() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* FOOTER — shared with every other page (business details + all legal links). */}
       <SiteFooter />

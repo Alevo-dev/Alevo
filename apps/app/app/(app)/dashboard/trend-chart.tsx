@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { ChartTooltip, periodDelta } from "@/components/ui/chart-tooltip";
 import { labelStep, niceMax, showLabel } from "@/lib/dashboard/window";
 
 export type TrendPoint = { label: string; short: string; n: number };
@@ -128,6 +129,7 @@ export function TrendChart({
                 width={band}
                 height={PLOT_H}
                 fill="transparent"
+                role="img"
                 tabIndex={0}
                 aria-label={`${p.label}: ${p.n} ${unit}`}
                 onPointerEnter={() => setActive(i)}
@@ -158,16 +160,14 @@ export function TrendChart({
       </svg>
 
       {current && active != null && (
-        <div
-          role="status"
-          className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-sm border border-hairline bg-raised px-2.5 py-1.5 text-xs shadow-sm"
-          style={{ left: `${(cx(active) / W) * 100}%` }}
-        >
-          <span className="tabular font-mono font-semibold text-ink">{current.n}</span>{" "}
-          <span className="text-ink-muted">
-            {unit} · {current.label}
-          </span>
-        </div>
+        <ChartTooltip
+          x={cx(active) / W}
+          y={y(current.n) / H}
+          value={current.n}
+          label={`${unit} · ${current.label}`}
+          detail={periodDelta(current.n, points[active - 1]?.n, points[active - 1]?.label)}
+          swatch={color}
+        />
       )}
 
       <table className="sr-only" aria-label={`${unit} by period`}>

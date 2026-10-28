@@ -14,7 +14,6 @@ const field: React.CSSProperties = {
   fontSize: 14,
   fontFamily: "inherit",
   color: "var(--text)",
-  outline: "none",
 };
 const label: React.CSSProperties = { fontSize: 13, color: "var(--dim)", marginBottom: 6, display: "block" };
 const err: React.CSSProperties = { fontSize: 13, color: "#f26d6d", marginTop: 6 };
@@ -36,23 +35,23 @@ export function ContactForm() {
       <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,220px),1fr))" }}>
         <div>
           <label style={label} htmlFor="name">Name</label>
-          <input id="name" name="name" autoComplete="name" placeholder="Sam Rivera" style={field} aria-invalid={!!state.errors?.name} />
+          <input id="name" name="name" className="field" autoComplete="name" placeholder="Sam Rivera" style={field} aria-invalid={!!state.errors?.name} />
           {state.errors?.name ? <p style={err}>{state.errors.name}</p> : null}
         </div>
         <div>
           <label style={label} htmlFor="email">Work email</label>
-          <input id="email" name="email" type="email" autoComplete="email" placeholder="sam@company.com" style={field} aria-invalid={!!state.errors?.email} />
+          <input id="email" name="email" className="field" type="email" autoComplete="email" placeholder="sam@company.com" style={field} aria-invalid={!!state.errors?.email} />
           {state.errors?.email ? <p style={err}>{state.errors.email}</p> : null}
         </div>
       </div>
       <div>
         <label style={label} htmlFor="company">Company</label>
-        <input id="company" name="company" autoComplete="organization" placeholder="Northpeak Logistics" style={field} aria-invalid={!!state.errors?.company} />
+        <input id="company" name="company" className="field" autoComplete="organization" placeholder="Northpeak Logistics" style={field} aria-invalid={!!state.errors?.company} />
         {state.errors?.company ? <p style={err}>{state.errors.company}</p> : null}
       </div>
       <div>
         <label style={label} htmlFor="message">What would you like Alevo to handle?</label>
-        <textarea id="message" name="message" rows={4} placeholder="We get ~200 inbound leads a month and reply too slowly…" style={{ ...field, resize: "vertical" }} aria-invalid={!!state.errors?.message} />
+        <textarea id="message" name="message" className="field" rows={4} placeholder="We get ~200 inbound leads a month and reply too slowly…" style={{ ...field, resize: "vertical" }} aria-invalid={!!state.errors?.message} />
         {state.errors?.message ? <p style={err}>{state.errors.message}</p> : null}
       </div>
       <button type="submit" disabled={pending} className="btn-grad" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 48, borderRadius: 999, border: 0, fontWeight: 600, fontSize: 15, color: "#06070b", background: "linear-gradient(120deg,#38b6ff,#a06bff)", cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>

@@ -14,7 +14,7 @@
   --text3: #3a4560;
   --muted: #4f5a72;
   --dim: #626d85;
-  --dim2: #78829a;
+  --dim2: #66708a; /* 4.9:1 on white at 11px */
   --ink: 15, 23, 42;
   --blue-t: #0a6fb8;
   --violet-t: #6a3bd4;
@@ -42,7 +42,7 @@
   --text3: #b7c0d4;
   --muted: #9ba5bf;
   --dim: #838ea9;
-  --dim2: #6f7a96;
+  --dim2: #7f8aa6; /* 4.9:1 on --panel2 at 11px */
   --ink: 255, 255, 255;
   --blue-t: #7cccff;
   --violet-t: #c4a6ff;
@@ -157,7 +157,10 @@
 .alevo .prose p { margin: 0 0 14px; }
 .alevo .prose ul { margin: 0 0 14px; padding-left: 20px; }
 .alevo .prose li { margin: 5px 0; }
-.alevo .prose a { color: #38b6ff; }
+.alevo .prose a { color: var(--blue-t); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, currentColor 55%, transparent); }
+.alevo .prose a:hover { text-decoration-color: currentColor; }
+/* Form fields: the inline style clears the UA outline, so give focus its own ring. */
+.alevo .field:focus-visible { outline: 2px solid var(--blue-t); outline-offset: 2px; border-color: transparent; }
 .alevo .prose strong { color: var(--text); font-weight: 600; }
 
 /* Header actions (desktop) + mobile hamburger + slide-in menu */

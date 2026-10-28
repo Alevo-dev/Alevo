@@ -263,6 +263,10 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
   speed-to-lead watch. `@alevo/db` exposes `set/get/deletePlatformSecret` +
   `platformSecretStatus`; service path only; the admin app needs the same
   `SECRETS_MASTER_KEY` as the app.
+- **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
+  `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
+  `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
+  Pagination below.
 
 ## The Qualifier (Claude agent)
 
@@ -632,10 +636,41 @@ chart primitive (`kind="area" | "columns"`, hover + keyboard tooltip, peak label
 sr-only table, `width` ≈ the card's px so labels stay readable; axis labels thin out
 via `labelStep` / `showLabel`). Charts are inline SVG on the tokens — no chart library.
 
+**Every chart has a hover / focus tooltip** — `ChartTooltip` (`@alevo/ui/chart-tooltip`):
+value bold, label muted, optional detail line and a stroke swatch; positioned by the
+mark's fractional x / y inside a `relative` box so it scales with the SVG and flips
+its anchor near the edges (never wraps, never leaves the card). Wired into the trend
+chart (on the point, with "Up 2 from Oct 23" via `periodDelta`), the stat tiles'
+mini bars (`@alevo/ui/mini-bars`, pass `seriesLabels` + `unit`; without labels bars
+say "3 days ago"), the speed sparkline (`speed-sparkline.tsx`, crosshair + dot, "no
+replies" for gaps) and the source donut (segment lifts, centre swaps to the channel,
+legend rows hover too). Hit targets are whole bands / columns, keyboard focusable,
+each with an `aria-label` + `role="img"`. A new chart uses the same primitive.
+
 The super-admin console (`apps/admin`, `/dashboard`) shows the same funnel across
 every org (`funnelByOrg(days)` in `packages/db/src/metrics.ts`, service path, clock
 read in SQL) with the same 7 / 30 / 90 switch, p95 flagged over 60s. Dev data for
-both: `supabase/seed-dev-dashboard.sql`.
+both: `supabase/seed-dev-dashboard.sql`. Its lists are one page each (busiest 25 in the
+funnel, newest 25 orgs, newest 25 audit rows) with a "View all" footer into
+`/organizations` and `/activity`, which page through the rest (`lib/orgs.ts`,
+`lib/activity.ts`; shared tables in `components/`).
+
+## Pagination (every list that can grow)
+
+Rule: a page never reads more than `PAGE_SIZE` (25) rows of a list, and a dashboard
+card shows one page with a link to the dedicated page rather than paging in place
+(so flipping a page does not re-run every other query on the screen). No infinite
+scroll. Keyset, not OFFSET: `packages/db/src/paginate.ts` exports `parseCursor`
+(from `?cursor=`), `keysetWhere(table, { at, id }, cursor)` (anchor row looked up in
+SQL, so microsecond timestamps compare exactly; `and()` it with the tenant scope),
+`keysetOrder` and `finishPage(rows, cursor)` (fetch `PAGE_SIZE + 1`, get `rows` plus
+`newer` / `older` cursors). `Pager` + `cursorHref` (`@alevo/ui/pager`) render
+Newer / Older as links in a `CardFooter`; any count the header needs is its own
+aggregate query. Paged today: Conversations, Meetings (sorted by
+`coalesce(start_at, created_at)`, figures from a filtered-count query), admin
+Organizations and Activity. Knowledge documents and members are bounded (plan
+limits, Clerk's 20 seats) and stay unpaged. Tests: `tests/pagination.test.ts` (pure)
+and `tests/pagination-db.test.ts` (real walk over `audit_log`).
 
 ## Plan limits (usage allowances)
 
@@ -731,6 +766,22 @@ tunnel `:3001` with ngrok and point the Clerk webhook at `/api/webhooks/clerk`.
 
 > Docker alternative (if WSL2 is ever available): `supabase start` + `supabase
 > db reset` give the full local stack on `:54322` and run `seed.sql`.
+
+## Vendor calls (timeouts + retries)
+
+Every raw HTTP call to a vendor goes through `vendorFetch` (`lib/http/vendor-fetch.ts`;
+rules in `retry.ts`, tested): a 15s timeout per attempt (ConnectWise / URL extraction
+20s) and up to 2 retries with exponential backoff + jitter, honouring `Retry-After`
+(capped at 10s). What retries: 429 / 502 / 503 / 504 for any request; timeouts, network
+drops, 500 / 408 / 425 only when the request is **idempotent** (GET / PUT / DELETE by
+default; a POST opts in with `{ idempotent: true }` — Google free/busy and Graph
+getSchedule are reads, Graph event creation dedupes on `transactionId`, Voyage
+embeddings are a pure function of their input). A timed-out POST is never replayed
+(it may have landed). Callers keep their own `res.ok` handling and vendor-specific
+cases (Twilio 21610, Google 410, Graph 404). SDK clients bound themselves: Anthropic
+`timeout: 90_000, maxRetries: 2` (`lib/qualifier/run.ts`), aws4fetch retries R2 on
+its own, Resend sends are best-effort and logged. Inngest step retries sit above all
+of this for background work. Never call `fetch` on a vendor directly.
 
 ## Observability
 

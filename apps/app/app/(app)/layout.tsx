@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar: burger menu + logo on mobile, logo on desktop, account menu on the right.
             The agent status sits left of the avatar on phones; desktop has it in the sidebar. */}
-        <div className="flex h-14 shrink-0 items-center justify-between px-4 md:px-10">
+        <header className="flex h-14 shrink-0 items-center justify-between px-4 md:px-10">
           <div className="flex items-center gap-3">
             <MobileMenu plan={plan} />
             <Link href="/dashboard" className="flex items-center gap-3 text-ink no-underline">
@@ -54,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             {orgId && <AgentStatus on={agentOn} compact className="md:hidden" />}
             <UserMenu />
           </div>
-        </div>
+        </header>
         <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">
           <UsageBanner rows={usage} />
           {children}

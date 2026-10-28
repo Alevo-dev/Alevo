@@ -21,12 +21,17 @@ const pct = (n: number, of: number) =>
  *  of its series, so the number and the bars always agree. */
 export function KpiTiles({
   days,
+  labels,
+  period,
   leads,
   qualified,
   meetings,
   calls,
 }: {
   days: number;
+  /** One per bar, oldest first. */
+  labels: string[];
+  period: "day" | "week";
   leads: number[];
   qualified: number[];
   meetings: number[];
@@ -45,6 +50,9 @@ export function KpiTiles({
         value={leadsN}
         delta={`Last ${days} days`}
         series={leads}
+        seriesLabels={labels}
+        unit="leads"
+        period={period}
         tone="brand"
         featured
       />
@@ -57,6 +65,9 @@ export function KpiTiles({
             : "Booked or handed to a rep"
         }
         series={qualified}
+        seriesLabels={labels}
+        unit="qualified"
+        period={period}
         tone="violet"
       />
       <StatTile
@@ -68,6 +79,9 @@ export function KpiTiles({
             : `Last ${days} days`
         }
         series={meetings}
+        seriesLabels={labels}
+        unit="meetings"
+        period={period}
         tone="success"
       />
       <StatTile
@@ -75,6 +89,9 @@ export function KpiTiles({
         value={sum(calls)}
         delta="Answered by the agent"
         series={calls}
+        seriesLabels={labels}
+        unit="calls"
+        period={period}
         tone="warning"
       />
     </section>

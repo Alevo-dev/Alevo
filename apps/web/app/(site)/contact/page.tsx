@@ -27,7 +27,7 @@ export default function ContactPage() {
         <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,360px),1fr))", alignItems: "start" }}>
           {/* Scheduler */}
           <div>
-            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#38b6ff", marginBottom: 14 }}>PICK A TIME</div>
+            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--blue-t)", marginBottom: 14 }}>PICK A TIME</div>
             {embedSrc ? (
               <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid rgba(var(--ink),.1)", background: "#fff" }}>
                 <iframe
@@ -49,7 +49,7 @@ export default function ContactPage() {
 
           {/* Message form */}
           <div>
-            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#a06bff", marginBottom: 14 }}>OR SEND A NOTE</div>
+            <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--violet-t)", marginBottom: 14 }}>OR SEND A NOTE</div>
             <ContactForm />
           </div>
         </div>

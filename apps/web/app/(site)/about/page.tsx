@@ -38,7 +38,7 @@ export default function AboutPage() {
       </Section>
 
       <Section muted>
-        <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#a06bff" }}>WHAT WE HOLD TO</div>
+        <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--violet-t)" }}>WHAT WE HOLD TO</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,300px),1fr))", gap: 20, marginTop: 32 }}>
           {values.map(([t, d]) => (
             <div key={t} style={{ borderRadius: 22, border: "1px solid rgba(var(--ink),.08)", background: "var(--panel2)", padding: 28 }}>

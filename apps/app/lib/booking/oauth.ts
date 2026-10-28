@@ -2,6 +2,7 @@ import "server-only";
 import { appUrl } from "@/lib/app-url";
 import { safeEqual } from "@/lib/crypto/safe-equal";
 import { createHmac } from "node:crypto";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * OAuth plumbing for the direct calendar adapters (Google Calendar, Microsoft
@@ -51,7 +52,7 @@ const PROVIDERS: Record<CalendarOAuthProvider, ProviderSpec> = {
     scope:
       "openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy",
     async accountEmail(accessToken) {
-      const res = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      const res = await vendorFetch("https://openidconnect.googleapis.com/v1/userinfo", {
         headers: { authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) return null;
@@ -67,7 +68,7 @@ const PROVIDERS: Record<CalendarOAuthProvider, ProviderSpec> = {
     scope:
       "offline_access openid email https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read",
     async accountEmail(accessToken) {
-      const res = await fetch("https://graph.microsoft.com/v1.0/me", {
+      const res = await vendorFetch("https://graph.microsoft.com/v1.0/me", {
         headers: { authorization: `Bearer ${accessToken}` },
       });
       if (!res.ok) return null;
@@ -157,7 +158,7 @@ export async function exchangeCode(
   code: string,
 ): Promise<ConnectedAccount> {
   const spec = PROVIDERS[provider];
-  const res = await fetch(spec.tokenUrl(), {
+  const res = await vendorFetch(spec.tokenUrl(), {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -192,7 +193,7 @@ export async function refreshAccessToken(
   refreshToken: string,
 ): Promise<string> {
   const spec = PROVIDERS[provider];
-  const res = await fetch(spec.tokenUrl(), {
+  const res = await vendorFetch(spec.tokenUrl(), {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({

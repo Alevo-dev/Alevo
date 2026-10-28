@@ -951,7 +951,7 @@ All four share one look (mark, mono status line, headline, one sentence, actions
 - [ ] Phone width: the screen stays centred, buttons wrap under each other, nothing scrolls sideways.
 - [ ] **Admin console** (`:3002`, restart `pnpm dev:all` first): as a non-admin, `/dashboard` shows the same 403 screen ("This console is for Alevo staff") with "Open the Alevo app" and "Sign out"; `/nothing` shows the 404; the tab has the Alevo favicon; as a platform admin the console renders in the app's fonts (Space Grotesk / Inter).
 - [ ] **Marketing site** (`:3000`): `/nothing-here` shows the same screen as the app (mark, "404 · Page not found", Space Grotesk headline) with "Back to home" → `/`, "Contact us" → `/contact`, "Sign in to the app" → the app's sign-in; the cookie bar still sits at the bottom; the rest of the site keeps its own Fraunces / Geist type.
-- [ ] **Admin console look** (`:3002`, as a platform admin): top bar with the mark, "Alevo" + a violet Admin pill, "Open the app", the theme toggle and the account button; the page is "Across all organizations" with the 7 / 30 / 90 pill switch, five stat tiles (Leads in featured, Qualified violet, Meetings green, Calls amber, Over 60s red), the funnel table in a card with a pill per org for speed to lead, then Organizations and Recent activity side by side. Light and dark both on the app's palette; sign-in page shows the mark + Admin pill above Clerk's form.
+- [ ] **Admin console look** (`:3002`, as a platform admin): left rail with the mark, "Alevo" + a violet Admin pill, the four pages, the theme toggle and "Open the app" at the bottom; the account button alone in the top bar (layout changed 2026-10-27); the page is "Across all organizations" with the 7 / 30 / 90 pill switch, five stat tiles (Leads in featured, Qualified violet, Meetings green, Calls amber, Over 60s red), the funnel table in a card with a pill per org for speed to lead, then Organizations and Recent activity side by side. Light and dark both on the app's palette; sign-in page shows the mark + Admin pill above Clerk's form.
 - [ ] **Admin → Settings → Internal alerts**: paste a Slack incoming webhook, Save → pill reads "Set" with "Last saved …"; "Send test" posts a line to the channel; a non-Slack URL shows an inline field error; Clear asks first, then the pill reads "Not set" and the speed watch run reports "No internal alerts webhook saved". Needs `SECRETS_MASTER_KEY` in `apps/admin/.env.local` (same as the app) and migration 0023.
 
 # Org Slack notifications (2026-10-27)
@@ -972,3 +972,41 @@ Slack webhook saved under Integrations → Slack; `CADENCE_FAST=1` in `.env.loca
 - [ ] Agent ON but broken (e.g. a wrong `ANTHROPIC_API_KEY`): reply as a contact → after the wait, "… the agent hasn't replied after 5 minutes" (or 30 seconds), status "Handed to a rep", the `reply-watchdog` run ends `no-reply`.
 - [ ] Two contact messages 10s apart: one watchdog run (the first is cancelled), one alert at most.
 - [ ] Lead already booked or handed off: no alert.
+
+# Show rate + vendor retries (2026-10-27)
+
+- [ ] Dashboard → Meetings booked card: with no outcomes marked the header says "Show rate: mark outcomes" linking to Meetings. Mark one meeting showed and one no-show under Meetings → the card reads "Show rate 50%". Switch 7 / 30 / 90 — meetings are counted by their start time inside the window.
+- [ ] Vendor retries: with the dev server running, point `VOYAGE_API_KEY` at a bad key and add a KB text document — the ingest fails once with a 401 (no retry on a real answer). Set the Slack webhook to an unreachable host — "Send test" returns the network error within ~15s instead of hanging.
+
+# Paginated lists (2026-10-27)
+
+Run `npx supabase db push` first (migration 0024 adds the indexes; the pages work without it, just slower at scale). To see paging you need more than 25 rows: `supabase/seed-dev-dashboard.sql` plus a few form submissions, or a quick `insert into audit_log (action) select 'test.' || g from generate_series(1, 60) g` (delete them after).
+
+**Admin console** (`:3002`, as a platform admin)
+- [ ] The console has the app's left rail: Alevo mark + Admin pill on top, Overview · Organizations · Activity · Settings (current page highlighted), then the theme control and "Open the app" at the bottom (where the app keeps its agent status). The top bar holds only the account button; on a phone it is burger + brand, and the burger opens the same rail as a drawer.
+- [ ] Overview: Recent activity shows at most 25 rows with a footer "Newest 25 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer than 26 rows the footers are absent.
+- [ ] `/activity`: 25 rows newest first with a By column (actor email or "System"), footer "25 on this page" with Newer (disabled) and Older. Older: the next 25, no row repeated, Newer enabled; Newer brings back exactly the first page; the URL carries `?cursor=older.<id>` and survives a refresh.
+- [ ] `/organizations`: same walk; header dot + "X of N agents on"; the count stays the same on every page.
+- [ ] Edit the cursor in the URL to a random UUID: "Nothing on this page. Back to the newest." with the link; garbage like `?cursor=abc` just shows the first page.
+- [ ] Phone width: the footer wraps, buttons stay tappable, nothing scrolls sideways.
+
+**App** (`:3001`)
+- [ ] Conversations: header count is the real total (not the page size); 25 rows, footer "25 of N", Older / Newer walk as above; the lead-form link still works.
+- [ ] Meetings: the four figures count every meeting (not just the page); rows sort by start time with unscheduled ones by creation; Outcome and Manage controls still work on page 2; footer "25 of <booked>".
+- [ ] Both: with 25 rows or fewer, no footer at all.
+
+# Accessibility (2026-10-27)
+
+- [ ] `pnpm a11y` with web (:3000) and app (:3001) running: every public page reports 0 failing rules in light and dark except the 404 screen's primary button (white on brand blue, accepted).
+- [ ] `pnpm a11y -- --app`: sign in in the Chrome window that opens; dashboard, conversations, meetings and the four workspace pages report 0 serious/critical rules and 0 elements without a focus ring.
+- [ ] Keyboard only on the contact form: Tab through name → email → company → message → Send; each field shows the blue ring.
+
+# Chart tooltips (2026-10-27)
+
+Dashboard, with a few leads in the window:
+- [ ] Hover each bar in the four stat tiles: a tooltip above the bar shows "3 leads · Oct 24" and "Up 2 from Oct 23"; other bars dim. Tab into a tile's bars with the keyboard: same tooltip.
+- [ ] Leads per day: hover any day — crosshair, the dot grows, tooltip sits on the point and never wraps at the right edge (Oct 27 flips to anchor right).
+- [ ] Meetings booked columns: hover a column — it stays bright, the others dim, tooltip on top of it.
+- [ ] Speed to lead (needs two answered periods): hover the sparkline — crosshair + dot, "42s median · Oct 24"; a quiet day says "no replies".
+- [ ] Where leads come from: hover a ring segment or a legend row — the segment thickens, the centre number switches to that channel, tooltip "2 leads · Email, 67% of 3".
+- [ ] Admin → Overview tiles: bars say "3 days ago" / "2 weeks ago" on the 90-day window.

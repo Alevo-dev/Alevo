@@ -190,7 +190,7 @@ No code. Every item starts a clock that the build later waits on, so all of it h
 - [x] Spend alerts / caps on every usage-billed vendor (Twilio, Vapi, Anthropic, Inngest, Vercel)
 
 **Calendar-gated (start the clock now)**
-- [ ] Twilio A2P 10DLC: register Alevo's brand + a test campaign (2–6 weeks; gates SMS in Sprint 2)
+- [x] Twilio A2P 10DLC: brand + campaign registered (approved in 1–2 days, 2026-10)
 - [x] Tenant SMS model: one Twilio subaccount per MSP, each with its own A2P brand + campaign via Twilio's ISV flow (each tenant's SMS goes live weeks after signup)
 - [x] HaloPSA sandbox/developer access requested (post-MVP second PSA)
 - [x] ConnectWise client ID obtained
@@ -284,14 +284,15 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 - [x] Marketing site: Refund Policy (`/refunds`) + Cookie Policy (`/cookies`) pages; footer with legal name / address / support contact (hard-coded in `apps/web/lib/legal.ts`: Alevo Inc., 33 Griffith Street, Carleton Place ON K7C 0R9, admin@getalevo.com, +1 807 302 5386); Terms rewritten for trial, cancellation, allowances + overage; Privacy adds the sub-processor list, a "request a copy or deletion" section and the cookie policy link; pricing fine print (trial, pause-at-limit, overage rates, refunds); cookie banner that gates any future analytics; "illustrative examples" note under the landing mockups; privacy link on the contact form
 - [x] App: `org_profiles.business_address` (0020) under Business profile → every agent email footer names the sender + address, unsubscribe, data-request line + privacy link; Qualifier handles data-deletion requests (confirm → escalate → hand off); public lead form links the privacy policy and says how to request deletion
 - [x] Plan limits enforced (see Sprint 5 usage meter)
-- [ ] Still open: accessibility pass with a tool (contrast, keyboard) on both sites; opt-in overage + monthly cap (Stripe); the "no card for the trial" claim on Pricing must stay true when billing lands
+- [x] Accessibility pass with a tool: `pnpm a11y` (`scripts/a11y-scan.mjs`, axe-core WCAG 2.2 AA + a focus-ring check, light and dark, Playwright on the installed Chrome). Marketing + sign-in + status screens clean on 2026-10-27 after fixes (text-safe accent colours, underlined body links, contact-form focus ring, main landmark, decorative logo alt). One accepted exception: white on brand blue in the light theme is 3.0:1 (`--ds-on-brand`, owner's call). `pnpm a11y -- --app` covers the signed-in app pages — clean on 2026-10-27 after fixes (chart hit areas get `role="img"`, workspace switcher's accessible name carries the visible name, top bar is a `<header>`, body links underlined).
+- [ ] Still open: billing is manual for now (processor undecided: Stripe, Square or none) — opt-in overage + monthly cap wait on that; the "no card for the trial" claim on Pricing must stay true when billing lands
 
 ### Sprint 5 — PSA write-back, dashboard, notifications (20–25h)
 - [x] ConnectWise Manage adapter: upsert company + contact, log activity, create opportunity on booking. *Built 2026-10-27 (`lib/psa/`, Inngest `psa-writeback`, `psa_links` ledger, Integrations → ConnectWise with Test connection). Fires on hand-off and booking. Not yet run against the sandbox — needs `CONNECTWISE_CLIENT_ID` + the sandbox site / company ID / member / keys.*
-- [x] Dashboard: leads in, qualified, meetings booked, missed calls recovered — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11). *Done and hand-tested 2026-10-27 to the mockup: one page-wide window switch (7 / 30 / 90 days), the four tiles, leads area chart, speed-to-lead card with sparkline, meetings columns, lead-source donut, plan-usage meter, live activity feed refreshing every 30s. Show rate is not on the page yet (needs more outcomes recorded).*
+- [x] Dashboard: leads in, qualified, meetings booked, missed calls recovered — surfaces the north-star funnel (meetings booked, show rate, speed-to-lead) (§11). *Done and hand-tested 2026-10-27 to the mockup: one page-wide window switch (7 / 30 / 90 days), the four tiles, leads area chart, speed-to-lead card with sparkline, meetings columns, lead-source donut, plan-usage meter, live activity feed refreshing every 30s. Show rate is on the Meetings card (showed ÷ meetings with an outcome marked, in the window; prompts to mark outcomes until there are any), 2026-10-27.*
 - [x] Speed-to-lead: p50/p95 `first_reply_sent_at − lead_received_at` shown to the tenant (dashboard, 2026-10-27); internal daily alert (`speed-to-lead-watch`, orgs with p95 > 60s over ≥3 answered leads in 24h → the Slack webhook saved under Admin → Settings), 2026-10-27
 - [~] Usage meter: conversations, voice minutes, outbound dials vs plan allowance. *2026-10-27, hand-tested: limits enforced — alerts (Slack + owner email) at 80%, the agent pauses at 100% (Qualifier skips, voice says "can't take calls"), shell banner from 80%. Usage meter card with one bar per allowance on the dashboard (2026-10-27). Still to do: opt-in overage + cap once Stripe lands.*
-- [x] Super-admin view: same numbers across all orgs — `apps/admin` `/dashboard`, 7 / 30 / 90 switch, per-org funnel + p50 / p95 with slow orgs flagged; console restyled on the shared `@alevo/ui` package (2026-10-27, hand-tested)
+- [x] Super-admin view: same numbers across all orgs — `apps/admin` `/dashboard`, 7 / 30 / 90 switch, per-org funnel + p50 / p95 with slow orgs flagged; console restyled on the shared `@alevo/ui` package (2026-10-27, hand-tested). Lists paginated 2026-10-27: dashboard cards show one page of 25 with "View all" into `/organizations` and `/activity` (Newer / Older keyset pages, migration 0024 indexes); the app's Conversations and Meetings page the same way
 - [x] Slack: qualified lead, meeting booked, escalation requested — all four post to the org's Slack (`lib/notifications/lead-events.ts`): strong fit reached (first score ≥ 70), meeting booked (agent, voice, Cal.com external, Calendly), hand-off, escalation; plus the usage alerts and the **no-reply fallback** (`reply-watchdog`: 5 minutes without an outbound reply, or the agent off / paused / contact opted out → lead marked handed off + "Lead needs a person" with contact details) (2026-10-27)
 
 ### Sprint 6 — Onboarding wizard (15–20h)
@@ -348,7 +349,7 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 
 ### Hardening + first tenant (30–35h)
 - [ ] Usage caps per §6: alert at 80%; inbound continues as overage, outbound stops at 100%
-- [ ] Retries and error handling on every vendor call
+- [x] Retries and error handling on every vendor call — `vendorFetch` (timeout per attempt, bounded retries with backoff, idempotency-aware) on every raw vendor call; Anthropic SDK bounded to 90s (2026-10-27)
 - [ ] Staging → prod deploy pipeline
 - [ ] Two weeks living with the first MSP, fixing what real calls break
 

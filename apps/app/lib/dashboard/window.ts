@@ -95,6 +95,15 @@ export function fmtDuration(seconds: number): string {
   return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
 }
 
+/**
+ * Show rate (§11): meetings a rep marked `showed` over every meeting with an
+ * outcome recorded (showed + no_show). Null until something is marked, so the
+ * card can say so instead of showing 0%.
+ */
+export function showRatePct(showed: number, held: number): number | null {
+  return held > 0 ? Math.round((showed / held) * 100) : null;
+}
+
 export type SpeedLevel = "success" | "warning" | "danger" | "muted";
 
 /** p95 against the 60-second target: green under a minute, amber under five, red beyond. */

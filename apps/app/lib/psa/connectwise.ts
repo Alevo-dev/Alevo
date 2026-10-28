@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { getOrgSecret, orgProfiles, withService } from "@alevo/db";
 import { cwAuthorization, cwBaseUrl, cwQuote } from "./connectwise-map";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * ConnectWise Manage REST client (the I/O half). One instance per org per call:
@@ -40,12 +41,11 @@ export function createConnectWiseClient(cfg: { site: string; companyId: string; 
   async function request<T>(method: "GET" | "POST", path: string, body?: unknown, query?: Query): Promise<T> {
     const url = new URL(`${base}${path}`);
     for (const [k, v] of Object.entries(query ?? {})) if (v !== undefined) url.searchParams.set(k, String(v));
-    const res = await fetch(url, {
+    const res = await vendorFetch(url, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(20_000),
-    });
+    }, { timeoutMs: 20_000, idempotent: method === "GET" });
     if (!res.ok) {
       const text = (await res.text().catch(() => "")).slice(0, 400);
       throw new ConnectWiseError(res.status, `ConnectWise ${method} ${path} → ${res.status}${text ? `: ${text}` : ""}`);

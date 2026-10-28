@@ -1,4 +1,5 @@
 import "server-only";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Vapi REST client (raw fetch, no SDK). The only importer of Vapi. Calls are
@@ -14,11 +15,10 @@ export function isVapiConfigured(): boolean {
 async function vapi(path: string, init: { method: string; body?: unknown }): Promise<Response> {
   const key = process.env.VAPI_API_KEY;
   if (!key) throw new Error("Vapi is not configured (VAPI_API_KEY)");
-  return fetch(`${BASE}${path}`, {
+  return vendorFetch(`${BASE}${path}`, {
     method: init.method,
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    cache: "no-store",
   });
 }
 

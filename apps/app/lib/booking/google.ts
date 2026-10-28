@@ -10,6 +10,7 @@ import {
   CancelResult,
   RescheduleResult,
 } from "./types";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Google Calendar booking adapter (raw HTTP, no SDK). Per-org auth via the
@@ -35,11 +36,11 @@ async function freeBusy(
   fromIso: string,
   toIso: string,
 ): Promise<BusyInterval[]> {
-  const res = await fetch(`${BASE}/freeBusy`, {
+  const res = await vendorFetch(`${BASE}/freeBusy`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ timeMin: fromIso, timeMax: toIso, items: [{ id: calendarId }] }),
-  });
+  }, { idempotent: true }); // a read, despite the POST
   if (!res.ok) throw new Error(`Google free/busy failed (${res.status})`);
   const json = (await res.json()) as {
     calendars?: Record<string, { busy?: { start: string; end: string }[] }>;
@@ -82,7 +83,7 @@ export async function makeGoogleAdapter(
         if (isBusy(params.startIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time was just taken" };
         }
-        const res = await fetch(`${BASE}/calendars/${cal}/events?conferenceDataVersion=1`, {
+        const res = await vendorFetch(`${BASE}/calendars/${cal}/events?conferenceDataVersion=1`, {
           method: "POST",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify({
@@ -126,7 +127,7 @@ export async function makeGoogleAdapter(
 
     async cancel(uid: string): Promise<CancelResult> {
       try {
-        const res = await fetch(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
+        const res = await vendorFetch(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
           method: "DELETE",
           headers: { authorization: `Bearer ${token}` },
         });
@@ -148,7 +149,7 @@ export async function makeGoogleAdapter(
         if (isBusy(newStartIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time is no longer open" };
         }
-        const res = await fetch(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
+        const res = await vendorFetch(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
           method: "PATCH",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify({

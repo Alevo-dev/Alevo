@@ -96,3 +96,13 @@ describe("speedLevel", () => {
     expect(speedLevel(900)).toBe("danger");
   });
 });
+
+describe("showRatePct", () => {
+  it("is null until an outcome is marked, then showed over held", async () => {
+    const { showRatePct } = await import("../lib/dashboard/window");
+    expect(showRatePct(0, 0)).toBeNull();
+    expect(showRatePct(4, 5)).toBe(80);
+    expect(showRatePct(1, 3)).toBe(33);
+    expect(showRatePct(5, 5)).toBe(100);
+  });
+});

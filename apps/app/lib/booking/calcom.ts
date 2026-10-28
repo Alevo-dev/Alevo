@@ -8,6 +8,7 @@ import type {
   RescheduleResult,
   Slot,
 } from "./types";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Cal.com v2 booking adapter. Raw HTTP (no SDK). Per-org auth via the stored
@@ -38,7 +39,7 @@ export async function makeCalcomAdapter(
         end: toIso,
         timeZone,
       });
-      const res = await fetch(`${BASE}/slots?${qs}`, {
+      const res = await vendorFetch(`${BASE}/slots?${qs}`, {
         headers: { ...auth, "cal-api-version": SLOTS_VERSION },
       });
       if (!res.ok) throw new Error(`Cal.com slots failed (${res.status})`);
@@ -55,7 +56,7 @@ export async function makeCalcomAdapter(
 
     async book(params: BookParams): Promise<BookResult> {
       try {
-        const res = await fetch(`${BASE}/bookings`, {
+        const res = await vendorFetch(`${BASE}/bookings`, {
           method: "POST",
           headers: { ...auth, "cal-api-version": BOOKINGS_VERSION, "content-type": "application/json" },
           body: JSON.stringify({
@@ -91,7 +92,7 @@ export async function makeCalcomAdapter(
 
     async cancel(uid: string, reason?: string): Promise<CancelResult> {
       try {
-        const res = await fetch(`${BASE}/bookings/${encodeURIComponent(uid)}/cancel`, {
+        const res = await vendorFetch(`${BASE}/bookings/${encodeURIComponent(uid)}/cancel`, {
           method: "POST",
           headers: { ...auth, "cal-api-version": BOOKINGS_VERSION, "content-type": "application/json" },
           body: JSON.stringify(reason ? { cancellationReason: reason } : {}),
@@ -108,7 +109,7 @@ export async function makeCalcomAdapter(
 
     async reschedule(uid: string, newStartIso: string, reason?: string): Promise<RescheduleResult> {
       try {
-        const res = await fetch(`${BASE}/bookings/${encodeURIComponent(uid)}/reschedule`, {
+        const res = await vendorFetch(`${BASE}/bookings/${encodeURIComponent(uid)}/reschedule`, {
           method: "POST",
           headers: { ...auth, "cal-api-version": BOOKINGS_VERSION, "content-type": "application/json" },
           body: JSON.stringify({ start: newStartIso, ...(reason ? { reschedulingReason: reason } : {}) }),

@@ -136,11 +136,11 @@ export function SignUpForm() {
           <input type="checkbox" name="terms" value="yes" className="mt-0.5 size-4 shrink-0 accent-brand" aria-invalid={!!termsError || undefined} />
           <span>
             I agree to the{" "}
-            <a href={`${SITE}/terms`} target="_blank" rel="noopener noreferrer">
+            <a href={`${SITE}/terms`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
               Terms
             </a>{" "}
             and{" "}
-            <a href={`${SITE}/privacy`} target="_blank" rel="noopener noreferrer">
+            <a href={`${SITE}/privacy`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
               Privacy policy
             </a>
             .

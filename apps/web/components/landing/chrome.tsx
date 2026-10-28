@@ -62,7 +62,7 @@ function SiteHeader() {
       <header style={{ position: "sticky", top: 0, zIndex: 50, backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(var(--bgrgb),.72)", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", gap: 32 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src={LOGO} alt="Alevo" style={{ width: 30, height: 30, objectFit: "contain" }} />
+            <img src={LOGO} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />
             <span style={{ fontWeight: 600, fontSize: 18, letterSpacing: "-.02em" }}>Alevo</span>
           </Link>
           <nav data-navlinks="" style={{ display: "flex", gap: 28, fontSize: 14 }}>
@@ -85,7 +85,7 @@ function SiteHeader() {
         <div className="mobile-menu">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderBottom: "1px solid rgba(var(--ink),.06)" }}>
             <Link href="/" onClick={() => setOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <img src={LOGO} alt="Alevo" style={{ width: 30, height: 30, objectFit: "contain" }} />
+              <img src={LOGO} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />
               <span style={{ fontWeight: 600, fontSize: 18, letterSpacing: "-.02em" }}>Alevo</span>
             </Link>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

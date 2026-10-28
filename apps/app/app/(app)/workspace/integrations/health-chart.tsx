@@ -23,7 +23,7 @@ export function HealthChart({ buckets }: { buckets: HealthBucket[] }) {
           const to = new Date(b.at + 3_600_000);
           const label = `${hour.format(from)}–${hour.format(to)}: ${b.ok} ok, ${b.failed} failed`;
           return (
-            <div key={b.at} className="group relative flex h-full flex-1 flex-col justify-end" tabIndex={total ? 0 : -1} aria-label={label}>
+            <div key={b.at} className="group relative flex h-full flex-1 flex-col justify-end" role="img" tabIndex={total ? 0 : -1} aria-label={label}>
               {/* Tooltip: the exact figures for this hour. */}
               {total > 0 && (
                 <div

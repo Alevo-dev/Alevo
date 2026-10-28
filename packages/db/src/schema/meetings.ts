@@ -2,6 +2,7 @@
  * Booked meetings. Typed mirror of migration 0013. Written by the Qualifier's
  * booking tools and kept in sync by the provider webhook (Cal.com first).
  */
+import { sql } from "drizzle-orm";
 import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { organizations, timestamps } from "./identity";
 import { contacts, conversations } from "./conversations";
@@ -46,6 +47,7 @@ export const meetings = pgTable(
   },
   (t) => [
     index("meetings_org_id_idx").on(t.orgId),
+    index("meetings_org_start_idx").on(t.orgId, sql`coalesce(${t.startAt}, ${t.createdAt}) desc`, t.id.desc()),
     index("meetings_conversation_id_idx").on(t.conversationId),
   ],
 );

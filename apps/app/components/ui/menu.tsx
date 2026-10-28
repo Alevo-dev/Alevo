@@ -22,7 +22,11 @@ type Props = {
   /** Trigger content; the Menu renders and wires the button itself. */
   button: ReactNode;
   buttonClassName?: string;
-  "aria-label": string;
+  /** Accessible name for the trigger (and the menu). Icon-only triggers need it; a
+   *  trigger with visible text should leave it out (its text names it) and set
+   *  `menuLabel` for the popup instead, so the name never contradicts the label. */
+  "aria-label"?: string;
+  menuLabel?: string;
   /** Block pinned above the items (identity, context). A function form receives
    *  the menu's `close` so the header can hold an action (e.g. Manage). */
   header?: ReactNode | ((close: () => void) => ReactNode);
@@ -51,6 +55,7 @@ export function Menu({
   align = "start",
   size = "md",
   menuClassName,
+  menuLabel,
   disabled,
   ...aria
 }: Props) {
@@ -193,7 +198,7 @@ export function Menu({
             ref={menuRef}
             id={menuId}
             role="menu"
-            aria-label={aria["aria-label"]}
+            aria-label={aria["aria-label"] ?? menuLabel}
             style={{
               top: pos.top,
               left: pos.left,

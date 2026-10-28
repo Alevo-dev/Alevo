@@ -51,15 +51,15 @@ export default function FeaturesPage() {
         title="One agent across every channel your buyers use."
         subtitle="Alevo answers chats, forms and inbound calls in seconds, runs personalized email and cold-call outbound, and books meetings straight into your calendar and CRM."
       />
-      <Grid eyebrow="01 · INBOUND" color="#38b6ff" title="Answers in seconds, on every channel." body="Website chat, form fills and phone calls all land with the same agent. It qualifies, answers from your playbook, and books the meeting before the lead goes cold." items={inbound} />
-      <Grid eyebrow="02 · OUTBOUND" color="#a06bff" title="Pipeline that builds itself." body="Alevo writes and sends personalized emails and makes cold calls from your lists. Replies and outcomes flow straight back into your CRM." items={outbound} />
+      <Grid eyebrow="01 · INBOUND" color="var(--blue-t)" title="Answers in seconds, on every channel." body="Website chat, form fills and phone calls all land with the same agent. It qualifies, answers from your playbook, and books the meeting before the lead goes cold." items={inbound} />
+      <Grid eyebrow="02 · OUTBOUND" color="var(--violet-t)" title="Pipeline that builds itself." body="Alevo writes and sends personalized emails and makes cold calls from your lists. Replies and outcomes flow straight back into your CRM." items={outbound} />
       <Section muted>
         <Container style={{ padding: 0 }}>
-          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "#3ddc97" }}>03 · INTEGRATIONS</div>
+          <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--green-t)" }}>03 · INTEGRATIONS</div>
           <h2 style={{ fontSize: "clamp(28px,3.6vw,42px)", lineHeight: 1.06, letterSpacing: "-.04em", fontWeight: 600, margin: "16px 0 0", maxWidth: 720, textWrap: "balance" }}>Plugs into the CRM and calendar you already run.</h2>
           <p style={{ fontSize: 18, lineHeight: 1.6, color: "var(--muted)", margin: "16px 0 0", maxWidth: 680 }}>
             Two-way sync with Salesforce, HubSpot, Pipedrive, Zoho and Close, plus Calendly, Cal.com, Google Calendar, Outlook and Acuity.{" "}
-            <Link href="/#integrations" style={{ color: "#38b6ff" }}>See the integrations →</Link>
+            <Link href="/#integrations" style={{ color: "var(--blue-t)", textDecoration: "underline", textUnderlineOffset: 3 }}>See the integrations →</Link>
           </p>
         </Container>
       </Section>

@@ -11,7 +11,7 @@ export function PageHead({
   eyebrow,
   title,
   subtitle,
-  accent = "#38b6ff",
+  accent = "var(--blue-t)",
 }: {
   eyebrow?: string;
   title: ReactNode;

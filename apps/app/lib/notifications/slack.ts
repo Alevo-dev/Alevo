@@ -1,5 +1,6 @@
 import "server-only";
 import { getOrgSecret } from "@alevo/db";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 export type SlackResult = { ok: boolean; error?: string };
 
@@ -13,7 +14,7 @@ export async function notifySlack(orgId: string, text: string): Promise<SlackRes
   const webhook = await getOrgSecret(orgId, "slack_webhook_url");
   if (!webhook) return { ok: false, error: "No Slack webhook configured for this org." };
   try {
-    const res = await fetch(webhook, {
+    const res = await vendorFetch(webhook, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text }),

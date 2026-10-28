@@ -175,3 +175,14 @@ pnpm lint
 pnpm typecheck
 pnpm --filter @alevo/app test
 ```
+
+## Accessibility scan
+
+`pnpm a11y` runs axe-core (WCAG 2.2 AA + best practices) and a focus-ring check over
+the marketing site, sign-in / sign-up and the status screens, in light and dark, using
+the installed Google Chrome through Playwright (no browser download). `pnpm a11y -- --app`
+opens a Chrome window on `/sign-in` the first time; sign in and it scans the signed-in app
+pages. The session is kept in `.a11y-profile/` (git-ignored), so later runs are unattended.
+`--only <text>` limits the URLs (use `3000/features`, not `/features`: Git Bash rewrites a
+leading slash), `--out report.json` keeps the full report. Exit code 1 on any serious or
+critical rule.

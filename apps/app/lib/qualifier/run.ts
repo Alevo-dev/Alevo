@@ -196,7 +196,7 @@ export async function runQualifier(
   const last = messagesForClaude.at(-1);
   if (!last || last.role !== "user") return { ran: false, skipped: "awaiting-contact" };
 
-  const client = new Anthropic();
+  const client = new Anthropic({ timeout: 90_000, maxRetries: 2 });
   // Ground the reply in the org's knowledge base, keyed on the latest message.
   const query = typeof last.content === "string" ? last.content : "";
   const knowledge = await retrieveKbContext(ctx.orgId, query);

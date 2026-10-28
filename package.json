@@ -11,6 +11,7 @@
     "typecheck": "turbo run typecheck",
     "db:push:dev": "npx supabase db push --linked",
     "db:push:dev:dry": "npx supabase db push --linked --dry-run",
+    "a11y": "node scripts/a11y-scan.mjs",
     "dev:web": "pnpm --filter @alevo/web dev",
     "dev:app": "pnpm --filter @alevo/app dev",
     "dev:admin": "pnpm --filter @alevo/admin dev",
@@ -21,7 +22,10 @@
     "dev:tunnel": "concurrently -k -n web,app,admin,inngest,ngrok -c cyan,green,magenta,yellow,blue \"pnpm dev:web\" \"pnpm dev:app\" \"pnpm dev:admin\" \"pnpm inngest\" \"pnpm tunnel\""
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "axe-core": "^4.14.0",
     "concurrently": "^9.1.2",
+    "playwright": "^1.64.1",
     "turbo": "^2.3.3"
   }
 }

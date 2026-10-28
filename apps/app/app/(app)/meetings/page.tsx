@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
-import { contacts, meetings } from "@alevo/db";
+import { and, eq, sql, type SQL } from "drizzle-orm";
+import { contacts, finishPage, keysetOrder, keysetWhere, meetings, PAGE_SIZE, parseCursor } from "@alevo/db";
 import { withOrg } from "@alevo/auth";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { cursorHref, Pager } from "@/components/ui/pager";
 import { Pill } from "@/components/ui/pill";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
@@ -17,38 +18,54 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Meetings" };
 
-export default async function MeetingsPage() {
-  // Timezone + list are independent: one round trip. (Explicit active-org
-  // scope on the list — platform admins bypass RLS.)
-  const [tz, rows] = await Promise.all([
+// Explicit active-org scope on every read: platform admins bypass RLS.
+const ORG = sql`${meetings.orgId} = (select app.current_org_id())`;
+// Latest start first; a meeting not yet scheduled sorts by when it was created.
+const KEY = { at: sql`coalesce(${meetings.startAt}, ${meetings.createdAt})`, id: meetings.id };
+const countWhere = (cond: SQL) => sql<number>`count(*) filter (where ${cond})`.mapWith(Number);
+
+export default async function MeetingsPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
+  const cursor = parseCursor((await searchParams).cursor);
+
+  // Timezone, the outcome figures (plan.md §11 KPIs, over every meeting) and
+  // one page of the list are independent: one round trip.
+  const [tz, figureRows, fetched] = await Promise.all([
     getOrgTimezone(),
     withOrg((tx) =>
-    tx
-      .select({
-        id: meetings.id,
-        status: meetings.status,
-        outcome: meetings.outcome,
-        converted: meetings.converted,
-        provider: meetings.provider,
-        startAt: meetings.startAt,
-        joinUrl: meetings.joinUrl,
-        conversationId: meetings.conversationId,
-        firstName: contacts.firstName,
-        lastName: contacts.lastName,
-        email: contacts.email,
-      })
-      .from(meetings)
-      .leftJoin(contacts, eq(contacts.id, meetings.contactId))
-      .where(sql`${meetings.orgId} = (select app.current_org_id())`)
-      .orderBy(desc(meetings.startAt)),
+      tx
+        .select({
+          booked: countWhere(sql`${meetings.status} <> 'cancelled'`),
+          showed: countWhere(sql`${meetings.outcome} = 'showed'`),
+          noShows: countWhere(sql`${meetings.outcome} = 'no_show' or ${meetings.status} = 'no_show'`),
+          converted: countWhere(sql`${meetings.converted}`),
+        })
+        .from(meetings)
+        .where(ORG),
+    ),
+    withOrg((tx) =>
+      tx
+        .select({
+          id: meetings.id,
+          status: meetings.status,
+          outcome: meetings.outcome,
+          converted: meetings.converted,
+          provider: meetings.provider,
+          startAt: meetings.startAt,
+          joinUrl: meetings.joinUrl,
+          conversationId: meetings.conversationId,
+          firstName: contacts.firstName,
+          lastName: contacts.lastName,
+          email: contacts.email,
+        })
+        .from(meetings)
+        .leftJoin(contacts, eq(contacts.id, meetings.contactId))
+        .where(and(ORG, keysetWhere(meetings, KEY, cursor)))
+        .orderBy(...keysetOrder(KEY, cursor))
+        .limit(PAGE_SIZE + 1),
     ),
   ]);
-
-  // Outcome figures from the same rows (plan.md §11 KPIs).
-  const booked = rows.filter((m) => m.status !== "cancelled").length;
-  const showed = rows.filter((m) => m.outcome === "showed").length;
-  const noShows = rows.filter((m) => m.outcome === "no_show" || m.status === "no_show").length;
-  const converted = rows.filter((m) => m.converted).length;
+  const page = finishPage(fetched, cursor);
+  const figures = figureRows[0] ?? { booked: 0, showed: 0, noShows: 0, converted: 0 };
 
   return (
     <div className="space-y-8">
@@ -58,10 +75,10 @@ export default async function MeetingsPage() {
       />
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Meeting figures">
-        <StatTile label="Booked" value={booked} />
-        <StatTile label="Showed" value={showed} />
-        <StatTile label="No-shows" value={noShows} />
-        <StatTile label="Converted to clients" value={converted} />
+        <StatTile label="Booked" value={figures.booked} />
+        <StatTile label="Showed" value={figures.showed} />
+        <StatTile label="No-shows" value={figures.noShows} />
+        <StatTile label="Converted to clients" value={figures.converted} />
       </section>
 
       <Card padding="none">
@@ -77,10 +94,18 @@ export default async function MeetingsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
-              <EmptyRow colSpan={6}>No meetings booked yet.</EmptyRow>
+            {page.rows.length === 0 ? (
+              <EmptyRow colSpan={6}>
+                {cursor ? (
+                  <>
+                    Nothing on this page. <Link href="/meetings">Back to the latest</Link>.
+                  </>
+                ) : (
+                  "No meetings booked yet."
+                )}
+              </EmptyRow>
             ) : (
-              rows.map((m) => {
+              page.rows.map((m) => {
                 const status = MEETING_STATUS[m.status];
                 const who = displayName(m.firstName, m.lastName, m.email);
                 return (
@@ -116,6 +141,7 @@ export default async function MeetingsPage() {
             )}
           </tbody>
         </Table>
+        <Pager newer={page.newer} older={page.older} href={cursorHref("/meetings")} label={`${page.rows.length} of ${figures.booked}`} />
       </Card>
     </div>
   );

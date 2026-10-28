@@ -1,5 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Twilio SMS. Raw HTTP (no SDK). Platform credentials (TWILIO_ACCOUNT_SID /
@@ -28,7 +29,7 @@ export async function sendSms(params: {
     Body: params.body,
   });
   try {
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    const res = await vendorFetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: "POST",
       headers: { authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" },
       body: form,

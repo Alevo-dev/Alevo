@@ -135,7 +135,7 @@ export function WorkspaceSwitcher() {
   return (
     <>
       <Menu
-        aria-label="Switch workspace"
+        menuLabel="Switch workspace"
         size="lg"
         disabled={!isLoaded || switching}
         buttonClassName="flex w-full items-center gap-2.5 rounded-sm bg-transparent px-0 py-1.5 text-left transition-colors hover:bg-raised"
@@ -149,6 +149,7 @@ export function WorkspaceSwitcher() {
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
               {organization?.name ?? (isLoaded ? "Select a workspace" : "…")}
             </span>
+            <span className="sr-only">, switch workspace</span>
             {switching ? (
               <Spinner size="sm" />
             ) : (
@@ -295,6 +296,7 @@ function WorkspaceAvatar({
         text,
         name ? "bg-brand text-on-brand" : "bg-raised text-ink-muted",
       )}
+      aria-hidden="true" // decorative: the name is always printed beside it
     >
       {initials(name)}
     </span>

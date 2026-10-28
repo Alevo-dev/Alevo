@@ -11,6 +11,7 @@ import {
   CancelResult,
   RescheduleResult,
 } from "./types";
+import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Microsoft 365 (Graph) booking adapter (raw HTTP). Books on the signed-in
@@ -34,7 +35,7 @@ async function calendarViewBusy(token: string, fromIso: string, toIso: string): 
     $select: "start,end,showAs",
     $top: "250",
   });
-  const res = await fetch(`${GRAPH}/me/calendarView?${qs}`, {
+  const res = await vendorFetch(`${GRAPH}/me/calendarView?${qs}`, {
     headers: { authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
   });
   if (!res.ok) throw new Error(`Graph calendarView failed (${res.status})`);
@@ -52,7 +53,7 @@ async function getScheduleBusy(
   fromIso: string,
   toIso: string,
 ): Promise<BusyInterval[]> {
-  const res = await fetch(`${GRAPH}/me/calendar/getSchedule`, {
+  const res = await vendorFetch(`${GRAPH}/me/calendar/getSchedule`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -65,7 +66,7 @@ async function getScheduleBusy(
       endTime: { dateTime: toGraph(toIso), timeZone: "UTC" },
       availabilityViewInterval: 30,
     }),
-  });
+  }, { idempotent: true }); // a read, despite the POST
   // getSchedule is a work/school (Exchange Online) feature; personal Microsoft
   // accounts reject it. Fall back to reading the calendar view directly.
   if (!res.ok) return calendarViewBusy(token, fromIso, toIso);
@@ -128,7 +129,7 @@ export async function makeM365Adapter(
           transactionId: `alevo-${params.conversationId}-${Date.parse(params.startIso)}`,
         };
         const create = (body: Record<string, unknown>) =>
-          fetch(`${GRAPH}/me/events`, {
+          vendorFetch(`${GRAPH}/me/events`, {
             method: "POST",
             headers: {
               authorization: `Bearer ${token}`,
@@ -136,7 +137,7 @@ export async function makeM365Adapter(
               Prefer: 'outlook.timezone="UTC"',
             },
             body: JSON.stringify(body),
-          });
+          }, { idempotent: true }); // Graph dedupes on transactionId, so a replay can't double-book
         type EventJson = {
           id?: string;
           start?: { dateTime?: string };
@@ -170,7 +171,7 @@ export async function makeM365Adapter(
 
     async cancel(uid: string): Promise<CancelResult> {
       try {
-        const res = await fetch(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
+        const res = await vendorFetch(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
           method: "DELETE",
           headers: { authorization: `Bearer ${token}` },
         });
@@ -191,7 +192,7 @@ export async function makeM365Adapter(
         if (isBusy(newStartIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time is no longer open" };
         }
-        const res = await fetch(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
+        const res = await vendorFetch(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
           method: "PATCH",
           headers: {
             authorization: `Bearer ${token}`,

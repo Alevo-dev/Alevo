@@ -49,3 +49,6 @@ next-env.d.ts
 .agents/
 .claude/
 skills-lock.json
+
+# accessibility scan browser profile (pnpm a11y -- --app)
+.a11y-profile/

@@ -65,6 +65,7 @@ export const conversations = pgTable(
   },
   (t) => [
     index("conversations_org_id_idx").on(t.orgId),
+    index("conversations_org_created_idx").on(t.orgId, t.createdAt.desc(), t.id.desc()),
     index("conversations_contact_id_idx").on(t.contactId),
   ],
 );

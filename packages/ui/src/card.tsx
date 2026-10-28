@@ -23,6 +23,11 @@ export function Card({ padding = "md", as: Tag = "section", className, ...rest }
   );
 }
 
+/** Bottom strip of a `padding="none"` card: a "View all" link, or the pager. */
+export function CardFooter({ as: Tag = "div", className, ...rest }: HTMLAttributes<HTMLElement> & { as?: "div" | "nav" }) {
+  return <Tag className={cx("flex items-center justify-between gap-3 border-t border-hairline px-6 py-3", className)} {...rest} />;
+}
+
 export function CardTitle({ className, ...rest }: HTMLAttributes<HTMLHeadingElement>) {
   return <h2 className={cx("text-heading font-semibold text-ink", className)} {...rest} />;
 }

@@ -29,7 +29,7 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
           hint={
             <>
               The agent grounds every reply in this. Company name, offering and ideal customer are required while the{" "}
-              <Link href="/workspace/agent">agent</Link> is on{agentOn ? " (it is)" : ""}.
+              <Link href="/workspace/agent" className="underline underline-offset-2">agent</Link> is on{agentOn ? " (it is)" : ""}.
             </>
           }
         />
