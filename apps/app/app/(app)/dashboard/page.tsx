@@ -267,7 +267,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               No leads yet. Share your hosted lead form, or send a test message from a conversation, and activity shows up here.
             </p>
             {org && (
-              <Link href={`/f/${org.id}`} className={buttonClass("secondary", "md", "mt-4")}>
+              <Link href={`/form/${org.id}`} className={buttonClass("secondary", "md", "mt-4")}>
                 Open your lead form
               </Link>
             )}

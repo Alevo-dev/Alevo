@@ -21,6 +21,8 @@ import { ChatWidgetForm } from "./chat-widget-form";
 import { ConnectResult } from "./connect-result";
 import { ConnectWiseForm } from "./connectwise-form";
 import { ConnectTool } from "./connect-tool";
+import { normaliseHex } from "@/lib/colour";
+import { BrandColour } from "./brand-colour";
 import { EmbedSnippets } from "./embed-snippets";
 import { ConnectionHealthCard, PAIR_CARD_CLASS } from "./connection-health";
 import { ServiceKeysForm } from "./integrations-ui";
@@ -35,7 +37,7 @@ export const metadata: Metadata = { title: "Integrations" };
 const CALENDAR_DESCRIPTION = "Alevo books on one calendar at a time. Only a refresh token is stored, encrypted.";
 const FORM_DESCRIPTION = "Put the form on your website, or point your own form at Alevo. Every submission opens a conversation the agent works.";
 const CHAT_DESCRIPTION =
-  "A chat bubble on your website. Visitors talk to the agent, which answers from your knowledge base, captures their details and books the meeting, like any other channel.";
+  "A chat bubble on your website. Visitors talk to the agent, which answers from your knowledge base, captures their details and books the meeting, like any other channel. The switch at the top right turns the bubble on or off without touching the script on your site.";
 const CONNECTWISE_DESCRIPTION =
   "When a lead is handed to a person or books a meeting, Alevo creates or finds the company and contact in Manage, logs an activity, and opens an opportunity on a booking. Keys are stored encrypted.";
 
@@ -68,6 +70,10 @@ export default async function SecretsPage({
   ]);
   const canModify = userRole === "admin" || userRole === "owner";
   const isSet = new Set(setKeys);
+  // The colour each snippet starts with: the Brand colour, else (chat only) the older chat colour, else Alevo blue.
+  const brand = normaliseHex(profile?.brandColor ?? "");
+  const chatAccent = brand ?? normaliseHex(profile?.chatAccent ?? "") ?? "#2e9be6";
+  const embedAccent = brand ?? "#2e9be6";
   const booking = bookingSnapshot(profile);
   const connectwise = connectwiseSnapshot(profile);
 
@@ -93,14 +99,17 @@ export default async function SecretsPage({
   function manageContent(service: ServiceView) {
     switch (service.id) {
       case "form":
-        return <EmbedSnippets orgId={orgId} origin={appUrl()} company={orgName} />;
+        return <EmbedSnippets orgId={orgId} origin={appUrl()} company={orgName} accent={embedAccent} textColor={normaliseHex(profile?.brandTextColor ?? "") ?? ""} />;
       case "chat":
         return (
           <ChatWidgetForm
             enabled={profile?.chatEnabled ?? false}
             greeting={profile?.chatGreeting ?? ""}
-            accent={profile?.chatAccent ?? ""}
-            snippet={`<script src="${appUrl()}/chat.js" data-org="${orgId}" async></script>`}
+            agentName={profile?.chatAgentName ?? ""}
+            src={`${appUrl()}/chat.js`}
+            orgId={orgId}
+            accent={chatAccent}
+            textColor={normaliseHex(profile?.brandTextColor ?? "") ?? ""}
             canModify={canModify}
           />
         );
@@ -210,6 +219,8 @@ export default async function SecretsPage({
           )}
         </Card>
       </div>
+
+      <BrandColour accent={profile?.brandColor ?? ""} textColor={profile?.brandTextColor ?? ""} canModify={canModify} />
 
       {/* Only connected (or started) tools get a card; everything else waits in the picker. */}
       <div className="flex flex-wrap items-start justify-between gap-3">

@@ -1,5 +1,5 @@
 import type { OrgProfile } from "@alevo/db";
-import { toneForPrompt } from "@/lib/profile/tone";
+import { toneForPrompt } from "../profile/tone";
 
 export type ContactInfo = {
   firstName: string | null;
@@ -30,6 +30,8 @@ export function buildSystemPrompt(
   bookingMode: BookingMode = null,
   emailStyle = false,
   chat = false,
+  handedOff = false,
+  agentName = "",
 ): string {
   const company = profile.companyName?.trim() || "our company";
   const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim();
@@ -87,8 +89,22 @@ export function buildSystemPrompt(
 
   // Website chat: the visitor starts anonymous, so get a name and email early
   // (follow-up by email is what keeps the lead once they close the tab).
+  const chatName = chat && agentName.trim() ? ` Visitors see you as "${agentName.trim()}" at the top of the chat window: that is your name, so use it if you introduce yourself or are asked who they are talking to.` : "";
   const chatGuidance = chat
-    ? `\n- You are the live chat on our website. The visitor is anonymous until they tell you who they are: after answering their first message, ask for their name and email so a person can follow up if the chat ends, then carry on qualifying.`
+    ? `\n- You are the live chat on our website.${chatName} The visitor is anonymous until they tell you who they are: after answering their first message, ask for their name and email so a person can follow up if the chat ends, then carry on qualifying.`
+    : "";
+
+  // After a hand-off the team has been told, but the contact is still talking to us. Without this the
+  // agent reads its own "a colleague will follow up" and goes quiet. Keep answering; a request to book
+  // overrides the hand-off (a successful booking replaces it).
+  const handedOffNote = handedOff
+    ? `\n- THIS CONVERSATION IS ALREADY HANDED OFF: ${company}'s team has been notified and a colleague will follow up, but the contact is still writing to you, so keep helping. Answer to the best of your ability from what you know about us (the knowledge base above, our offering, our criteria) and always send exactly one reply, even when you can only partly answer: say what a colleague will confirm. Do not call set_status('handed_off') again, and don't repeat that someone will follow up in every message.${
+        apiBooking
+          ? ` If they ask to book or schedule a call, that overrides the hand-off: call check_availability, offer times, and book their choice with book_meeting; a successful booking replaces the hand-off.`
+          : bookingMode === "calendly"
+            ? ` If they ask to book or schedule a call, that overrides the hand-off: send the scheduling link with send_booking_link and let them pick a time.`
+            : ` If they ask for a call, a colleague will contact them to set a time: confirm that and ask for the best number or time to reach them.`
+      }`
     : "";
 
   return `You are an inbound sales development representative for ${company}. You engage leads who reached out, qualify them against our criteria, and get the good ones booked onto a call. A qualified lead with a meeting on the calendar is the outcome you work toward in every conversation.
@@ -109,7 +125,7 @@ ${styleGuidance} ${signoff}
   - "handed_off" when they're qualified but a PERSON still needs to reach out to get them booked${handoffWhen}. Let them know a colleague will follow up. This is different from a booking: once book_meeting succeeds the conversation is "booked" and final — never call set_status after a successful booking.
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
-- If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.
+- If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.${handedOffNote}
 
 Decide, act through the tools, then stop.`;
 }

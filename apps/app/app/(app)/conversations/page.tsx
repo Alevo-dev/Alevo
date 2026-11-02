@@ -58,7 +58,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
     <div className="space-y-8">
       <PageHeader title="Conversations" description={`${total} leads across your channels. Newest first, ${PAGE_SIZE} per page.`}>
         {org && (
-          <a href={`/f/${org.id}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
+          <a href={`/form/${org.id}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
             Open lead form
           </a>
         )}

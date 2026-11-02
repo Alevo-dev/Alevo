@@ -7,6 +7,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 export const MAX_MESSAGE_CHARS = 2000;
 export const MAX_GREETING_CHARS = 200;
+export const MAX_AGENT_NAME_CHARS = 40;
 export const DEFAULT_GREETING = "Hi! How can we help today?";
 /** Alevo blue; the admin can pick another under Integrations → Chat widget. */
 export const DEFAULT_ACCENT = "#2e9be6";

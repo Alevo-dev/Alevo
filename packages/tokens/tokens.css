@@ -112,8 +112,10 @@
    Source: https://claude.ai/artifact/QmjsfhrQWLab4yrhNR23Q2 (tokens.json).
    Dark is the brand default; light exists for docs, email and print.
    The `--ds-*` prefix avoids colliding with the marketing semantic set above.
+   `.light` re-applies this palette inside a dark page (the public contact form).
    ========================================================================== */
-:root {
+:root,
+.light {
   /* Fixed brand hues (theme-independent) — fills only, never text on light. */
   /* Action hues are sampled from the approved app mockups (buttons, active tab,
      chart lines); the lighter logo blues/violets are the hover + gradient steps. */

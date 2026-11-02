@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { orgProfiles, setOrgSecret, withService } from "@alevo/db";
 import { getCurrentOrg, requireRole } from "@alevo/auth";
+import { connectedToolsNow, enableBookingOnConnect } from "./auto-enable";
 import {
   buildAuthUrl,
   exchangeCode,
@@ -64,6 +65,7 @@ export async function handleCallback(
     const calendarId = provider === "google" ? "primary" : accountEmail;
     if (!calendarId) return back("calendar_error=no_account_email", origin);
 
+    const before = await connectedToolsNow(parsed.orgId);
     await setOrgSecret(parsed.orgId, refreshTokenKey(provider), refreshToken);
     await withService((tx) =>
       tx
@@ -84,6 +86,7 @@ export async function handleCallback(
           },
         }),
     );
+    await enableBookingOnConnect(parsed.orgId, before); // a first calendar turns booking on
     return back(`calendar_connected=${provider}`, origin);
   } catch (e) {
     Sentry.captureException(e);

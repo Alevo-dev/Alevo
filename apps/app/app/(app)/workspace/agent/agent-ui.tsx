@@ -142,7 +142,7 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
           }
         />
         <div className="mt-6">
-          <SettingRow label="Email the team" htmlFor="emailAlerts" hint="Owners and admins get the same alerts by email. Plan-limit notices are always emailed.">
+          <SettingRow label="Email the team" htmlFor="emailAlerts" end hint="Owners and admins get the same alerts by email. Plan-limit notices are always emailed.">
             <Switch id="emailAlerts" name="emailAlerts" defaultChecked={Boolean(v("emailAlerts"))} />
           </SettingRow>
         </div>

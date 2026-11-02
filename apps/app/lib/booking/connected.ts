@@ -71,6 +71,21 @@ export function bookingToolMissing(tool: BookingTool, snap: BookingSnapshot, has
   }
 }
 
+/**
+ * Booking turns on by itself the first time a tool becomes connected: nothing is chosen yet and this
+ * tool was not connected before the save. A tool that was already connected is never picked here, so
+ * saving its settings again cannot undo someone turning booking off. First in the usual order if
+ * several become connected at once.
+ */
+export function newlyConnectedTool(
+  chosen: string | null | undefined,
+  before: ReadonlySet<BookingTool>,
+  after: readonly BookingTool[],
+): BookingTool | null {
+  if (isBookingTool(chosen)) return null;
+  return BOOKING_TOOLS.find((tool) => after.includes(tool) && !before.has(tool)) ?? null;
+}
+
 export type ConnectedTool = { tool: BookingTool; label: string; detail: string | null };
 
 /** The connected tools, with a one-line detail for the Booking section. */

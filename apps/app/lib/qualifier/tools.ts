@@ -362,16 +362,19 @@ export async function dispatchTool(
       // A booking is final: "booked" means the meeting is on the calendar, while
       // "handed_off" means a person still has to reach out to get one booked.
       if (effects.booked) return "The meeting is already booked — status unchanged. You're done.";
-      await withService((tx) =>
-        tx
+      const before = await withService(async (tx) => {
+        const [row] = await tx.select({ status: conversations.status }).from(conversations).where(scoped(target)).limit(1);
+        await tx
           .update(conversations)
           .set({ status: status as SettableStatus, updatedAt: new Date() })
-          .where(and(scoped(target), notBooked())),
-      );
+          .where(and(scoped(target), notBooked()));
+        return row?.status ?? null;
+      });
       effects.status = status as SettableStatus;
       // Alert the org the moment a lead is handed to a human (best-effort Slack),
       // and write the qualified lead back to the org's PSA.
-      if (status === "handed_off") {
+      // Only when it newly becomes a hand-off: a conversation that is already handed off (and still being answered) must not re-alert.
+      if (status === "handed_off" && before !== "handed_off") {
         if (!effects.bookingFailed) await notifyHandoff(target); // the booking alert already said so
         await requestPsaWriteback(target.orgId, target.conversationId, "handed_off");
       }

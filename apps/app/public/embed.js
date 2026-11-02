@@ -3,15 +3,18 @@
  *   <div id="alevo-form"></div>
  *   <script src="https://app.getalevo.com/embed.js" data-org="ORG_ID" data-target="#alevo-form" async></script>
  *
- * It takes on the page it sits in: the page's font, text colour and background.
- * The button defaults to the page's own text colour (dark on a light page, light
- * on a dark one), so it never clashes. To use a brand colour instead, either set
- * data-accent="#hex" on the script tag or define --alevo-accent in your CSS.
+ * It takes on the page it sits in: the page's font, text colour and background, and it
+ * follows the page's light / dark theme (also when the page switches theme later).
  *
  * Options: data-target (where to render; default: right after the script tag),
- * data-accent (colour of the left panel and button), data-details="false" (no phone /
- * email / address / hours list in the left panel), data-company (name used if the
- * workspace has none).
+ * data-accent="#hex" (colour of the left panel and button; default your Brand colour from
+ * Alevo > Integrations, else the page's text colour),
+ * data-color="#hex" (text colour on that panel and button; default your font colour from Alevo,
+ * else white or navy by contrast; the form's own text follows the page),
+ * data-details="false" (no phone / email / address / hours list in the left panel),
+ * data-company (name used if the workspace has none).
+ * Per-theme colours: define --alevo-accent / --alevo-color in your CSS under each theme
+ * (for example under .dark); the data- attributes win when both are set.
  * The contact details come from Workspace > Business profile. Posts JSON to
  * /api/forms/ORG_ID.
  */
@@ -70,26 +73,64 @@
     return [255, 255, 255, 1];
   }
 
-  var hostStyle = getComputedStyle(host);
-  var custom = script.getAttribute("data-accent") || hostStyle.getPropertyValue("--alevo-accent").trim();
-  var brand = custom ? resolve(custom) : null;
-  var accent, onAccent;
-  if (brand) {
-    accent = css(brand);
-    onAccent = lum(brand) > 0.18 ? "#06091a" : "#ffffff";
-  } else {
-    // No colour chosen: the button is the page's text colour on the page's background.
-    accent = css(parse(hostStyle.color) || [17, 17, 17]);
-    onAccent = css(pageBackground(host));
+  // Colour. Accent (panel + button): data-accent, else --alevo-accent in the page's CSS, else the Brand colour
+  // saved in Alevo, else the page's own text colour. Text ON the accent: data-color, else --alevo-color, else
+  // the font colour saved with the Brand colour, else white or navy by contrast. Everything else (the form's
+  // own text, its background, the error red) follows the page, so light and dark pages both work.
+  var savedAccent = ""; // the workspace Brand colour, from the details endpoint
+  var savedText = ""; // and the font colour that goes with it
+  function setting(attrName, cssVar) {
+    return script.getAttribute(attrName) || getComputedStyle(host).getPropertyValue(cssVar).trim();
+  }
+  function paint(wrap) {
+    var bg = pageBackground(host);
+    var pageText = parse(getComputedStyle(host).color) || [17, 17, 17];
+    var color = setting("data-color", "--alevo-color");
+    var chosenOn = color ? resolve(color) : null;
+    var own = setting("data-accent", "--alevo-accent");
+    var custom = own || savedAccent;
+    var brand = custom ? resolve(custom) : null;
+    // The saved font colour belongs to the saved brand colour, so it is not used on an accent the page chose itself.
+    var onSaved = !own && savedAccent && savedText ? resolve(savedText) : null;
+    wrap.style.setProperty("--alevo-accent", css(brand || pageText));
+    wrap.style.setProperty("--alevo-on", css(chosenOn || onSaved || (brand ? (lum(brand) > 0.18 ? [6, 9, 26] : [255, 255, 255]) : bg)));
+    wrap.style.setProperty("--alevo-bg", css(bg));
+    // Error red that stays readable (4.5:1) on both light and dark pages.
+    wrap.style.setProperty("--alevo-danger", lum(bg) > 0.18 ? "#c8323b" : "#ff6b70");
+  }
+  // A site that switches theme after load (a toggle, or the OS flipping): repaint when the html / body
+  // attributes change or the OS colour scheme does, so the card never keeps the old theme's colours.
+  function watchTheme(wrap) {
+    var queued = false;
+    function repaint() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        paint(wrap);
+        setTimeout(function () {
+          paint(wrap); // once more after a fading theme transition
+        }, 400);
+      });
+    }
+    if (window.MutationObserver) {
+      var mo = new MutationObserver(repaint);
+      mo.observe(document.documentElement, { attributes: true });
+      mo.observe(document.body, { attributes: true });
+    }
+    if (window.matchMedia) {
+      var q = matchMedia("(prefers-color-scheme: dark)");
+      if (q.addEventListener) q.addEventListener("change", repaint);
+    }
   }
 
   if (!document.getElementById("alevo-form-css")) {
     var style = document.createElement("style");
     style.id = "alevo-form-css";
     style.textContent = [
-      ".alevo-wrap{font:inherit;color:inherit;display:flex;flex-wrap:wrap;max-width:1000px;overflow:hidden;border-radius:20px;border:1px solid rgba(128,128,128,.25);border:1px solid color-mix(in srgb,currentColor 14%,transparent);box-shadow:0 18px 50px -26px rgba(0,0,0,.3);box-sizing:border-box}",
+      ".alevo-wrap{font:inherit;color:inherit;display:flex;flex-wrap:wrap;width:100%;overflow:hidden;border-radius:20px;border:1px solid rgba(128,128,128,.25);border:1px solid color-mix(in srgb,currentColor 14%,transparent);box-shadow:0 18px 50px -26px rgba(0,0,0,.3);box-sizing:border-box}",
       ".alevo-wrap *{box-sizing:border-box}",
-      ".alevo-info{position:relative;overflow:hidden;flex:5 1 300px;min-width:0;display:flex;flex-direction:column;gap:32px;padding:40px;background:var(--alevo-accent);color:var(--alevo-on)}",
+      ".alevo-info{position:relative;overflow:hidden;flex:4 1 300px;min-width:0;display:flex;flex-direction:column;gap:32px;padding:36px;background:var(--alevo-accent);color:var(--alevo-on)}",
       ".alevo-info::before,.alevo-info::after{content:'';position:absolute;border-radius:50%;background:var(--alevo-on);opacity:.1;pointer-events:none}",
       ".alevo-info::before{width:240px;height:240px;top:-90px;right:-70px}",
       ".alevo-info::after{width:170px;height:170px;bottom:-60px;left:-50px}",
@@ -97,15 +138,15 @@
       ".alevo-eyebrow{margin:0 0 12px;font-size:.75em;font-weight:700;letter-spacing:.14em;text-transform:uppercase}",
       ".alevo-info h3{margin:0;font:inherit;font-size:1.9em;font-weight:700;line-height:1.15;letter-spacing:-.01em}",
       ".alevo-blurb{margin:12px 0 0;line-height:1.5}",
-      ".alevo-info ul{list-style:none;margin:auto 0 0;padding:0;display:grid;gap:18px}",
+      ".alevo-info ul{list-style:none;margin:auto 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px 24px}",
       ".alevo-info li{display:flex;gap:12px;align-items:flex-start;min-width:0}",
       ".alevo-ic{flex:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.25);background:color-mix(in srgb,var(--alevo-on) 18%,transparent)}",
       ".alevo-ic svg{width:16px;height:16px}",
       ".alevo-info small{display:block;font-size:.75em;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.4}",
       ".alevo-info li div{min-width:0;overflow-wrap:anywhere;white-space:pre-line}",
       ".alevo-info a{color:inherit;text-underline-offset:3px;display:inline-block;padding:6px 0}",
-      ".alevo-form{flex:6 1 340px;min-width:0;padding:40px;background:var(--alevo-bg)}",
-      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:22px 24px}",
+      ".alevo-form{flex:7 1 440px;min-width:0;padding:36px;background:var(--alevo-bg)}",
+      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:22px 24px}",
       ".alevo-form fieldset:disabled{opacity:.7}",
       ".alevo-full{grid-column:1/-1}",
       ".alevo-form label.alevo-l{display:block;font-size:.8125em;font-weight:600;margin:0 0 2px}",
@@ -189,18 +230,18 @@
     );
   }
 
+  var shown = null;
   function render(d) {
+    savedAccent = (d && d.accent) || "";
+    savedText = (d && d.textColor) || "";
     var named = (d && d.name) || script.getAttribute("data-company");
     var company = named || "this company";
     var id = "alevo" + Math.random().toString(36).slice(2, 7);
     var startedAt = Date.now();
     var wrap = document.createElement("div");
     wrap.className = "alevo-wrap";
-    wrap.style.setProperty("--alevo-accent", accent);
-    wrap.style.setProperty("--alevo-on", onAccent);
-    wrap.style.setProperty("--alevo-bg", css(pageBackground(host)));
-    // Error red that stays readable (4.5:1) on both light and dark pages.
-    wrap.style.setProperty("--alevo-danger", lum(pageBackground(host)) > 0.18 ? "#c8323b" : "#ff6b70");
+    paint(wrap);
+    shown = wrap;
     wrap.innerHTML =
       infoColumn(d, named) +
       '<form class="alevo-form" novalidate>' +
@@ -215,11 +256,13 @@
       '<p class="alevo-error alevo-full" data-for="form"></p>' +
       '<button type="submit" class="alevo-full"><span class="alevo-ico">' + svg(ICON.send) + '</span><span class="alevo-label">Send message</span></button>' +
       "</fieldset>" +
-      '<p class="alevo-note">Your details go to ' +
+      '<p class="alevo-note">Your details go to <span class="alevo-co">' +
       esc(company) +
+      "</span>" +
       ' and are processed by Alevo. See the <a href="https://getalevo.com/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</p>' +
       "</form>";
     host.appendChild(wrap);
+    watchTheme(wrap);
 
     var form = wrap.querySelector("form");
     var fieldset = form.querySelector("fieldset");
@@ -315,13 +358,25 @@
     });
   }
 
-  // The form shows even if the details can't be fetched (offline, slow, or turned off).
+  // The form shows even if the details can't be fetched (offline, slow, or turned off). If they
+  // arrive after the 3 second wait, they are filled into the form that is already on the page.
   if (script.getAttribute("data-details") === "false") return render(null);
   var done = false;
   function once(d) {
     if (done) return;
     done = true;
     render(d);
+  }
+  function late(d) {
+    var info = shown && shown.querySelector(".alevo-info");
+    if (!info) return;
+    var named = d.name || script.getAttribute("data-company");
+    info.outerHTML = infoColumn(d, named);
+    var co = shown.querySelector(".alevo-co");
+    if (co && named) co.textContent = named;
+    savedAccent = d.accent || "";
+    savedText = d.textColor || "";
+    paint(shown);
   }
   setTimeout(function () {
     once(null);
@@ -331,7 +386,9 @@
       return res.ok ? res.json() : null;
     })
     .then(function (json) {
-      once(json && json.ok ? json : null);
+      var d = json && json.ok ? json : null;
+      if (!done) once(d);
+      else if (d) late(d);
     })
     .catch(function () {
       once(null);

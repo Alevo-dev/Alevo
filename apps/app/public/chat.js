@@ -2,8 +2,13 @@
  * Alevo website chat. Paste once, before </body>:
  *   <script src="https://app.getalevo.com/chat.js" data-org="ORG_ID" async></script>
  * A chat bubble appears bottom-right; the visitor talks to the org's agent.
- * Options: data-position="left" puts the bubble bottom-left. Colour, greeting
- * and the on/off switch are set in Alevo under Integrations → Chat widget.
+ * Options: data-position="left" puts the bubble bottom-left.
+ * data-accent="#hex" sets the colour of the bubble, header, your messages and send button
+ * (default: your Brand colour, set in Alevo under Integrations, else Alevo blue).
+ * data-color="#hex" sets the text / icon colour on those (default: your font colour saved in Alevo, else
+ * white, or navy on a light accent).
+ * The same two can be set as --alevo-accent / --alevo-color in the page's CSS (e.g. per theme).
+ * The greeting and the on/off switch are set in Alevo under Integrations → Chat widget.
  * The session (a random token) is kept in localStorage so the thread survives
  * page changes; only its hash is stored server-side.
  */
@@ -35,31 +40,67 @@
     });
   }
 
+  // Any CSS colour (hex, name, hsl, rgb) -> [r, g, b], by letting the browser compute it. Null when invalid.
+  function rgb(c) {
+    var probe = document.createElement("i");
+    probe.style.color = c;
+    if (!c || !probe.style.color) return null;
+    document.body.appendChild(probe);
+    var m = /(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(getComputedStyle(probe).color);
+    probe.remove();
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+  function lum(c) {
+    var l = c.map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+  }
+  function rgbCss(c) {
+    return "rgb(" + c.join(",") + ")";
+  }
+  // The page's choice first (attribute, then CSS variable), then the saved colour, then Alevo blue.
+  function setting(attr, cssVar) {
+    return script.getAttribute(attr) || getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+  }
+
   function mount(cfg) {
-    var accent = /^#[0-9a-f]{6}$/i.test(cfg.accent) ? cfg.accent : "#2e9be6";
+    // The name at the top of the window: the agent's, else the company's.
+    var title = cfg.agentName || cfg.company;
+    var accentRgb = rgb(setting("data-accent", "--alevo-accent")) || rgb(cfg.accent) || [46, 155, 230];
+    var accent = rgbCss(accentRgb);
+    // Text on the accent: white, unless the accent is too light for it (about 3:1), then navy.
+    // Text on the accent: the page's data-color / --alevo-color, else the font colour saved in Alevo (only while the accent is
+    // the saved one, not the page's own), else white, or navy when the accent is too light for white.
+    var ownAccent = !!setting("data-accent", "--alevo-accent");
+    var onRgb = rgb(setting("data-color", "--alevo-color")) || (!ownAccent && rgb(cfg.textColor)) || (lum(accentRgb) <= 0.3 ? [255, 255, 255] : [6, 9, 26]);
+    var on = rgbCss(onRgb);
     var css = document.createElement("style");
     css.id = "alevo-chat-css";
     css.textContent =
       ".alevo-chat{--a:" +
       accent +
+      ";--on:" +
+      on +
       ";position:fixed;z-index:2147483000;bottom:24px;" +
       (left ? "left" : "right") +
       ":24px;font:15px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1b2030}" +
       ".alevo-chat *{box-sizing:border-box}" +
-      ".alevo-chat-launch{width:56px;height:56px;border-radius:50%;border:0;background:var(--a);color:#fff;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;transition:transform .15s}" +
+      ".alevo-chat-launch{width:56px;height:56px;border-radius:50%;border:0;background:var(--a);color:var(--on);cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;transition:transform .15s}" +
       ".alevo-chat-launch:hover{transform:scale(1.05)}.alevo-chat-launch:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px var(--a)}" +
       ".alevo-chat-launch svg{width:26px;height:26px}" +
       ".alevo-chat-panel{position:absolute;bottom:72px;" +
       (left ? "left" : "right") +
       ":0;width:380px;max-width:calc(100vw - 48px);height:560px;max-height:calc(100vh - 120px);background:#fff;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.22);display:none;flex-direction:column;overflow:hidden}" +
       ".alevo-chat.is-open .alevo-chat-panel{display:flex}" +
-      ".alevo-chat-head{background:var(--a);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}" +
+      ".alevo-chat-head{background:var(--a);color:var(--on);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}" +
       ".alevo-chat-head strong{display:block;font-size:15px}.alevo-chat-head span{display:block;font-size:12px;opacity:.85;margin-top:2px}" +
-      ".alevo-chat-close{background:transparent;border:0;color:#fff;cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}.alevo-chat-close:hover{background:rgba(255,255,255,.15)}" +
+      ".alevo-chat-close{background:transparent;border:0;color:var(--on);cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}.alevo-chat-close:hover{background:rgba(128,128,128,.25)}" +
       ".alevo-chat-log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f6f7f9}" +
       ".alevo-chat-msg{max-width:85%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word}" +
       ".alevo-chat-msg.them{align-self:flex-start;background:#fff;border:1px solid #e3e6ec;border-bottom-left-radius:4px}" +
-      ".alevo-chat-msg.me{align-self:flex-end;background:var(--a);color:#fff;border-bottom-right-radius:4px}" +
+      ".alevo-chat-msg.me{align-self:flex-end;background:var(--a);color:var(--on);border-bottom-right-radius:4px}" +
       ".alevo-chat-sys{align-self:center;font-size:12px;color:#5c6578;text-align:center;padding:4px 8px}" +
       ".alevo-chat-typing{align-self:flex-start;background:#fff;border:1px solid #e3e6ec;border-radius:14px;border-bottom-left-radius:4px;padding:10px 12px;display:none;gap:4px}" +
       ".alevo-chat-typing.on{display:flex}.alevo-chat-typing i{width:6px;height:6px;border-radius:50%;background:#9aa3b5;animation:alevo-bounce 1.2s infinite}" +
@@ -70,7 +111,7 @@
       ".alevo-chat-row{display:flex;gap:8px;align-items:flex-end}" +
       ".alevo-chat-row textarea{flex:1;resize:none;font:inherit;color:inherit;border:1px solid #cfd5e0;border-radius:10px;padding:9px 12px;max-height:120px;min-height:40px}" +
       ".alevo-chat-row textarea:focus{outline:2px solid var(--a);outline-offset:1px;border-color:var(--a)}" +
-      ".alevo-chat-send{width:40px;height:40px;border-radius:10px;border:0;background:var(--a);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}" +
+      ".alevo-chat-send{width:40px;height:40px;border-radius:10px;border:0;background:var(--a);color:var(--on);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}" +
       ".alevo-chat-send:disabled{opacity:.5;cursor:not-allowed}.alevo-chat-send svg{width:18px;height:18px}" +
       ".alevo-chat-err{color:#c8323b;font-size:12px;margin:6px 2px 0;min-height:0}.alevo-chat-err:empty{display:none}" +
       ".alevo-chat-note{font-size:11px;color:#6b7386;margin:8px 2px 0;text-align:center}.alevo-chat-note a{color:inherit}" +
@@ -81,10 +122,10 @@
     root.className = "alevo-chat";
     root.innerHTML =
       '<div class="alevo-chat-panel" role="dialog" aria-label="Chat with ' +
-      esc(cfg.company) +
+      esc(title) +
       '" aria-modal="false">' +
       '<div class="alevo-chat-head"><div><strong>' +
-      esc(cfg.company) +
+      esc(title) +
       "</strong><span>" +
       (cfg.online ? "Usually replies in under a minute" : "Leave a message and your email; we'll get back to you") +
       "</span></div>" +

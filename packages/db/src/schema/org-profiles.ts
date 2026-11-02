@@ -84,7 +84,13 @@ export const orgProfiles = pgTable(
     // Website chat widget (migration 0025): the switch, greeting and bubble colour.
     chatEnabled: boolean("chat_enabled").notNull().default(false),
     chatGreeting: text("chat_greeting"),
+    // The name shown at the top of the chat window (migration 0036); null = the company name.
+    chatAgentName: text("chat_agent_name"),
     chatAccent: text("chat_accent"),
+    // The workspace's default brand colour (migrations 0033-0034): the website form and the chat bubble. `chatAccent` above is the older chat-only colour, used only while this is blank.
+    brandColor: text("brand_color"),
+    // The text colour on the brand colour (migration 0035); null = white or navy by contrast.
+    brandTextColor: text("brand_text_color"),
     // Slack card health (migrations 0028–0029). A saved webhook is "Untested"
     // until a post succeeds (`slackVerifiedAt`); the last failed post keeps the
     // card at "Needs attention" with Slack's reason. Saving or clearing the

@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgId: 
   const config = await chatConfig(orgId);
   if (!config?.enabled) return NextResponse.json({ ok: false }, { status: 404, headers: CHAT_CORS });
   return NextResponse.json(
-    { ok: true, company: config.company, greeting: config.greeting, accent: config.accent, online: config.online },
+    { ok: true, company: config.company, agentName: config.agentName, greeting: config.greeting, accent: config.accent, textColor: config.textColor, online: config.online },
     { headers: { ...CHAT_CORS, "cache-control": "public, max-age=60" } },
   );
 }

@@ -23,12 +23,12 @@ export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-/** What the embed script shows beside the form: the business name and the contact details the owner chose to publish. */
+/** What the embed script shows beside the form: the business name, the contact details the owner chose to publish and their brand colour and its font colour. */
 export async function GET(_req: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const org = await loadContactDetails((await params).orgId);
   if (!org) return NextResponse.json({ ok: false, error: "This form is not available." }, { status: 404, headers: CORS });
-  const { name, email, phone, address, hours } = org;
-  return NextResponse.json({ ok: true, name, email, phone, address, hours }, { headers: { ...CORS, "cache-control": "public, max-age=60" } });
+  const { name, email, phone, address, hours, accent, textColor } = org;
+  return NextResponse.json({ ok: true, name, email, phone, address, hours, accent, textColor }, { headers: { ...CORS, "cache-control": "public, max-age=60" } });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ orgId: string }> }) {
@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orgId: 
   );
 
   if (wantsHtml) {
-    const back = new URL(`/f/${orgId}`, requestOrigin(req));
+    const back = new URL(`/form/${orgId}`, requestOrigin(req));
     back.searchParams.set(result.ok ? "submitted" : "error", "1");
     return NextResponse.redirect(back, { status: 303 });
   }

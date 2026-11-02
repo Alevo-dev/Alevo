@@ -16,7 +16,7 @@ export function onAccent(hex: string): string {
   return lum > 0.18 ? "#06091a" : "#ffffff";
 }
 
-/** `?accent=` from the iframe snippet: a six-digit hex, with or without the #. Anything else is ignored. */
+/** `?accent=` on the hosted page: a six-digit hex, with or without the #. Anything else is ignored. */
 export function parseAccent(raw: string | undefined): string | undefined {
   const v = raw?.trim().replace(/^#/, "") ?? "";
   return /^[0-9a-f]{6}$/i.test(v) ? `#${v.toLowerCase()}` : undefined;

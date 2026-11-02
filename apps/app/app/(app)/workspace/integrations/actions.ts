@@ -13,7 +13,9 @@ import { makeGoogleAdapter } from "@/lib/booking/google";
 import { makeM365Adapter } from "@/lib/booking/m365";
 import { calendarTestDetail, calendarTestHint } from "@/lib/booking/calendar-test";
 import { BOOKING_TOOL_LABEL } from "@/lib/booking/connected";
-import { isHexColor, MAX_GREETING_CHARS } from "@/lib/chat/rules";
+import { connectedToolsNow, enableBookingOnConnect } from "@/lib/booking/auto-enable";
+import { MAX_AGENT_NAME_CHARS, MAX_GREETING_CHARS } from "@/lib/chat/rules";
+import { normaliseHex } from "@/lib/colour";
 
 export type ActionState = {
   ok?: boolean;
@@ -130,10 +132,12 @@ export async function saveCalcom(_prev: CalcomState, formData: FormData): Promis
     if (calcomEventTypeId && !/^\d+$/.test(calcomEventTypeId)) errors.calcomEventTypeId = "Enter the numeric Cal.com event type ID.";
     if (Object.keys(errors).length > 0) return { errors, values };
 
+    const before = await connectedToolsNow(org.id);
     await storeSecrets(org.id, actorId, entries);
     const id = calcomEventTypeId ? Number.parseInt(calcomEventTypeId, 10) : null;
     await upsertProfile(org.id, { calcomEventTypeId: id });
     if (id === null) await unchooseBookingTool(org.id, "calcom");
+    else await enableBookingOnConnect(org.id, before, actorId);
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "calcom.settings_saved", target: id === null ? "no event type" : `event type ${id}` });
     revalidateBoth();
     return { ok: true, values };
@@ -168,9 +172,11 @@ export async function saveCalendly(_prev: CalendlyState, formData: FormData): Pr
     if (calendlyUrl && !isHttpsUrl(calendlyUrl)) errors.calendlyUrl = "Enter a valid https Calendly link.";
     if (Object.keys(errors).length > 0) return { errors, values };
 
+    const before = await connectedToolsNow(org.id);
     await storeSecrets(org.id, actorId, entries);
     await upsertProfile(org.id, { calendlyUrl: calendlyUrl || null });
     if (!calendlyUrl) await unchooseBookingTool(org.id, "calendly");
+    else await enableBookingOnConnect(org.id, before, actorId);
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "calendly.settings_saved", target: calendlyUrl ? "link" : "no link" });
     revalidateBoth();
     return { ok: true, values };
@@ -310,27 +316,61 @@ export async function testConnectWise(_prev: ConnectWiseTestState, _formData: Fo
   }
 }
 
+export type BrandColourState = {
+  ok?: boolean;
+  error?: string;
+  errors?: { accent?: string; textColor?: string };
+  values?: { accent: string; textColor: string };
+};
+
+/** The workspace's default brand colour and the font colour on it (website form + chat bubble). Blank = the defaults. */
+export async function saveBrandColour(_prev: BrandColourState, formData: FormData): Promise<BrandColourState> {
+  const rawAccent = String(formData.get("accent") ?? "").trim();
+  const rawText = String(formData.get("textColor") ?? "").trim();
+  const accent = rawAccent ? normaliseHex(rawAccent) : "";
+  const textColor = rawText ? normaliseHex(rawText) : "";
+  if (accent === null || textColor === null) {
+    return {
+      errors: {
+        ...(accent === null ? { accent: "Enter a hex colour like #ff6a00." } : {}),
+        ...(textColor === null ? { textColor: "Enter a hex colour like #ffffff." } : {}),
+      },
+      values: { accent: accent ?? rawAccent.toLowerCase(), textColor: textColor ?? rawText.toLowerCase() },
+    };
+  }
+  const values = { accent, textColor };
+  try {
+    const { org, actorId } = await adminContext();
+    await upsertProfile(org.id, { brandColor: accent || null, brandTextColor: textColor || null });
+    await recordAudit({ orgId: org.id, actorUserId: actorId, action: "workspace.brand_colour_saved", target: [accent || "default", textColor || "auto"].join(" / ") });
+    revalidatePath("/workspace/integrations");
+    return { ok: true, values };
+  } catch (error) {
+    return { ...fail(error), values };
+  }
+}
+
 export type ChatWidgetState = {
   ok?: boolean;
   error?: string;
-  errors?: { greeting?: string; accent?: string };
-  values?: { enabled: boolean; greeting: string; accent: string };
+  errors?: { greeting?: string; agentName?: string };
+  values?: { enabled: boolean; greeting: string; agentName: string };
 };
 
-/** The website chat widget: on/off, greeting and colour, on the org profile. */
+/** The website chat widget: on/off and greeting, on the org profile (its colour is the workspace brand colour). */
 export async function saveChatWidget(_prev: ChatWidgetState, formData: FormData): Promise<ChatWidgetState> {
   const enabled = formData.get("enabled") === "on";
   const greeting = String(formData.get("greeting") ?? "").trim();
-  const accent = String(formData.get("accent") ?? "").trim().toLowerCase();
-  const values = { enabled, greeting, accent };
+  const agentName = String(formData.get("agentName") ?? "").trim();
+  const values = { enabled, greeting, agentName };
   try {
     const { org, actorId } = await adminContext();
     const errors: ChatWidgetState["errors"] = {};
     if (greeting.length > MAX_GREETING_CHARS) errors.greeting = `Keep the greeting under ${MAX_GREETING_CHARS} characters.`;
-    if (accent && !isHexColor(accent)) errors.accent = "Enter a hex colour like #2e9be6.";
+    if (agentName.length > MAX_AGENT_NAME_CHARS) errors.agentName = `Keep the name under ${MAX_AGENT_NAME_CHARS} characters.`;
     if (Object.keys(errors).length > 0) return { errors, values };
 
-    await upsertProfile(org.id, { chatEnabled: enabled, chatGreeting: greeting || null, chatAccent: accent || null });
+    await upsertProfile(org.id, { chatEnabled: enabled, chatGreeting: greeting || null, chatAgentName: agentName || null });
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "chat.settings_saved", target: enabled ? "enabled" : "disabled" });
     revalidatePath("/workspace/integrations");
     return { ok: true, values };

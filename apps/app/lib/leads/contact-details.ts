@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { orgProfiles, organizations, withService } from "@alevo/db";
+import { parseAccent } from "./present";
 
 /** What the public contact form shows about the business. A blank field is simply not shown. */
 export type ContactDetails = {
@@ -10,6 +11,10 @@ export type ContactDetails = {
   phone: string;
   address: string;
   hours: string;
+  /** The workspace brand colour (#rrggbb), or "" when none is set. */
+  accent: string;
+  /** The font colour on the brand colour (#rrggbb), or "" for automatic. */
+  textColor: string;
 };
 
 /** Deduped per request: generateMetadata, the page and the JSON endpoint all ask. Null = no such org. */
@@ -26,6 +31,8 @@ export const loadContactDetails = cache(async (orgId: string): Promise<ContactDe
         phone: orgProfiles.contactPhone,
         address: orgProfiles.businessAddress,
         hours: orgProfiles.contactHours,
+        accent: orgProfiles.brandColor,
+        textColor: orgProfiles.brandTextColor,
       })
       .from(organizations)
       .leftJoin(orgProfiles, eq(orgProfiles.orgId, organizations.id))
@@ -40,5 +47,7 @@ export const loadContactDetails = cache(async (orgId: string): Promise<ContactDe
     phone: row.phone ?? "",
     address: row.address ?? "",
     hours: row.hours ?? "",
+    accent: parseAccent(row.accent ?? undefined) ?? "",
+    textColor: parseAccent(row.textColor ?? undefined) ?? "",
   };
 });

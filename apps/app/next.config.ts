@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   // "Settings" became "Workspace" (2026-10-20); keep old links and bookmarks alive.
   async redirects() {
     return [
+      // The hosted contact form moved from /f/<id> to /form/<id> (2026-11-02); old links keep working.
+      { source: "/f/:orgId", destination: "/form/:orgId", permanent: true },
       { source: "/settings/qualifier", destination: "/workspace/agent", permanent: true },
       { source: "/settings/secrets", destination: "/workspace/integrations", permanent: true },
       // The Files tab folded into Knowledge (2026-10-20).

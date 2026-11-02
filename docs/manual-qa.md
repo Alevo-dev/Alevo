@@ -169,10 +169,10 @@ has a **CORS rule** allowing `PUT` from your app origin (ngrok/localhost). Resta
 _Prereq: `npx supabase db push` (applies migration 0007). Restart the app._
 
 ### Hosted lead form (public)
-- [x] In the app â†’ **Conversations**, copy "Your lead form" link (`/f/<orgId>`), open it in an **incognito/logged-out** tab â†’ the form loads with your org's name (no login required).
+- [x] In the app â†’ **Conversations**, copy "Your lead form" link (`/form/<orgId>`), open it in an **incognito/logged-out** tab â†’ the form loads with your org's name (no login required).
 - [x] Submit with name + email + message + the consent checkbox â†’ "Thanks â€” we'll be in touch."
 - [x] Submitting **without** the consent box â†’ error; without name/email â†’ error.
-- [x] A bad org id (`/f/not-a-real-id`) â†’ "This form is not available."
+- [x] A bad org id (`/form/not-a-real-id`) â†’ "This form is not available."
 
 ### Conversation shows up
 - [x] Back in the app â†’ **Conversations** â†’ the new lead appears (contact name, channel `form`, status `new`). Click it â†’ the thread shows the inbound message + contact details (email/phone/company).
@@ -349,7 +349,7 @@ Custom screens over Clerk's sign-in/sign-up flows (no Clerk-hosted UI). Check in
 - [x] Email sign-up creates the workspace from the Company field and lands on `/dashboard` directly; if workspace creation fails it falls back to Pick a workspace instead of bouncing to sign-in.
 - [x] Theme: the screen follows light/dark like the rest of the app.
 
-## Public lead form (`/f/<orgId>`)
+## Public lead form (`/form/<orgId>`)
 - [x] Centered card on the dark ground; inputs on canvas with control borders; the blue **Send** button; success state in a blue tint panel.
 
 ---
@@ -868,7 +868,7 @@ Legal pages, business details, email footers, data requests, plan limits. Dashbo
 - [ ] Workspace → Business profile has **Business address** under Company name with the anti-spam hint; Save persists (`org_profiles.business_address`); clearing it stores NULL.
 - [ ] With an address saved, an email the Qualifier sends ends with "Sent by <Company> · <address>", the Unsubscribe link, and "Reply to this email to request a copy or deletion of your data" + a privacy policy link. Without an address only the company name shows.
 - [ ] Reply to an agent email with "please delete my data": the agent confirms once, Slack gets "Data request: …" (escalation) and the conversation becomes **Handed to a rep**. No further qualifying.
-- [ ] Public lead form (`/f/<orgId>`) shows the "Your details go to <Company> and are processed by Alevo" line with a working privacy link.
+- [ ] Public lead form (`/form/<orgId>`) shows the "Your details go to <Company> and are processed by Alevo" line with a working privacy link.
 
 ## Plan limits
 - [ ] Seed: in Supabase set the org's `usage_counters` row for `inbound_conversations` this month to allowance − 1 (Starter 500 → 499). Submit the lead form: the counter hits 500, Slack posts "Plan limit reached — AI conversations: 500 of 500 …" and every owner/admin gets the "AI conversations limit reached" email (requires `RESEND_API_KEY` + `EMAIL_FROM_ADDRESS`).
@@ -880,17 +880,16 @@ Legal pages, business details, email footers, data requests, plan limits. Dashbo
 
 ## Embeddable lead form + spam protection (2026-10-27)
 
-Three ways onto a website, all through the same `captureLead` path: the hosted page,
-`embed.js` (renders our form in the customer's page), an iframe mode, and the JSON
+Ways onto a website, all through the same `captureLead` path: the hosted page,
+`embed.js` (renders our form in the customer's page), and the JSON
 endpoint `/api/forms/<orgId>` for a form the customer already has. Needs migration
 0021 (`npx supabase db push`); until it is applied the rate limiter fails open (the form
 still works, Sentry gets the error).
 
-- [ ] Integrations → a new **Lead capture** section at the top with a **Website form** card (Alevo mark, "Ready"). Manage opens four copyable blocks: Hosted page, Embed on your site, Iframe, Your own form. Copy → "Copied." toast and the button flips to a check for two seconds.
+- [ ] Integrations → a new **Lead capture** section at the top with a **Website form** card (Alevo mark, "Ready"). Manage opens three copyable blocks: Hosted page, Embed on your site, Your own form (the iframe option was removed 2026-11-02). Copy → "Copied." toast and the button flips to a check for two seconds.
 - [ ] Hosted form: fill it normally → Send shows a spinner + "Sending…", every field is disabled while it sends, then the thank-you card. The lead appears under Conversations as **Web form** with a consent record (`source = hosted_form`).
 - [ ] Hosted form, errors: empty submit → red borders + messages under Name, Email and the consent box; no browser popups. A bad email → "Enter a valid email address."
 - [ ] Embed: save a plain HTML file with the script snippet, open it in a browser. The form renders in the page's font, submits with a spinner and disabled fields, shows per-field errors inline, and the thank-you block on success. The conversation's consent row has `source = embed`.
-- [ ] Iframe: an HTML file with the iframe snippet. The frame fits the form (no inner scrollbar) and grows for the thank-you and error states; `theme=light` renders light, `theme=dark` dark.
 - [ ] Your own form: `curl -X POST <origin>/api/forms/<orgId> -H "content-type: application/json" -d '{"name":"Pat","email":"pat@example.com","consent":true}'` → `{"ok":true}`; missing consent → 400 with `errors.consent`; unknown org → 404. A browser `<form method="post">` to the endpoint lands on the hosted thank-you page.
 - [ ] Spam, honeypot: in DevTools, give the hidden `website` input a value and submit → the form says thanks but NO conversation is created.
 - [ ] Spam, fill time: submit within two seconds of the page loading (DevTools: set `startedAt` to now) → thanks, no conversation. Reload, wait, submit → it goes through.
@@ -1103,10 +1102,10 @@ Needs migration 0032 applied (`npx supabase db push --remote`).
 
 - [ ] Workspace → Business profile → new **Contact details** card (Phone, Email, Opening hours). Save with an invalid email → red border + "Enter a valid email address." under it, other fields keep their input. Save valid values → "Business profile saved." toast, values persist after reload.
 - [ ] Business address hint now says it is also shown on the contact form.
-- [ ] Open `/f/<orgId>` logged out: a "Contact <company>" header, a card with a **Get in touch** column (Call us / Email us / Visit us / Hours, each with an icon) beside the form. Phone link dials (`tel:`), email opens a mail client, address opens Google Maps.
+- [ ] Open `/form/<orgId>` logged out: a "Contact <company>" header, a card with a **Get in touch** column (Call us / Email us / Visit us / Hours, each with an icon) beside the form. Phone link dials (`tel:`), email opens a mail client, address opens Google Maps.
 - [ ] Clear all four details and reload: the details column disappears and the form fills the card.
 - [ ] Form: every field has a visible label, Phone and Company say "(optional)", name + email sit side by side on a wide screen and stack on a phone. Submit empty → name, email and consent errors beneath their fields; the button shows a spinner and "Sending…" while in flight; success shows the check mark and thanks.
-- [ ] `/f/<orgId>?accent=e11d48`: the button, checkbox and focus rings turn that colour with readable text. `?details=0` hides the column. `?embed=1&theme=dark` is the frame version.
+- [ ] `/form/<orgId>?accent=e11d48`: the button, checkbox and focus rings turn that colour with readable text. `?details=0` hides the column.
 - [ ] Embed (plain HTML file with the script snippet) on a white page: the font and text colour match the page, the button is the page's text colour. On a dark-background page: light button, dark text. Add `data-accent="#2e9be6"`: blue button with navy text. `data-details="false"`: form only.
 - [ ] Embed with an unreachable org id or while offline still renders the form (no details column) within about 3 seconds.
 - [ ] `GET /api/forms/<orgId>` returns `{ ok, name, email, phone, address, hours }`; an unknown id returns 404.
@@ -1132,10 +1131,49 @@ Needs `ANTHROPIC_API_KEY` set. Signed in as an admin on Workspace → Business p
 
 Builds on the contact form section above (migration 0032 applied).
 
-- [ ] `/f/<orgId>` on a wide screen: one rounded card. Left, a solid brand-colour panel with "GET IN TOUCH", "Contact <company>", a one-line blurb, soft circles, and the phone / email / address / hours rows at the bottom. Right, the form with a small label above each underline field and a pill "Send message" button. The panel text is readable on the brand colour.
+- [ ] `/form/<orgId>` on a wide screen: one rounded card. Left, a solid brand-colour panel with "GET IN TOUCH", "Contact <company>", a one-line blurb, soft circles, and the phone / email / address / hours rows at the bottom. Right, the form with a small label above each underline field and a pill "Send message" button. The panel text is readable on the brand colour.
 - [ ] Phone width (about 390px): the two halves stack, panel first with the details fully visible (nothing collapsed), the circles are gone, fields are one column, the button is full width. No horizontal scroll.
 - [ ] Clear all four contact details: the panel keeps the heading and blurb only; `?details=0` does the same. The card stays two-part on desktop.
 - [ ] Submit empty: red underline + message under name, email, message and the consent box; typing in a field clears its message; focus lands on the first error.
-- [ ] `?accent=e11d48` recolours the panel and button; the panel text switches between white and navy by contrast. `?embed=1&theme=dark` is the frame version (no page heading, an h2 inside the card).
+- [ ] `?accent=e11d48` recolours the panel and button; the panel text switches between white and navy by contrast.
 - [ ] Embed script on a light page: dark panel (the page's text colour) with light text; on a dark page: light panel with dark text; `data-accent="#de4f26"`: orange panel and button. Narrow the browser below ~640px: the card stacks like the hosted page. `data-details="false"` keeps the panel without the contact list.
 - [ ] Tab through the form: every field shows a visible underline/ring on focus; the Send button shows its focus ring.
+
+### Booking turns on by itself, chat colours, no hosted snippet (2026-11-02)
+
+- [x] Integrations → Chat widget → Manage (run `npx supabase db push --remote` first: migration 0036): there is no "Show the chat bubble" row. The on / off switch is in the dialog's top-right corner on the title line, with On / Off beside it. Flip it: Save and Cancel appear; Save keeps it, Cancel puts it back. Off hides the bubble on the site (the description says so).
+- [x] Same dialog: an **Agent name** field above Greeting (placeholder "Your company name"; more than 40 characters shows "Keep the name under 40 characters." under it). Save a name such as `Maya`: the chat window's header shows **Maya** instead of the company name (the subtitle "Usually replies…" stays), and chatting, the agent calls itself Maya if asked who it is. Clear the name and Save: the header is the company name again.
+
+- [x] Workspace → Agent → Notifications: the **Email the team** switch sits at the far right of its row (in line with the Booking and Phone calls switches), not in the middle. On a phone it drops under the text.
+- [x] Integrations → Website form and Chat widget dialogs: in each snippet block the title is on its own line, and the **Copy** button sits on the right across from the subtitle (the description), with the description wrapping beside it.
+
+- [x] On a workspace with Booking off and nothing connected, connect a calendar (Google or Microsoft 365) under Integrations: after the redirect back, Workspace → Agent → Booking is ON with that calendar chosen, and "Not using booking" on Getting started is cleared. Same for Cal.com (key + event type ID, saved together) and Calendly (link).
+- [ ] Turn Booking off in Agent, then change another setting on the connected tool (for example its webhook key) and Save: Booking stays OFF. Disconnect the tool and connect it again: it turns on again.
+- [ ] With one tool already chosen, connecting a second does not switch the choice.
+- [ ] Integrations → Website form → Manage shows two snippets: Embed on your site and Your own form (no Hosted page). The card subtitle reads "Embed script or API".
+- [ ] Chat bubble with only `data-org`: unchanged (Alevo blue, or the colour saved under Chat widget, white icon and text). With `data-accent="#ff6a00"`: orange bubble, header and your own messages, and the text on them turns navy (an orange accent is too light for white). Add `data-color="#ffffff"`: white again. A dark accent keeps white text. An invalid value (`data-accent="nope"`) is ignored. `--alevo-accent` / `--alevo-color` in the page CSS do the same, attributes winning.
+- [ ] Integrations → Chat widget → Manage: under the install snippet a **Customise the look** block shows an example tag with `data-accent`, `data-color` and `data-position` added, then a list explaining each of those and the `--alevo-accent` / `--alevo-color` CSS variables. Pasting the example on a page restyles the bubble.
+
+### Agent keeps answering after a hand-off (2026-11-02)
+
+- [ ] In the website chat (or the hosted form's thread), get the agent to hand the lead off (qualify as a strong fit with no calendar connected, or ask for a person). The team gets ONE Slack / email alert and the widget shows "We've passed this on to the team."
+- [ ] Send another message after that ("what does it cost?", "do you do mobile apps?"): the agent still answers, helpfully and briefly, without repeating "a colleague will follow up" every time, and the team gets NO second hand-off alert. The conversation stays "Handed to a rep".
+- [ ] With Google / Microsoft / Cal.com connected and chosen under Agent → Booking, after a hand-off send "can we get a call booked in now?": the agent offers real times, books the one you pick, the status flips to **Booked** and the booking alert goes out.
+- [ ] With Calendly chosen: the same request gets the scheduling link. With no calendar connected: it confirms a colleague will contact you to set a time and asks for the best number or time; nothing is booked.
+- [ ] A handed-off conversation gets no follow-up nudges and is not auto-disqualified by the cadence.
+
+### Brand colour, embed colours, /form URL and chat (migrations 0033-0034)
+
+Run `npx supabase db push --remote` first: 0034 renames `org_profiles.form_accent` to `brand_color`, and the form, the chat and Integrations read the new name.
+
+- [ ] Integrations: a compact **Brand colour** card sits under Connection health / Needs attention: a title, one line of description, a **Manage** button on the right, then the two colours as swatches with their hex (dashed swatch and "Default (Alevo blue)" / "Default (white or navy)" while blank) and a "Preview" button wearing the pair. No large pickers on the page.
+- [ ] **Manage** opens a dialog: a **Colour** row (a swatch and a hex field beside it) and, under it, a **Font colour** row built the same way, then a "Preview" button wearing the pair and Cancel / Save (Save is disabled until something changes). Click a swatch: the picker opens right under it (colour area, hue bar, Done); click or drag in it and the hex field and swatch follow; arrow keys work (Shift = bigger steps). Esc closes only the picker (focus returns to the swatch); a click elsewhere closes it too; a second Esc closes the dialog. Type `ea580c` (no #) and leave the field: it reads `#ea580c`. Type `red`: Save shows "Enter a hex colour like #ff6a00." under that row. **Use default** blanks a row. Type a font colour that is weak on the colour (white on `#ffd600`): a "Hard to read … to 1" note appears (a warning only). Save toasts "Brand colours saved.", closes the dialog and the card shows the new pair; Cancel / the backdrop discard. After saving `#ff6a00` + `#ffffff` (migration 0035; run `npx supabase db push --remote` first): the chat bubble, header and your messages, the embed's panel and button and the hosted page's panel and button all use white text on orange (not navy). A page with its own `data-accent` / `?accent=` ignores the saved font colour (automatic white / navy) unless it sets `data-color`. The chat snippet's `data-color` shows the saved font colour.
+- [ ] The Chat widget dialog has no Colour row. Under Greeting there is a **Bubble position** radio pair (Bottom right / Bottom left; arrow keys switch) and one **Add to your site** snippet that already contains `data-position`, `data-accent` and `data-color`: switching position rewrites `data-position` live; with a Brand colour of `#ff6a00` the snippet shows `data-accent="#ff6a00"` and `data-color="#06091a"` (navy on orange), with none it shows `#2e9be6` / `#ffffff`. Pasting it on a page puts the bubble in the chosen corner in those colours. Under it, "What the settings in the code do" lists `data-position`, `data-accent`, `data-color` and the CSS variables.
+- [ ] The Website form dialog's embed snippet also contains `data-accent` (Brand colour, else `#2e9be6`) and `data-color` as a real hex (your saved font colour, else white or navy by contrast), never `inherit`. Pasted as is, the panel and button look exactly as in the Brand colour preview. Changing `data-color` recolours the text on the panel and button; the form's own text and background still follow the page (dark text on a light page, light on a dark one, repainting when the page switches theme).
+- [ ] With a Brand colour saved, a chat bubble on a test page with only `data-org` uses it (white or navy text by contrast). `data-accent` on the chat script, or `--alevo-accent` in the page CSS, overrides it.
+- [ ] The embed script with no colour attributes uses the Brand colour for the panel and button (allow a minute: the details response is cached). `data-accent="#6b2fd0"` wins over it. With the Brand colour blank it falls back to the page's text colour. `data-color` sets the form's text colour.
+- [ ] Hosted form at `/form/<orgId>`: the Brand colour panel and button (Alevo blue when blank), always on a light page even when the app theme is dark; `?accent=6b2fd0` overrides it. The old `/f/<orgId>` redirects to `/form/<orgId>`.
+- [ ] Light / dark: on a dark page the embed has a dark background, light text and a light error red; switching the site's theme repaints it within a moment without a reload. A site that sets `--alevo-accent` under its dark selector gets a different accent per theme.
+- [ ] Embed card is exactly as wide as the element it sits in (a full-width page, then an 850px box): no 1000px cap. In a box under ~740px the panel stacks above the form, the contact list becomes two columns and the fields sit two across.
+- [ ] Embed when the app is slow to answer (throttle the network): the form appears after about 3s; when the details arrive the panel fills in the contact rows, the company name and the colour, with no second form.
+- [ ] On a customer site (for example la-digital on :3003) with the script `src` pointed at `http://localhost:3001`: the form shows all four detail rows and the chat bubble appears bottom-right. Through a free ngrok URL neither works (ngrok's warning page answers the cross-site request without CORS headers).

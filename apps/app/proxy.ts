@@ -19,7 +19,7 @@ const isPublicRoute = createRouteMatcher([
   // signed `state` that carries the org; the /start leg is what requires admin.
   "/api/oauth/(.*)/callback",
   "/api/unsubscribe(.*)", // public one-click unsubscribe (signed token)
-  "/f/(.*)", // public hosted lead forms
+  "/form/(.*)", // public hosted lead forms
   "/api/forms/(.*)", // public lead endpoint (embed script + customers' own forms); rate-limited in code
   "/api/chat/(.*)", // public website chat (the widget); visitor token + rate limits in code
 ]);

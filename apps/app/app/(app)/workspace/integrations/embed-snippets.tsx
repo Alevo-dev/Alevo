@@ -4,22 +4,18 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { chatTextColour } from "@/lib/colour";
 
 /**
- * The three ways onto a website, each as a copyable block: the hosted link, the
- * script embed (renders our form in the page, inherits its font), the iframe
- * (for site builders), and the endpoint for a form the customer already has.
+ * The ways onto a website, each as a copyable block: the script embed (renders
+ * our form in the page, inherits its font) and the endpoint for a form the
+ * customer already has.
  */
-export function EmbedSnippets({ orgId, origin, company }: { orgId: string; origin: string; company: string }) {
-  const hosted = `${origin}/f/${orgId}`;
+export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { orgId: string; origin: string; company: string; accent: string; textColor: string }) {
   const endpoint = `${origin}/api/forms/${orgId}`;
   const script = [
     `<div id="alevo-form"></div>`,
-    `<script src="${origin}/embed.js" data-org="${orgId}" data-target="#alevo-form" data-company="${company.replace(/"/g, "&quot;")}" async></script>`,
-  ].join("\n");
-  const iframe = [
-    `<iframe id="alevo-frame" src="${hosted}?embed=1&theme=light" title="Contact form" style="width:100%;height:560px;border:0"></iframe>`,
-    `<script>addEventListener("message",function(e){if(e.origin==="${origin}"&&e.data&&e.data.type==="alevo:resize"){document.getElementById("alevo-frame").style.height=e.data.height+"px"}})</script>`,
+    `<script src="${origin}/embed.js" data-org="${orgId}" data-target="#alevo-form" data-company="${company.replace(/"/g, "&quot;")}" data-accent="${accent}" data-color="${textColor || chatTextColour(accent)}" async></script>`,
   ].join("\n");
   const api = [
     `POST ${endpoint}`,
@@ -32,16 +28,10 @@ export function EmbedSnippets({ orgId, origin, company }: { orgId: string; origi
 
   return (
     <div className="space-y-5">
-      <Snippet title="Hosted page" hint="A ready-made page you can link to from anywhere." code={hosted} />
       <Snippet
         title="Embed on your site"
-        hint={`Renders a contact card inside your page in its font: a coloured panel with your phone, email, address and hours beside the form. The panel and button use your page's text colour; add data-accent="#hex" for a brand colour, or data-details="false" to drop the phone / address list. On a phone the panel stacks above the form.`}
+        hint={`Renders a contact card inside your page, in its font: a coloured panel with your phone, email, address and hours beside the form. It fills the width of the element it sits in. data-accent is the panel and button colour and data-color the text on it (they start as your Brand colour and font colour: change them here for one site, or delete them to follow the Brand colour). The form's own text and background follow your page, including its light / dark theme. Add data-details="false" to drop the phone / address list. For different colours in light and dark themes, set --alevo-accent and --alevo-color in your CSS under each theme.`}
         code={script}
-      />
-      <Snippet
-        title="Iframe"
-        hint="For site builders that only allow HTML blocks. The frame grows to fit. It cannot read your page, so set theme=dark for dark pages and accent=<hex without #> for your brand colour."
-        code={iframe}
       />
       <Snippet
         title="Your own form"
@@ -71,15 +61,16 @@ export function Snippet({ title, hint, code }: { title: string; hint: string; co
 
   return (
     <section className="rounded-md border border-hairline">
-      <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-4">
-        <div>
-          <h3 className="font-sans text-sm font-semibold text-ink">{title}</h3>
-          <p className="mt-1 text-label text-ink-muted">{hint}</p>
+      <div className="px-4 pt-4">
+        <h3 className="font-sans text-sm font-semibold text-ink">{title}</h3>
+        {/* The subtitle on the left, the Copy button across from it on the right. */}
+        <div className="mt-1 flex items-start justify-between gap-4">
+          <p className="min-w-0 flex-1 text-label text-ink-muted">{hint}</p>
+          <Button type="button" size="sm" variant="secondary" className="shrink-0" onClick={copy} aria-label={`Copy ${title.toLowerCase()} snippet`}>
+            {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
         </div>
-        <Button type="button" size="sm" variant="secondary" onClick={copy} aria-label={`Copy ${title.toLowerCase()} snippet`}>
-          {copied ? <Check className="size-3.5" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
-          {copied ? "Copied" : "Copy"}
-        </Button>
       </div>
       <pre className="mt-3 overflow-x-auto border-t border-hairline bg-raised px-4 py-3 font-mono text-label leading-relaxed text-ink">
         <code>{code}</code>

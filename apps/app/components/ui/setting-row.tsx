@@ -10,6 +10,7 @@ export function SettingRow({
   htmlFor,
   hint,
   error,
+  end,
   children,
   className,
 }: {
@@ -17,6 +18,8 @@ export function SettingRow({
   htmlFor?: string;
   hint?: React.ReactNode;
   error?: string | null;
+  /** Pushes the control to the row's right edge (a switch), instead of the start of the right column. */
+  end?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -33,7 +36,7 @@ export function SettingRow({
         </label>
         {hint && <Hint className="mt-1">{hint}</Hint>}
       </div>
-      <div className="min-w-0">
+      <div className={cx("min-w-0", end && "md:flex md:justify-end")}>
         {children}
         <FieldError>{error}</FieldError>
       </div>

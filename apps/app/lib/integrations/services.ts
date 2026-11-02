@@ -21,7 +21,7 @@ export type ServiceIcon =
 /** The page is split into these sections, in this order. */
 export type ServiceGroup = "capture" | "booking" | "communication" | "crm";
 export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string }[] = [
-  { id: "capture", title: "Lead capture", hint: "Where leads come in from your website: the form (hosted page, embed, or your own form posting to Alevo) and the chat bubble." },
+  { id: "capture", title: "Lead capture", hint: "Where leads come in from your website: the form (embed, or your own form posting to Alevo) and the chat bubble." },
   { id: "booking", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
   { id: "communication", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
   { id: "crm", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. ConnectWise today; HaloPSA and CRMs later." },
@@ -144,7 +144,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       id: "form",
       group: "capture",
       name: "Website form",
-      hint: "Hosted page, embed script, or API",
+      hint: "Embed script or API",
       icon: "alevo",
       status: { label: "Ready", tone: "success" },
       keys: [],

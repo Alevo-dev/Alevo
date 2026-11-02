@@ -43,6 +43,8 @@ export type QualifierContext = {
   thread: { author: "contact" | "assistant" | "human"; body: string }[];
   /** How the Qualifier can book: Cal.com API, Calendly link, or not at all. */
   bookingMode: BookingMode;
+  /** Where the conversation stands; a handed-off one is still answered. */
+  status: ConversationStatus;
 };
 
 export type QualifierResult =
@@ -155,6 +157,7 @@ export async function loadQualifierContext(
       },
       thread,
       bookingMode,
+      status: conv.status,
     };
   });
 }
@@ -204,7 +207,7 @@ export async function runQualifier(
   // conversational (one question at a time).
   const emailStyle =
     (ctx.channel === "form" || ctx.channel === "email") && Boolean(ctx.contact.email);
-  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle, ctx.channel === "chat");
+  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle, ctx.channel === "chat", ctx.status === "handed_off", ctx.profile.chatAgentName ?? "");
   // Cal.com / Google / M365 are API booking (slots + book); Calendly is link mode.
   const bookingTools =
     ctx.bookingMode === "calcom" || ctx.bookingMode === "google" || ctx.bookingMode === "m365"

@@ -24,7 +24,7 @@ import { CHAT_CONSENT_TEXT, CHAT_LIMITS, DEFAULT_ACCENT, DEFAULT_GREETING, hashT
  * scoped to the org in code, and trusts only the visitor's token.
  */
 
-export type ChatConfig = { enabled: boolean; company: string; greeting: string; accent: string; online: boolean };
+export type ChatConfig = { enabled: boolean; company: string; agentName: string; greeting: string; accent: string; textColor: string; online: boolean };
 
 /** What the widget needs before it renders. `null` when the org doesn't exist. */
 export async function chatConfig(orgId: string): Promise<ChatConfig | null> {
@@ -35,7 +35,10 @@ export async function chatConfig(orgId: string): Promise<ChatConfig | null> {
         company: orgProfiles.companyName,
         enabled: orgProfiles.chatEnabled,
         greeting: orgProfiles.chatGreeting,
-        accent: orgProfiles.chatAccent,
+        agentName: orgProfiles.chatAgentName,
+        accent: orgProfiles.brandColor,
+        legacyAccent: orgProfiles.chatAccent,
+        textColor: orgProfiles.brandTextColor,
         agentOn: orgProfiles.enabled,
       })
       .from(organizations)
@@ -47,8 +50,10 @@ export async function chatConfig(orgId: string): Promise<ChatConfig | null> {
   return {
     enabled: row.enabled ?? false,
     company: row.company?.trim() || row.name,
+    agentName: row.agentName?.trim() || "",
     greeting: row.greeting?.trim() || DEFAULT_GREETING,
-    accent: row.accent || DEFAULT_ACCENT,
+    accent: row.accent || row.legacyAccent || DEFAULT_ACCENT,
+    textColor: row.textColor ?? "",
     online: row.agentOn ?? false,
   };
 }
