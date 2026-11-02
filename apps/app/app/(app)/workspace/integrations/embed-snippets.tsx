@@ -35,7 +35,7 @@ export function EmbedSnippets({ orgId, origin, company }: { orgId: string; origi
       <Snippet title="Hosted page" hint="A ready-made page you can link to from anywhere." code={hosted} />
       <Snippet
         title="Embed on your site"
-        hint={`Renders the form inside your page and takes on its font, text colour and background. The button uses your page's text colour; add data-accent="#hex" for a brand colour, or data-details="false" to hide the phone / address column.`}
+        hint={`Renders a contact card inside your page in its font: a coloured panel with your phone, email, address and hours beside the form. The panel and button use your page's text colour; add data-accent="#hex" for a brand colour, or data-details="false" to drop the phone / address list. On a phone the panel stacks above the form.`}
         code={script}
       />
       <Snippet

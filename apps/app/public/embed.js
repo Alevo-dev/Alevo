@@ -9,8 +9,9 @@
  * data-accent="#hex" on the script tag or define --alevo-accent in your CSS.
  *
  * Options: data-target (where to render; default: right after the script tag),
- * data-accent (button colour), data-details="false" (form only, without the phone /
- * email / address / hours column), data-company (name used if the workspace has none).
+ * data-accent (colour of the left panel and button), data-details="false" (no phone /
+ * email / address / hours list in the left panel), data-company (name used if the
+ * workspace has none).
  * The contact details come from Workspace > Business profile. Posts JSON to
  * /api/forms/ORG_ID.
  */
@@ -86,36 +87,41 @@
     var style = document.createElement("style");
     style.id = "alevo-form-css";
     style.textContent = [
-      ".alevo-wrap{font:inherit;color:inherit;display:flex;flex-wrap:wrap;gap:32px 48px;max-width:960px;box-sizing:border-box}",
+      ".alevo-wrap{font:inherit;color:inherit;display:flex;flex-wrap:wrap;max-width:1000px;overflow:hidden;border-radius:20px;border:1px solid rgba(128,128,128,.25);border:1px solid color-mix(in srgb,currentColor 14%,transparent);box-shadow:0 18px 50px -26px rgba(0,0,0,.3);box-sizing:border-box}",
       ".alevo-wrap *{box-sizing:border-box}",
-      ".alevo-info{flex:1 1 240px;min-width:0}",
-      ".alevo-info h3{margin:0;font:inherit;font-size:1.25em;font-weight:600;line-height:1.3}",
-      ".alevo-info>p{margin:6px 0 20px;opacity:.7;font-size:.925em}",
-      ".alevo-info ul{list-style:none;margin:0;padding:0;display:grid;gap:18px}",
+      ".alevo-info{position:relative;overflow:hidden;flex:5 1 300px;min-width:0;display:flex;flex-direction:column;gap:32px;padding:40px;background:var(--alevo-accent);color:var(--alevo-on)}",
+      ".alevo-info::before,.alevo-info::after{content:'';position:absolute;border-radius:50%;background:var(--alevo-on);opacity:.1;pointer-events:none}",
+      ".alevo-info::before{width:240px;height:240px;top:-90px;right:-70px}",
+      ".alevo-info::after{width:170px;height:170px;bottom:-60px;left:-50px}",
+      ".alevo-info>*{position:relative}",
+      ".alevo-eyebrow{margin:0 0 12px;font-size:.75em;font-weight:700;letter-spacing:.14em;text-transform:uppercase}",
+      ".alevo-info h3{margin:0;font:inherit;font-size:1.9em;font-weight:700;line-height:1.15;letter-spacing:-.01em}",
+      ".alevo-blurb{margin:12px 0 0;line-height:1.5}",
+      ".alevo-info ul{list-style:none;margin:auto 0 0;padding:0;display:grid;gap:18px}",
       ".alevo-info li{display:flex;gap:12px;align-items:flex-start;min-width:0}",
-      ".alevo-ic{flex:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.14);background:color-mix(in srgb,var(--alevo-accent) 14%,transparent)}",
+      ".alevo-ic{flex:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.25);background:color-mix(in srgb,var(--alevo-on) 18%,transparent)}",
       ".alevo-ic svg{width:16px;height:16px}",
-      ".alevo-info small{display:block;opacity:.65;font-size:.8em;line-height:1.4}",
+      ".alevo-info small{display:block;font-size:.75em;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.4}",
       ".alevo-info li div{min-width:0;overflow-wrap:anywhere;white-space:pre-line}",
       ".alevo-info a{color:inherit;text-underline-offset:3px;display:inline-block;padding:6px 0}",
-      ".alevo-form{flex:2 1 340px;min-width:0}",
-      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}",
+      ".alevo-form{flex:6 1 340px;min-width:0;padding:40px;background:var(--alevo-bg)}",
+      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:22px 24px}",
       ".alevo-form fieldset:disabled{opacity:.7}",
       ".alevo-full{grid-column:1/-1}",
-      ".alevo-form label.alevo-l{display:block;font-size:.875em;font-weight:600;margin:0 0 6px}",
+      ".alevo-form label.alevo-l{display:block;font-size:.8125em;font-weight:600;margin:0 0 2px}",
       ".alevo-form label.alevo-l span{font-weight:400;opacity:.65}",
-      ".alevo-form input:not([type=checkbox]),.alevo-form textarea{display:block;width:100%;font:inherit;font-size:max(16px,1em);color:inherit;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent);border:1px solid rgba(128,128,128,.45);border:1px solid color-mix(in srgb,currentColor 28%,transparent);border-radius:10px;padding:11px 13px;margin:0;transition:border-color .15s,box-shadow .15s}",
-      ".alevo-form textarea{resize:vertical;min-height:120px}",
+      ".alevo-form input:not([type=checkbox]),.alevo-form textarea{display:block;width:100%;font:inherit;font-size:max(16px,1em);color:inherit;background:transparent;border:0;border-bottom:1px solid rgba(128,128,128,.6);border-bottom:1px solid color-mix(in srgb,currentColor 38%,transparent);border-radius:0;padding:10px 0;margin:0;transition:border-color .15s,box-shadow .15s}",
+      ".alevo-form textarea{resize:vertical;min-height:110px}",
       ".alevo-form ::placeholder{color:inherit;opacity:.55}",
-      ".alevo-form input:focus,.alevo-form textarea:focus{outline:0;border-color:var(--alevo-accent);box-shadow:0 0 0 3px rgba(128,128,128,.3);box-shadow:0 0 0 3px color-mix(in srgb,var(--alevo-accent) 30%,transparent)}",
-      ".alevo-form .is-invalid{border-color:var(--alevo-danger)!important}",
+      ".alevo-form input:focus,.alevo-form textarea:focus{outline:0;border-bottom-color:var(--alevo-accent);box-shadow:0 1px 0 0 var(--alevo-accent)}",
+      ".alevo-form .is-invalid{border-bottom-color:var(--alevo-danger)!important}",
       ".alevo-form .alevo-error{color:var(--alevo-danger);font-size:.8125em;margin:6px 0 0}",
       ".alevo-form .alevo-error:empty{display:none}",
       ".alevo-form .alevo-consent{display:flex;gap:10px;align-items:flex-start;font-size:.875em;padding:12px;border-radius:10px;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent)}",
       ".alevo-form .alevo-consent span{opacity:.8}",
       ".alevo-form .alevo-consent input{width:16px;height:16px;margin:2px 0 0;flex:none;accent-color:var(--alevo-accent)}",
       ".alevo-hp{position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden}",
-      ".alevo-form button{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;font:inherit;font-weight:600;color:var(--alevo-on);background:var(--alevo-accent);border:0;border-radius:10px;padding:11px 18px;cursor:pointer;transition:filter .15s}",
+      ".alevo-form button{display:inline-flex;align-items:center;justify-content:center;gap:8px;justify-self:start;min-height:48px;font:inherit;font-weight:600;color:var(--alevo-on);background:var(--alevo-accent);border:0;border-radius:999px;padding:12px 26px;cursor:pointer;transition:filter .15s}",
       ".alevo-form button:hover:not(:disabled){filter:brightness(1.1)}",
       ".alevo-form button:focus-visible{outline:2px solid var(--alevo-accent);outline-offset:3px}",
       ".alevo-form button:disabled{cursor:not-allowed;opacity:.6}",
@@ -123,7 +129,8 @@
       ".alevo-spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:alevo-spin .8s linear infinite}",
       "@keyframes alevo-spin{to{transform:rotate(360deg)}}",
       "@media (prefers-reduced-motion:reduce){.alevo-spin{animation:none}.alevo-form input,.alevo-form textarea,.alevo-form button{transition:none}}",
-      ".alevo-note{font-size:.8em;opacity:.65;margin:16px 0 0;text-align:center}",
+      "@media (max-width:640px){.alevo-info,.alevo-form{padding:24px}.alevo-info{gap:20px}.alevo-info h3{font-size:1.5em}.alevo-info::before,.alevo-info::after{display:none}.alevo-form button{width:100%;justify-self:stretch}}",
+      ".alevo-note{font-size:.8em;opacity:.65;margin:20px 0 0}",
       ".alevo-note a{color:inherit}",
       ".alevo-thanks{text-align:center;padding:40px 24px;border-radius:14px;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent)}",
       ".alevo-thanks i{display:inline-flex;width:48px;height:48px;border-radius:50%;align-items:center;justify-content:center;background:var(--alevo-accent);color:var(--alevo-on);margin-bottom:14px}",
@@ -154,14 +161,15 @@
     check: '<path d="M20 6 9 17l-5-5"/>',
   };
 
-  function infoColumn(d) {
+  // The coloured left panel: heading and blurb, plus the contact list when there is one.
+  function infoColumn(d, company) {
     var rows = [];
     function row(icon, label, html) {
       rows.push('<li><span class="alevo-ic">' + svg(ICON[icon]) + "</span><div><small>" + label + "</small>" + html + "</div></li>");
     }
-    if (d.phone) row("phone", "Call us", '<a href="tel:' + esc(d.phone.replace(/[^\d+]/g, "")) + '">' + esc(d.phone) + "</a>");
-    if (d.email) row("mail", "Email us", '<a href="mailto:' + esc(d.email) + '">' + esc(d.email) + "</a>");
-    if (d.address)
+    if (d && d.phone) row("phone", "Call us", '<a href="tel:' + esc(d.phone.replace(/[^\d+]/g, "")) + '">' + esc(d.phone) + "</a>");
+    if (d && d.email) row("mail", "Email us", '<a href="mailto:' + esc(d.email) + '">' + esc(d.email) + "</a>");
+    if (d && d.address)
       row(
         "pin",
         "Visit us",
@@ -171,29 +179,30 @@
           esc(d.address) +
           "</a>",
       );
-    if (d.hours) row("clock", "Hours", esc(d.hours));
-    if (!rows.length) return "";
+    if (d && d.hours) row("clock", "Hours", esc(d.hours));
     return (
-      '<aside class="alevo-info"><h3>Get in touch</h3><p>Prefer to talk? Reach ' +
-      esc(d.name) +
-      " any of these ways.</p><ul>" +
-      rows.join("") +
-      "</ul></aside>"
+      '<aside class="alevo-info"><div><p class="alevo-eyebrow">Get in touch</p><h3>' +
+      (company ? "Contact " + esc(company) : "Send us a message") +
+      '</h3><p class="alevo-blurb">Tell us what you need and we\u2019ll get back to you fast.</p></div>' +
+      (rows.length ? "<ul>" + rows.join("") + "</ul>" : "") +
+      "</aside>"
     );
   }
 
   function render(d) {
-    var company = (d && d.name) || script.getAttribute("data-company") || "this company";
+    var named = (d && d.name) || script.getAttribute("data-company");
+    var company = named || "this company";
     var id = "alevo" + Math.random().toString(36).slice(2, 7);
     var startedAt = Date.now();
     var wrap = document.createElement("div");
     wrap.className = "alevo-wrap";
     wrap.style.setProperty("--alevo-accent", accent);
     wrap.style.setProperty("--alevo-on", onAccent);
+    wrap.style.setProperty("--alevo-bg", css(pageBackground(host)));
     // Error red that stays readable (4.5:1) on both light and dark pages.
     wrap.style.setProperty("--alevo-danger", lum(pageBackground(host)) > 0.18 ? "#c8323b" : "#ff6b70");
     wrap.innerHTML =
-      (d ? infoColumn(d) : "") +
+      infoColumn(d, named) +
       '<form class="alevo-form" novalidate>' +
       '<div class="alevo-hp" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>' +
       "<fieldset>" +
@@ -283,7 +292,7 @@
             form.innerHTML =
               '<div class="alevo-thanks" role="status"><i>' +
               svg(ICON.check) +
-              "</i><strong>Thanks. We’ll be in touch shortly.</strong><p>Your message has been received. " +
+              "</i><strong>Thanks. We\u2019ll be in touch shortly.</strong><p>Your message has been received. " +
               esc(company) +
               " will reply by email or phone.</p></div>";
             return;

@@ -1,4 +1,5 @@
 import type { OrgProfile } from "@alevo/db";
+import { toneForPrompt } from "@/lib/profile/tone";
 
 /** open: qualify and book. after_hours: take a message (and book, if a calendar is connected). closed: voice is switched off. */
 export type VoiceMode = "open" | "after_hours" | "closed";
@@ -50,7 +51,7 @@ export function buildVoicePrompt(profile: OrgProfile, mode: VoiceMode, bookingCo
     section("Our ideal customer", profile.idealCustomer),
     section("Qualifying criteria (confirm these before anything else)", profile.qualifyingCriteria),
     section("Disqualifiers (red flags, end politely)", profile.disqualifiers),
-    section("Tone & voice", profile.tone),
+    section("Tone & voice", toneForPrompt(profile.tone)),
   ]
     .filter(Boolean)
     .join("\n\n");

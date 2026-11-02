@@ -1,4 +1,5 @@
 import type { OrgProfile } from "@alevo/db";
+import { toneForPrompt } from "@/lib/profile/tone";
 
 export type ContactInfo = {
   firstName: string | null;
@@ -38,7 +39,7 @@ export function buildSystemPrompt(
     section("Our ideal customer", profile.idealCustomer),
     section("Qualifying criteria (confirm these before handing off)", profile.qualifyingCriteria),
     section("Disqualifiers (red flags → disqualify)", profile.disqualifiers),
-    section("Tone & voice", profile.tone),
+    section("Tone & voice", toneForPrompt(profile.tone)),
   ]
     .filter(Boolean)
     .join("\n\n");

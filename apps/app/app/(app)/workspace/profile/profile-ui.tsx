@@ -1,30 +1,72 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
+import { Globe } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Input, Textarea } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
 import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
+import { mergeImported, type ImportedProfile, type ImportMode } from "@/lib/profile/merge";
+import { toneOptions } from "@/lib/profile/tone";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { saveBusinessProfile, type ActionState, type BusinessProfileErrors, type BusinessProfileValues } from "./actions";
+import { ImportDialog } from "./import-dialog";
 
 const INITIAL: ActionState = {};
+
+/** Imported values waiting to be saved. Tied to the state they were made against, so the next save's echo wins. */
+type Imported = { on: ActionState; values: BusinessProfileValues; note: string };
 
 export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessProfileValues; agentOn: boolean }) {
   const [state, action, pending] = useActionState(saveBusinessProfile, INITIAL);
   useActionToast(state, "Business profile saved.");
-  const { formRef, formKey, dirty, recheck, discard, guard } = useUnsavedForm(state);
+  const { formRef, formKey, dirty, recheck, touch, discard, guard } = useUnsavedForm(state);
 
-  // Echo submitted values back on error; fall back to the saved profile.
+  const [importOpen, setImportOpen] = useState(false);
+  const [importHasContent, setImportHasContent] = useState(false);
+  const [imported, setImported] = useState<Imported | null>(null);
+  const [importKey, setImportKey] = useState(0);
+  const live = imported?.on === state ? imported : null;
+
+  // Echo submitted values back on error; fall back to the saved profile. A fresh import wins over both.
   const v = <K extends keyof BusinessProfileValues>(key: K): BusinessProfileValues[K] =>
-    (state.values?.[key] ?? initial[key]) as BusinessProfileValues[K];
+    (live?.values[key] ?? state.values?.[key] ?? initial[key]) as BusinessProfileValues[K];
   const e = (key: keyof BusinessProfileErrors) => state.errors?.[key];
 
+  /** What is in the form right now, typed-but-unsaved edits included. */
+  const readForm = (): BusinessProfileValues => {
+    const fd = new FormData(formRef.current ?? undefined);
+    return Object.fromEntries(Object.keys(initial).map((k) => [k, String(fd.get(k) ?? "")])) as BusinessProfileValues;
+  };
+
+  function openImport() {
+    setImportHasContent(Object.values(readForm()).some((x) => x.trim()));
+    setImportOpen(true);
+  }
+
+  function applyImport(found: ImportedProfile, mode: ImportMode) {
+    const { values, filled } = mergeImported(readForm(), found, mode);
+    if (filled.length === 0) return toast.info("Nothing new to fill in.");
+    setImported({ on: state, values, note: `Filled ${filled.length} field${filled.length === 1 ? "" : "s"}. Review them, then save.` });
+    setImportKey((k) => k + 1); // remount so the fields pick up the new defaults
+    touch();
+  }
+
   return (
-    <form key={formKey} ref={formRef} action={action} noValidate onInput={recheck} onChange={recheck} className="space-y-6">
+    <>
+    <form key={`${formKey}-${importKey}`} ref={formRef} action={action} noValidate onInput={recheck} onChange={recheck} className="space-y-6">
       <Card>
         <CardHeader
+          aside={
+            <Button type="button" size="sm" variant="secondary" onClick={openImport}>
+              <Globe className="size-3.5" aria-hidden="true" />
+              Import from website
+            </Button>
+          }
           title="Your business"
           hint={
             <>
@@ -33,6 +75,11 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
             </>
           }
         />
+        {live && (
+          <p role="status" className="mt-3 text-label text-ink-muted">
+            {live.note}
+          </p>
+        )}
         <div className="mt-6">
           <SettingRow label="Company name" htmlFor="companyName" error={e("companyName")}>
             <Input id="companyName" name="companyName" defaultValue={v("companyName")} invalid={!!e("companyName")} placeholder="Northwind IT" />
@@ -135,8 +182,8 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
       <Card>
         <CardHeader title="Voice" hint="How the agent sounds and signs off." />
         <div className="mt-6">
-          <SettingRow label="Tone and voice" htmlFor="tone">
-            <Input id="tone" name="tone" defaultValue={v("tone")} placeholder="Friendly, concise, no jargon." />
+          <SettingRow label="Tone and voice" htmlFor="tone" hint="Pick the voice closest to yours.">
+            <Select id="tone" name="tone" options={toneOptions(initial.tone)} defaultValue={v("tone")} placeholder="Choose a tone" onChange={touch} />
           </SettingRow>
           <SettingRow label="Sign off as" htmlFor="signoff">
             <Input id="signoff" name="signoff" defaultValue={v("signoff")} placeholder="Sam from Northwind IT" />
@@ -144,8 +191,18 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
         </div>
       </Card>
 
-      <UnsavedBar visible={dirty} pending={pending} error={state.error} onDiscard={discard} />
+      <UnsavedBar
+        visible={dirty}
+        pending={pending}
+        error={state.error}
+        onDiscard={() => {
+          setImported(null);
+          discard();
+        }}
+      />
       <LeaveDialog open={guard.pendingHref !== null} what="your business profile changes" onStay={guard.stay} onLeave={guard.leave} />
     </form>
+    <ImportDialog open={importOpen} hasContent={importHasContent} onClose={() => setImportOpen(false)} onImported={applyImport} />
+    </>
   );
 }

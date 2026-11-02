@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { orgProfiles, recordAudit } from "@alevo/db";
+import * as Sentry from "@sentry/nextjs";
+import { hitRateLimit, orgProfiles, recordAudit } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
+import { crawlSite } from "@/lib/profile/crawl";
+import { extractProfile } from "@/lib/profile/extract";
+import { ImportError, importMessage } from "@/lib/profile/import-error";
+import type { ImportedProfile } from "@/lib/profile/merge";
 
 /** The "who we are" half of org_profiles: what the agent grounds replies in. */
 export type BusinessProfileValues = {
@@ -98,5 +103,50 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     return { ok: true, values };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Something went wrong", values };
+  }
+}
+
+export type ImportResult = { ok: true; imported: ImportedProfile } | { ok: false; error: string };
+
+/**
+ * Read the company's website and return profile values for the form. Writes
+ * nothing: the admin reviews the filled form and saves it the usual way.
+ */
+export async function importFromWebsite(url: string): Promise<ImportResult> {
+  let orgId: string;
+  let actorUserId: string | null;
+  try {
+    await requireRole("admin");
+    const org = await getCurrentOrg();
+    if (!org) return { ok: false, error: "No active organization." };
+    orgId = org.id;
+    actorUserId = (await getCurrentUser())?.id ?? null;
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Something went wrong" };
+  }
+
+  try {
+    // Each import is a model call that costs money. A limiter outage must not block setup.
+    const allowed = await hitRateLimit(`profile_import:${orgId}`, 5, 3600).catch((err) => {
+      Sentry.captureException(err);
+      return true;
+    });
+    if (!allowed) throw new ImportError("rate_limited");
+
+    const crawl = await crawlSite(url);
+    const imported = await extractProfile(crawl);
+    if (Object.keys(imported).length === 0) throw new ImportError("empty");
+
+    await recordAudit({
+      orgId,
+      actorUserId,
+      action: "workspace.profile_imported",
+      target: new URL(crawl.pages[0]?.url ?? "https://unknown.invalid").hostname,
+    });
+    return { ok: true, imported };
+  } catch (error) {
+    if (error instanceof ImportError) return { ok: false, error: importMessage(error.code) };
+    Sentry.captureException(error);
+    return { ok: false, error: importMessage("extract_failed") };
   }
 }

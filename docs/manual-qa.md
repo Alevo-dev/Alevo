@@ -1110,3 +1110,32 @@ Needs migration 0032 applied (`npx supabase db push --remote`).
 - [ ] Embed (plain HTML file with the script snippet) on a white page: the font and text colour match the page, the button is the page's text colour. On a dark-background page: light button, dark text. Add `data-accent="#2e9be6"`: blue button with navy text. `data-details="false"`: form only.
 - [ ] Embed with an unreachable org id or while offline still renders the form (no details column) within about 3 seconds.
 - [ ] `GET /api/forms/<orgId>` returns `{ ok, name, email, phone, address, hours }`; an unknown id returns 404.
+
+## Website import + tone presets (2026-11-02)
+
+Needs `ANTHROPIC_API_KEY` set. Signed in as an admin on Workspace → Business profile.
+
+- [ ] **Import from website** (top right of the first card) opens a dialog. With every profile field empty there is no "fields already have text" choice. Enter `yourcompany.com` (no `https://`) → "Reading your site…" spinner → the dialog closes, fields are filled, a note reads "Filled N fields. Review them, then save." and the Save bar appears. Nothing is saved until you press Save.
+- [ ] Reload without saving → the fields are back to what was saved. Press **Discard** after an import → the saved values return and the note disappears.
+- [ ] Type something into Company name, then import: with **Fill empty fields only** (default) your text stays; with **Replace existing values** it is overwritten if the site has a name. Edits you made to other fields before importing are kept.
+- [ ] Qualifying criteria and Disqualifiers are never touched by an import.
+- [ ] Bad input shows an inline message under the field, no popup: empty → "Enter your website address."; `not a url!` → "Enter a valid website address."; `http://localhost`, `http://169.254.169.254`, `http://10.0.0.1`, `ftp://x.com` → "That address isn't allowed."; a made-up domain → "We couldn't reach that site…"; a link to a PDF → "We couldn't reach that site…".
+- [ ] A JavaScript-only site (almost no text in the HTML) → "We found very little readable text… Fill the profile in manually."
+- [ ] The sixth import within an hour → "You've imported a few times already. Try again in an hour."
+- [ ] Spot-check the result against the real site: phone, email, address and hours come from the page markup when it has any; offering and ideal customer read as plain sentences and nothing is invented (a field the site does not cover stays as it was).
+- [ ] **Tone and voice** is now a dropdown with five options: Friendly & conversational, Professional & polished, Warm & consultative, Direct & concise, Confident & energetic. Pick one → Save bar → Save → reload shows it selected. Keyboard: arrows, Enter, Escape.
+- [ ] A workspace that had free-text tone saved before shows it as an extra "Custom: …" option, selected, and saving without touching it keeps the text.
+- [ ] Qualifier and voice prompts use the preset's description (check a test conversation reads in that style), and the legacy text is passed through as written.
+- [ ] Knowledge → add URL `http://localhost:3000` (or a private IP) → the source fails with "That address is not allowed" instead of being fetched. A normal public URL still ingests.
+
+## Contact card redesign (2026-11-02)
+
+Builds on the contact form section above (migration 0032 applied).
+
+- [ ] `/f/<orgId>` on a wide screen: one rounded card. Left, a solid brand-colour panel with "GET IN TOUCH", "Contact <company>", a one-line blurb, soft circles, and the phone / email / address / hours rows at the bottom. Right, the form with a small label above each underline field and a pill "Send message" button. The panel text is readable on the brand colour.
+- [ ] Phone width (about 390px): the two halves stack, panel first with the details fully visible (nothing collapsed), the circles are gone, fields are one column, the button is full width. No horizontal scroll.
+- [ ] Clear all four contact details: the panel keeps the heading and blurb only; `?details=0` does the same. The card stays two-part on desktop.
+- [ ] Submit empty: red underline + message under name, email, message and the consent box; typing in a field clears its message; focus lands on the first error.
+- [ ] `?accent=e11d48` recolours the panel and button; the panel text switches between white and navy by contrast. `?embed=1&theme=dark` is the frame version (no page heading, an h2 inside the card).
+- [ ] Embed script on a light page: dark panel (the page's text colour) with light text; on a dark page: light panel with dark text; `data-accent="#de4f26"`: orange panel and button. Narrow the browser below ~640px: the card stacks like the hosted page. `data-details="false"` keeps the panel without the contact list.
+- [ ] Tab through the form: every field shows a visible underline/ring on focus; the Send button shows its focus ring.

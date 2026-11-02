@@ -7,6 +7,8 @@ import { BusinessProfileForm } from "./profile-ui";
 import type { BusinessProfileValues } from "./actions";
 
 export const dynamic = "force-dynamic";
+// The website import (crawl + one model call) runs as a server action on this page.
+export const maxDuration = 60;
 
 export const metadata: Metadata = { title: "Business profile" };
 

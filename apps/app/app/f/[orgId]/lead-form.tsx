@@ -1,18 +1,35 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { Check, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FieldError, Input, Label, Textarea } from "@/components/ui/field";
+import { FieldError, Label } from "@/components/ui/field";
+import { cx } from "@/lib/cx";
 import { HONEYPOT_FIELD } from "@/lib/leads/spam";
 import { submitLead, type LeadState } from "./actions";
 
 const INITIAL: LeadState = {};
 
+// Underline fields, like the contact-card design: a small label above, a single line below.
+// 16px text keeps iOS from zooming on focus.
+const line = (invalid?: boolean) =>
+  cx(
+    "block w-full rounded-none border-0 border-b bg-transparent px-0 py-2.5 text-base text-ink",
+    "disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-brand",
+    invalid ? "border-danger" : "border-control",
+  );
+type Line = { invalid?: boolean };
+const LineInput = ({ invalid, ...p }: InputHTMLAttributes<HTMLInputElement> & Line) => (
+  <input aria-invalid={invalid || undefined} className={line(invalid)} {...p} />
+);
+const LineTextarea = ({ invalid, ...p }: TextareaHTMLAttributes<HTMLTextAreaElement> & Line) => (
+  <textarea aria-invalid={invalid || undefined} className={cx(line(invalid), "resize-y")} {...p} />
+);
+
 /** A labelled control: the label is always visible (a placeholder is only an example). */
 function Row({ id, label, optional, error, children }: { id: string; label: string; optional?: boolean; error?: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-0.5">
       <Label htmlFor={id}>
         {label}
         {optional && <span className="font-normal text-ink-muted"> (optional)</span>}
@@ -91,22 +108,22 @@ export function LeadForm({ orgId, company, submitted = false }: { orgId: string;
         </label>
       </div>
 
-      <fieldset disabled={pending} className="grid gap-4 disabled:opacity-70 sm:grid-cols-2">
+      <fieldset disabled={pending} className="grid gap-x-6 gap-y-5 disabled:opacity-70 sm:grid-cols-2">
         <Row id="lf-name" label="Full name" error={e?.name}>
-          <Input id="lf-name" name="name" autoComplete="name" aria-required="true" defaultValue={v?.name} invalid={!!e?.name} placeholder="Pat Lee" />
+          <LineInput id="lf-name" name="name" autoComplete="name" aria-required="true" defaultValue={v?.name} invalid={!!e?.name} placeholder="Pat Lee" />
         </Row>
         <Row id="lf-email" label="Email" error={e?.email}>
-          <Input id="lf-email" name="email" type="email" autoComplete="email" aria-required="true" defaultValue={v?.email} invalid={!!e?.email} placeholder="pat@example.com" />
+          <LineInput id="lf-email" name="email" type="email" autoComplete="email" aria-required="true" defaultValue={v?.email} invalid={!!e?.email} placeholder="pat@example.com" />
         </Row>
         <Row id="lf-phone" label="Phone" optional>
-          <Input id="lf-phone" name="phone" type="tel" autoComplete="tel" defaultValue={v?.phone} placeholder="(614) 555-0100" />
+          <LineInput id="lf-phone" name="phone" type="tel" autoComplete="tel" defaultValue={v?.phone} placeholder="(614) 555-0100" />
         </Row>
         <Row id="lf-company" label="Company" optional>
-          <Input id="lf-company" name="company" autoComplete="organization" defaultValue={v?.company} placeholder="Your company" />
+          <LineInput id="lf-company" name="company" autoComplete="organization" defaultValue={v?.company} placeholder="Your company" />
         </Row>
         <div className="sm:col-span-2">
           <Row id="lf-message" label="How can we help?" error={e?.message}>
-            <Textarea id="lf-message" name="message" rows={5} aria-required="true" defaultValue={v?.message} invalid={!!e?.message} placeholder="A few lines about what you need and when." />
+            <LineTextarea id="lf-message" name="message" rows={5} aria-required="true" defaultValue={v?.message} invalid={!!e?.message} placeholder="A few lines about what you need and when." />
           </Row>
         </div>
 
@@ -127,7 +144,7 @@ export function LeadForm({ orgId, company, submitted = false }: { orgId: string;
 
         {formError && <p className="text-sm text-danger sm:col-span-2">{formError}</p>}
 
-        <Button type="submit" variant="primary" loading={pending} className="min-h-11 w-full sm:col-span-2">
+        <Button type="submit" variant="primary" loading={pending} className="min-h-12 w-full rounded-full! px-7 sm:col-span-2 sm:w-auto sm:justify-self-start">
           {!pending && <Send className="size-4" aria-hidden="true" />}
           {pending ? "Sending…" : "Send message"}
         </Button>
