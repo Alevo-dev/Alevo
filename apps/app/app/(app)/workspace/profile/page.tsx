@@ -25,6 +25,9 @@ export default async function BusinessProfilePage() {
   const initial: BusinessProfileValues = {
     companyName: row?.companyName ?? "",
     businessAddress: row?.businessAddress ?? "",
+    contactEmail: row?.contactEmail ?? "",
+    contactPhone: row?.contactPhone ?? "",
+    contactHours: row?.contactHours ?? "",
     offering: row?.offering ?? "",
     idealCustomer: row?.idealCustomer ?? "",
     qualifyingCriteria: row?.qualifyingCriteria ?? "",

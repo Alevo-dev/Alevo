@@ -19,6 +19,10 @@ export const orgProfiles = pgTable(
     companyName: text("company_name"),
     // Postal address printed in every email footer (CAN-SPAM / CASL; migration 0020).
     businessAddress: text("business_address"),
+    // Shown beside the public contact form (migration 0032); all optional.
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    contactHours: text("contact_hours"),
     offering: text("offering"),
     idealCustomer: text("ideal_customer"),
     qualifyingCriteria: text("qualifying_criteria"),

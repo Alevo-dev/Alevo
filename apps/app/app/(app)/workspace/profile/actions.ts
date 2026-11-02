@@ -9,6 +9,9 @@ import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth
 export type BusinessProfileValues = {
   companyName: string;
   businessAddress: string;
+  contactEmail: string;
+  contactPhone: string;
+  contactHours: string;
   offering: string;
   idealCustomer: string;
   qualifyingCriteria: string;
@@ -16,7 +19,7 @@ export type BusinessProfileValues = {
   tone: string;
   signoff: string;
 };
-export type BusinessProfileErrors = Partial<Record<"companyName" | "businessAddress" | "offering" | "idealCustomer", string>>;
+export type BusinessProfileErrors = Partial<Record<"companyName" | "businessAddress" | "contactEmail" | "offering" | "idealCustomer", string>>;
 export type ActionState = {
   ok?: boolean;
   error?: string;
@@ -29,6 +32,9 @@ function readValues(formData: FormData): BusinessProfileValues {
   return {
     companyName: s("companyName"),
     businessAddress: s("businessAddress"),
+    contactEmail: s("contactEmail"),
+    contactPhone: s("contactPhone"),
+    contactHours: s("contactHours"),
     offering: s("offering"),
     idealCustomer: s("idealCustomer"),
     qualifyingCriteria: s("qualifyingCriteria"),
@@ -44,6 +50,11 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     await requireRole("admin");
     const org = await getCurrentOrg();
     if (!org) return { error: "No active organization.", values };
+
+    // Optional, but if given it must be an address a visitor can write to.
+    if (values.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.contactEmail)) {
+      return { errors: { contactEmail: "Enter a valid email address." }, values };
+    }
 
     // While the agent is on, the three fields it reasons from stay required.
     const [current] = await withOrg((tx) =>
@@ -63,6 +74,9 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     const set = {
       companyName: nullable(values.companyName),
       businessAddress: nullable(values.businessAddress),
+      contactEmail: nullable(values.contactEmail),
+      contactPhone: nullable(values.contactPhone),
+      contactHours: nullable(values.contactHours),
       offering: nullable(values.offering),
       idealCustomer: nullable(values.idealCustomer),
       qualifyingCriteria: nullable(values.qualifyingCriteria),

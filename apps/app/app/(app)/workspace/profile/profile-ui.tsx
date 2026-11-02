@@ -40,7 +40,7 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
           <SettingRow
             label="Business address"
             htmlFor="businessAddress"
-            hint="Printed in the footer of every email the agent sends. Anti-spam law requires a postal address."
+            hint="Printed in the footer of every email the agent sends (anti-spam law requires a postal address) and shown on your contact form."
             error={e("businessAddress")}
           >
             <Textarea
@@ -70,6 +70,39 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
               defaultValue={v("idealCustomer")}
               invalid={!!e("idealCustomer")}
               placeholder="25 to 150 employees, no in-house IT, in healthcare, finance or legal, frustrated with slow support."
+            />
+          </SettingRow>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Contact details"
+          hint="Shown beside your website contact form, next to the business address above. Leave any blank to hide it."
+        />
+        <div className="mt-6">
+          <SettingRow label="Phone" htmlFor="contactPhone" hint="The number you want customers to call.">
+            <Input id="contactPhone" name="contactPhone" type="tel" defaultValue={v("contactPhone")} placeholder="(614) 555-0100" maxLength={40} />
+          </SettingRow>
+          <SettingRow label="Email" htmlFor="contactEmail" hint="A public inbox, like hello@ or support@." error={e("contactEmail")}>
+            <Input
+              id="contactEmail"
+              name="contactEmail"
+              type="email"
+              defaultValue={v("contactEmail")}
+              invalid={!!e("contactEmail")}
+              placeholder="hello@northwind.it"
+              maxLength={320}
+            />
+          </SettingRow>
+          <SettingRow label="Opening hours" htmlFor="contactHours" hint="One line per day or range.">
+            <Textarea
+              id="contactHours"
+              name="contactHours"
+              rows={2}
+              defaultValue={v("contactHours")}
+              placeholder={"Mon to Fri, 8am to 6pm\nEmergency support 24/7"}
+              maxLength={300}
             />
           </SettingRow>
         </div>

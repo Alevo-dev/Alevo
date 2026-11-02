@@ -20,7 +20,7 @@ export type LeadValues = {
   consent: boolean;
 };
 /** Per-field validation errors (shown under each field). */
-export type LeadErrors = { name?: string; email?: string; consent?: string };
+export type LeadErrors = { name?: string; email?: string; message?: string; consent?: string };
 
 export type LeadFields = LeadValues & {
   honeypot: string;
@@ -53,6 +53,7 @@ export function validateLead(v: LeadValues): LeadErrors {
   if (!v.name) errors.name = "Name is required.";
   if (!v.email) errors.email = "Email is required.";
   else if (!EMAIL_RE.test(v.email)) errors.email = "Enter a valid email address.";
+  if (!v.message) errors.message = "Tell us how we can help.";
   if (!v.consent) errors.consent = "Please confirm you agree to be contacted.";
   return errors;
 }

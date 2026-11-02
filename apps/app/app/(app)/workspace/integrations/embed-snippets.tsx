@@ -25,7 +25,7 @@ export function EmbedSnippets({ orgId, origin, company }: { orgId: string; origi
     `POST ${endpoint}`,
     `Content-Type: application/json`,
     ``,
-    `{ "name": "Pat Lee", "email": "pat@example.com", "phone": "", "company": "", "message": "Hi", "consent": true }`,
+    `{ "name": "Pat Lee", "email": "pat@example.com", "phone": "", "company": "", "message": "Hi", "consent": true }   // name, email, message and consent are required`,
     ``,
     `200 { "ok": true }    400 { "ok": false, "errors": { "email": "…" } }    429 { "ok": false, "error": "…" }`,
   ].join("\n");
@@ -35,12 +35,12 @@ export function EmbedSnippets({ orgId, origin, company }: { orgId: string; origi
       <Snippet title="Hosted page" hint="A ready-made page you can link to from anywhere." code={hosted} />
       <Snippet
         title="Embed on your site"
-        hint="Renders the form inside your page, in your font. Change the button colour with data-accent."
+        hint={`Renders the form inside your page and takes on its font, text colour and background. The button uses your page's text colour; add data-accent="#hex" for a brand colour, or data-details="false" to hide the phone / address column.`}
         code={script}
       />
       <Snippet
         title="Iframe"
-        hint="For site builders that only allow HTML blocks. The frame grows to fit; use theme=dark for dark pages."
+        hint="For site builders that only allow HTML blocks. The frame grows to fit. It cannot read your page, so set theme=dark for dark pages and accent=<hex without #> for your brand colour."
         code={iframe}
       />
       <Snippet

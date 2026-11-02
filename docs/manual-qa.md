@@ -1096,3 +1096,17 @@ Migrations 0030 + 0031 applied. Signed in to the admin console (:3002) as a plat
 - [ ] Trigger any org alert (qualified lead etc.): the owner gets the email, the support member does not.
 - [ ] Finish every item (send a test lead so the agent replies) → the Getting started card is gone; console Setup reads **Ready**.
 - [ ] Owner tries to change the support member's role or remove them via a crafted form → "Alevo support members are managed by Alevo."
+
+## Contact form redesign + contact details (2026-11-02)
+
+Needs migration 0032 applied (`npx supabase db push --remote`).
+
+- [ ] Workspace → Business profile → new **Contact details** card (Phone, Email, Opening hours). Save with an invalid email → red border + "Enter a valid email address." under it, other fields keep their input. Save valid values → "Business profile saved." toast, values persist after reload.
+- [ ] Business address hint now says it is also shown on the contact form.
+- [ ] Open `/f/<orgId>` logged out: a "Contact <company>" header, a card with a **Get in touch** column (Call us / Email us / Visit us / Hours, each with an icon) beside the form. Phone link dials (`tel:`), email opens a mail client, address opens Google Maps.
+- [ ] Clear all four details and reload: the details column disappears and the form fills the card.
+- [ ] Form: every field has a visible label, Phone and Company say "(optional)", name + email sit side by side on a wide screen and stack on a phone. Submit empty → name, email and consent errors beneath their fields; the button shows a spinner and "Sending…" while in flight; success shows the check mark and thanks.
+- [ ] `/f/<orgId>?accent=e11d48`: the button, checkbox and focus rings turn that colour with readable text. `?details=0` hides the column. `?embed=1&theme=dark` is the frame version.
+- [ ] Embed (plain HTML file with the script snippet) on a white page: the font and text colour match the page, the button is the page's text colour. On a dark-background page: light button, dark text. Add `data-accent="#2e9be6"`: blue button with navy text. `data-details="false"`: form only.
+- [ ] Embed with an unreachable org id or while offline still renders the form (no details column) within about 3 seconds.
+- [ ] `GET /api/forms/<orgId>` returns `{ ok, name, email, phone, address, hours }`; an unknown id returns 404.

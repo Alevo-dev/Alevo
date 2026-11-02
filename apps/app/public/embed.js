@@ -1,10 +1,18 @@
 /*
- * Alevo website form. Paste once:
+ * Alevo contact form. Paste once:
  *   <div id="alevo-form"></div>
  *   <script src="https://app.getalevo.com/embed.js" data-org="ORG_ID" data-target="#alevo-form" async></script>
+ *
+ * It takes on the page it sits in: the page's font, text colour and background.
+ * The button defaults to the page's own text colour (dark on a light page, light
+ * on a dark one), so it never clashes. To use a brand colour instead, either set
+ * data-accent="#hex" on the script tag or define --alevo-accent in your CSS.
+ *
  * Options: data-target (where to render; default: right after the script tag),
- * data-accent (button colour, default Alevo blue), data-company (name shown in the
- * privacy line). Inherits the page's font. Posts JSON to /api/forms/ORG_ID.
+ * data-accent (button colour), data-details="false" (form only, without the phone /
+ * email / address / hours column), data-company (name used if the workspace has none).
+ * The contact details come from Workspace > Business profile. Posts JSON to
+ * /api/forms/ORG_ID.
  */
 (function () {
   var script = document.currentScript;
@@ -12,8 +20,7 @@
   var org = script.getAttribute("data-org");
   if (!org) return;
   var origin = new URL(script.src, location.href).origin;
-  var accent = script.getAttribute("data-accent") || "#2e9be6";
-  var company = script.getAttribute("data-company") || "this company";
+  var api = origin + "/api/forms/" + encodeURIComponent(org);
   var targetSel = script.getAttribute("data-target");
   var host = targetSel ? document.querySelector(targetSel) : null;
   if (!host) {
@@ -21,146 +28,303 @@
     script.parentNode.insertBefore(host, script.nextSibling);
   }
 
-  if (!document.getElementById("alevo-form-css")) {
-    var css = document.createElement("style");
-    css.id = "alevo-form-css";
-    css.textContent =
-      ".alevo-form{--alevo-accent:" +
-      accent +
-      ";font:inherit;color:inherit;max-width:480px;box-sizing:border-box}" +
-      ".alevo-form *{box-sizing:border-box}" +
-      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:12px}" +
-      ".alevo-form fieldset:disabled{opacity:.7}" +
-      ".alevo-form input,.alevo-form textarea{width:100%;font:inherit;color:inherit;background:transparent;border:1px solid rgba(128,128,128,.5);border-radius:8px;padding:10px 12px}" +
-      ".alevo-form input:focus,.alevo-form textarea:focus{outline:2px solid var(--alevo-accent);outline-offset:1px;border-color:var(--alevo-accent)}" +
-      ".alevo-form .is-invalid{border-color:#e5484d}" +
-      ".alevo-form .alevo-error{color:#e5484d;font-size:13px;margin:6px 0 0;min-height:0}" +
-      ".alevo-form .alevo-error:empty{display:none}" +
-      ".alevo-form .alevo-consent{display:flex;gap:10px;align-items:flex-start;font-size:14px;opacity:.85}" +
-      ".alevo-form .alevo-consent input{width:16px;height:16px;margin:2px 0 0;accent-color:var(--alevo-accent)}" +
-      ".alevo-form .alevo-hp{position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden}" +
-      ".alevo-form button{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;font:inherit;font-weight:600;color:#06091a;background:var(--alevo-accent);border:0;border-radius:8px;padding:11px 16px;cursor:pointer}" +
-      ".alevo-form button:disabled{cursor:not-allowed;opacity:.6}" +
-      ".alevo-form .alevo-spin{width:16px;height:16px;border:2px solid rgba(6,9,26,.3);border-top-color:#06091a;border-radius:50%;animation:alevo-spin .8s linear infinite}" +
-      "@keyframes alevo-spin{to{transform:rotate(360deg)}}" +
-      "@media (prefers-reduced-motion:reduce){.alevo-form .alevo-spin{animation:none}}" +
-      ".alevo-form .alevo-note{font-size:12px;opacity:.7;margin:12px 0 0;text-align:center}" +
-      ".alevo-form .alevo-note a{color:inherit}" +
-      ".alevo-form .alevo-thanks{border:1px solid rgba(128,128,128,.3);border-radius:12px;padding:24px;text-align:center}" +
-      ".alevo-form .alevo-thanks p{margin:4px 0 0;opacity:.7;font-size:14px}";
-    document.head.appendChild(css);
-  }
-
-  var startedAt = Date.now();
-  var form = document.createElement("form");
-  form.className = "alevo-form";
-  form.noValidate = true;
-  form.innerHTML =
-    '<div class="alevo-hp" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>' +
-    "<fieldset>" +
-    '<div><input name="name" placeholder="Full name" aria-label="Full name" autocomplete="name"><p class="alevo-error" data-for="name"></p></div>' +
-    '<div><input name="email" type="email" placeholder="Email" aria-label="Email" autocomplete="email"><p class="alevo-error" data-for="email"></p></div>' +
-    '<input name="phone" type="tel" placeholder="Phone (optional)" aria-label="Phone" autocomplete="tel">' +
-    '<input name="company" placeholder="Company (optional)" aria-label="Company" autocomplete="organization">' +
-    '<textarea name="message" rows="4" placeholder="How can we help?" aria-label="Message"></textarea>' +
-    '<div><label class="alevo-consent"><input type="checkbox" name="consent" value="yes"><span>I agree to be contacted about my inquiry.</span></label><p class="alevo-error" data-for="consent"></p></div>' +
-    '<p class="alevo-error" data-for="form"></p>' +
-    '<button type="submit"><span class="alevo-label">Send</span></button>' +
-    "</fieldset>" +
-    '<p class="alevo-note">Your details go to ' +
-    company.replace(/[&<>"]/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
-    }) +
-    ' and are processed by Alevo. See the <a href="https://getalevo.com/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</p>';
-  host.appendChild(form);
-
-  var fieldset = form.querySelector("fieldset");
-  var button = form.querySelector("button");
-  var label = form.querySelector(".alevo-label");
-
-  function setError(name, text) {
-    var el = form.querySelector('.alevo-error[data-for="' + name + '"]');
-    if (el) el.textContent = text || "";
-    var input = form.querySelector('[name="' + name + '"]');
-    if (input) input.classList.toggle("is-invalid", !!text);
-  }
-  function clearErrors() {
-    ["name", "email", "consent", "form"].forEach(function (n) {
-      setError(n, "");
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
-  function busy(on) {
-    fieldset.disabled = on;
-    button.setAttribute("aria-busy", on ? "true" : "false");
-    form.setAttribute("aria-busy", on ? "true" : "false");
-    label.textContent = on ? "Sending…" : "Send";
-    var spin = button.querySelector(".alevo-spin");
-    if (on && !spin) {
-      spin = document.createElement("span");
-      spin.className = "alevo-spin";
-      spin.setAttribute("aria-hidden", "true");
-      button.insertBefore(spin, label);
-    } else if (!on && spin) {
-      spin.remove();
+
+  // ── Colours: read the page, never guess ────────────────────────────────
+  function parse(c) {
+    var m = /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+%?))?\s*\)$/.exec(String(c || "").trim());
+    if (!m) return null;
+    var a = m[4] == null ? 1 : /%$/.test(m[4]) ? parseFloat(m[4]) / 100 : parseFloat(m[4]);
+    return [+m[1], +m[2], +m[3], a];
+  }
+  // Any CSS colour (hex, name, hsl) -> rgb, by letting the browser compute it.
+  function resolve(c) {
+    var probe = document.createElement("i");
+    probe.style.color = c;
+    if (!probe.style.color) return null;
+    host.appendChild(probe);
+    var v = parse(getComputedStyle(probe).color);
+    probe.remove();
+    return v;
+  }
+  function lum(c) {
+    var l = c.slice(0, 3).map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+  }
+  function css(c) {
+    return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
+  }
+  function pageBackground(el) {
+    for (; el && el.nodeType === 1; el = el.parentElement) {
+      var c = parse(getComputedStyle(el).backgroundColor);
+      if (c && c[3] > 0.5) return c;
     }
+    return [255, 255, 255, 1];
   }
 
-  form.addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    if (fieldset.disabled) return;
-    clearErrors();
-    var data = new FormData(form);
-    var payload = {
-      name: data.get("name"),
-      email: data.get("email"),
-      phone: data.get("phone"),
-      company: data.get("company"),
-      message: data.get("message"),
-      consent: data.get("consent") === "yes",
-      website: data.get("website"),
-      startedAt: startedAt,
-      source: "embed",
-      timezone: "",
-    };
-    try {
-      payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    } catch (e) {
-      /* no Intl tz */
+  var hostStyle = getComputedStyle(host);
+  var custom = script.getAttribute("data-accent") || hostStyle.getPropertyValue("--alevo-accent").trim();
+  var brand = custom ? resolve(custom) : null;
+  var accent, onAccent;
+  if (brand) {
+    accent = css(brand);
+    onAccent = lum(brand) > 0.18 ? "#06091a" : "#ffffff";
+  } else {
+    // No colour chosen: the button is the page's text colour on the page's background.
+    accent = css(parse(hostStyle.color) || [17, 17, 17]);
+    onAccent = css(pageBackground(host));
+  }
+
+  if (!document.getElementById("alevo-form-css")) {
+    var style = document.createElement("style");
+    style.id = "alevo-form-css";
+    style.textContent = [
+      ".alevo-wrap{font:inherit;color:inherit;display:flex;flex-wrap:wrap;gap:32px 48px;max-width:960px;box-sizing:border-box}",
+      ".alevo-wrap *{box-sizing:border-box}",
+      ".alevo-info{flex:1 1 240px;min-width:0}",
+      ".alevo-info h3{margin:0;font:inherit;font-size:1.25em;font-weight:600;line-height:1.3}",
+      ".alevo-info>p{margin:6px 0 20px;opacity:.7;font-size:.925em}",
+      ".alevo-info ul{list-style:none;margin:0;padding:0;display:grid;gap:18px}",
+      ".alevo-info li{display:flex;gap:12px;align-items:flex-start;min-width:0}",
+      ".alevo-ic{flex:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.14);background:color-mix(in srgb,var(--alevo-accent) 14%,transparent)}",
+      ".alevo-ic svg{width:16px;height:16px}",
+      ".alevo-info small{display:block;opacity:.65;font-size:.8em;line-height:1.4}",
+      ".alevo-info li div{min-width:0;overflow-wrap:anywhere;white-space:pre-line}",
+      ".alevo-info a{color:inherit;text-underline-offset:3px;display:inline-block;padding:6px 0}",
+      ".alevo-form{flex:2 1 340px;min-width:0}",
+      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}",
+      ".alevo-form fieldset:disabled{opacity:.7}",
+      ".alevo-full{grid-column:1/-1}",
+      ".alevo-form label.alevo-l{display:block;font-size:.875em;font-weight:600;margin:0 0 6px}",
+      ".alevo-form label.alevo-l span{font-weight:400;opacity:.65}",
+      ".alevo-form input:not([type=checkbox]),.alevo-form textarea{display:block;width:100%;font:inherit;font-size:max(16px,1em);color:inherit;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent);border:1px solid rgba(128,128,128,.45);border:1px solid color-mix(in srgb,currentColor 28%,transparent);border-radius:10px;padding:11px 13px;margin:0;transition:border-color .15s,box-shadow .15s}",
+      ".alevo-form textarea{resize:vertical;min-height:120px}",
+      ".alevo-form ::placeholder{color:inherit;opacity:.55}",
+      ".alevo-form input:focus,.alevo-form textarea:focus{outline:0;border-color:var(--alevo-accent);box-shadow:0 0 0 3px rgba(128,128,128,.3);box-shadow:0 0 0 3px color-mix(in srgb,var(--alevo-accent) 30%,transparent)}",
+      ".alevo-form .is-invalid{border-color:var(--alevo-danger)!important}",
+      ".alevo-form .alevo-error{color:var(--alevo-danger);font-size:.8125em;margin:6px 0 0}",
+      ".alevo-form .alevo-error:empty{display:none}",
+      ".alevo-form .alevo-consent{display:flex;gap:10px;align-items:flex-start;font-size:.875em;padding:12px;border-radius:10px;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent)}",
+      ".alevo-form .alevo-consent span{opacity:.8}",
+      ".alevo-form .alevo-consent input{width:16px;height:16px;margin:2px 0 0;flex:none;accent-color:var(--alevo-accent)}",
+      ".alevo-hp{position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden}",
+      ".alevo-form button{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;font:inherit;font-weight:600;color:var(--alevo-on);background:var(--alevo-accent);border:0;border-radius:10px;padding:11px 18px;cursor:pointer;transition:filter .15s}",
+      ".alevo-form button:hover:not(:disabled){filter:brightness(1.1)}",
+      ".alevo-form button:focus-visible{outline:2px solid var(--alevo-accent);outline-offset:3px}",
+      ".alevo-form button:disabled{cursor:not-allowed;opacity:.6}",
+      ".alevo-form button svg{width:16px;height:16px}",
+      ".alevo-spin{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:alevo-spin .8s linear infinite}",
+      "@keyframes alevo-spin{to{transform:rotate(360deg)}}",
+      "@media (prefers-reduced-motion:reduce){.alevo-spin{animation:none}.alevo-form input,.alevo-form textarea,.alevo-form button{transition:none}}",
+      ".alevo-note{font-size:.8em;opacity:.65;margin:16px 0 0;text-align:center}",
+      ".alevo-note a{color:inherit}",
+      ".alevo-thanks{text-align:center;padding:40px 24px;border-radius:14px;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent)}",
+      ".alevo-thanks i{display:inline-flex;width:48px;height:48px;border-radius:50%;align-items:center;justify-content:center;background:var(--alevo-accent);color:var(--alevo-on);margin-bottom:14px}",
+      ".alevo-thanks i svg{width:24px;height:24px}",
+      ".alevo-thanks strong{display:block;font-size:1.125em}",
+      ".alevo-thanks p{margin:6px 0 0;opacity:.7;font-size:.925em}",
+    ].join("");
+    document.head.appendChild(style);
+  }
+
+  // ── Markup ─────────────────────────────────────────────────────────────
+  function svg(paths, extra) {
+    return (
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' +
+      (extra || "") +
+      ">" +
+      paths +
+      "</svg>"
+    );
+  }
+  var ICON = {
+    phone:
+      '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+    pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+  };
+
+  function infoColumn(d) {
+    var rows = [];
+    function row(icon, label, html) {
+      rows.push('<li><span class="alevo-ic">' + svg(ICON[icon]) + "</span><div><small>" + label + "</small>" + html + "</div></li>");
     }
-    busy(true);
-    fetch(origin + "/api/forms/" + encodeURIComponent(org), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-      .then(function (res) {
-        return res.json().then(function (json) {
-          return { status: res.status, json: json };
-        });
-      })
-      .then(function (r) {
-        if (r.json && r.json.ok) {
-          form.innerHTML =
-            '<div class="alevo-thanks" role="status"><strong>Thanks. We’ll be in touch shortly.</strong><p>Your message has been received.</p></div>';
-          return;
-        }
-        busy(false);
-        var errors = (r.json && r.json.errors) || {};
-        var any = false;
-        Object.keys(errors).forEach(function (k) {
-          setError(k, errors[k]);
-          any = true;
-        });
-        if (!any) setError("form", (r.json && r.json.error) || "Something went wrong. Please try again.");
-        var first = form.querySelector(".is-invalid");
-        if (first) first.focus();
-      })
-      .catch(function () {
-        busy(false);
-        setError("form", "Could not send. Check your connection and try again.");
+    if (d.phone) row("phone", "Call us", '<a href="tel:' + esc(d.phone.replace(/[^\d+]/g, "")) + '">' + esc(d.phone) + "</a>");
+    if (d.email) row("mail", "Email us", '<a href="mailto:' + esc(d.email) + '">' + esc(d.email) + "</a>");
+    if (d.address)
+      row(
+        "pin",
+        "Visit us",
+        '<a href="https://www.google.com/maps/search/?api=1&query=' +
+          encodeURIComponent(d.address.replace(/\s*\n\s*/g, ", ")) +
+          '" target="_blank" rel="noopener noreferrer" style="text-decoration:none">' +
+          esc(d.address) +
+          "</a>",
+      );
+    if (d.hours) row("clock", "Hours", esc(d.hours));
+    if (!rows.length) return "";
+    return (
+      '<aside class="alevo-info"><h3>Get in touch</h3><p>Prefer to talk? Reach ' +
+      esc(d.name) +
+      " any of these ways.</p><ul>" +
+      rows.join("") +
+      "</ul></aside>"
+    );
+  }
+
+  function render(d) {
+    var company = (d && d.name) || script.getAttribute("data-company") || "this company";
+    var id = "alevo" + Math.random().toString(36).slice(2, 7);
+    var startedAt = Date.now();
+    var wrap = document.createElement("div");
+    wrap.className = "alevo-wrap";
+    wrap.style.setProperty("--alevo-accent", accent);
+    wrap.style.setProperty("--alevo-on", onAccent);
+    // Error red that stays readable (4.5:1) on both light and dark pages.
+    wrap.style.setProperty("--alevo-danger", lum(pageBackground(host)) > 0.18 ? "#c8323b" : "#ff6b70");
+    wrap.innerHTML =
+      (d ? infoColumn(d) : "") +
+      '<form class="alevo-form" novalidate>' +
+      '<div class="alevo-hp" aria-hidden="true"><label>Website<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>' +
+      "<fieldset>" +
+      '<div><label class="alevo-l" for="' + id + 'n">Full name</label><input id="' + id + 'n" name="name" placeholder="Pat Lee" autocomplete="name" aria-required="true"><p class="alevo-error" role="alert" data-for="name"></p></div>' +
+      '<div><label class="alevo-l" for="' + id + 'e">Email</label><input id="' + id + 'e" name="email" type="email" placeholder="pat@example.com" autocomplete="email" aria-required="true"><p class="alevo-error" role="alert" data-for="email"></p></div>' +
+      '<div><label class="alevo-l" for="' + id + 'p">Phone <span>(optional)</span></label><input id="' + id + 'p" name="phone" type="tel" placeholder="(614) 555-0100" autocomplete="tel"></div>' +
+      '<div><label class="alevo-l" for="' + id + 'c">Company <span>(optional)</span></label><input id="' + id + 'c" name="company" placeholder="Your company" autocomplete="organization"></div>' +
+      '<div class="alevo-full"><label class="alevo-l" for="' + id + 'm">How can we help?</label><textarea id="' + id + 'm" name="message" rows="5" placeholder="A few lines about what you need and when." aria-required="true"></textarea><p class="alevo-error" role="alert" data-for="message"></p></div>' +
+      '<div class="alevo-full"><label class="alevo-consent"><input type="checkbox" name="consent" value="yes"><span>I agree to be contacted about my inquiry.</span></label><p class="alevo-error" role="alert" data-for="consent"></p></div>' +
+      '<p class="alevo-error alevo-full" data-for="form"></p>' +
+      '<button type="submit" class="alevo-full"><span class="alevo-ico">' + svg(ICON.send) + '</span><span class="alevo-label">Send message</span></button>' +
+      "</fieldset>" +
+      '<p class="alevo-note">Your details go to ' +
+      esc(company) +
+      ' and are processed by Alevo. See the <a href="https://getalevo.com/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>.</p>' +
+      "</form>";
+    host.appendChild(wrap);
+
+    var form = wrap.querySelector("form");
+    var fieldset = form.querySelector("fieldset");
+    var button = form.querySelector("button");
+    var label = form.querySelector(".alevo-label");
+    var ico = form.querySelector(".alevo-ico");
+
+    function setError(name, text) {
+      var el = form.querySelector('.alevo-error[data-for="' + name + '"]');
+      if (el) el.textContent = text || "";
+      var input = form.querySelector('[name="' + name + '"]');
+      if (input) {
+        input.classList.toggle("is-invalid", !!text);
+        input.setAttribute("aria-invalid", text ? "true" : "false");
+      }
+    }
+    function clearErrors() {
+      ["name", "email", "message", "consent", "form"].forEach(function (n) {
+        setError(n, "");
       });
-  });
+    }
+    function busy(on) {
+      fieldset.disabled = on;
+      button.setAttribute("aria-busy", on ? "true" : "false");
+      form.setAttribute("aria-busy", on ? "true" : "false");
+      label.textContent = on ? "Sending…" : "Send message";
+      ico.innerHTML = on ? '<span class="alevo-spin" aria-hidden="true"></span>' : svg(ICON.send);
+    }
+
+    // Typing in a field (or ticking consent) dismisses that field's error.
+    form.addEventListener("input", function (ev) {
+      if (ev.target.name) setError(ev.target.name, "");
+      setError("form", "");
+    });
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      if (fieldset.disabled) return;
+      clearErrors();
+      var data = new FormData(form);
+      var payload = {
+        name: data.get("name"),
+        email: data.get("email"),
+        phone: data.get("phone"),
+        company: data.get("company"),
+        message: data.get("message"),
+        consent: data.get("consent") === "yes",
+        website: data.get("website"),
+        startedAt: startedAt,
+        source: "embed",
+        timezone: "",
+      };
+      try {
+        payload.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch (e) {
+        /* no Intl tz */
+      }
+      busy(true);
+      fetch(api, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          return res.json().then(function (json) {
+            return { status: res.status, json: json };
+          });
+        })
+        .then(function (r) {
+          if (r.json && r.json.ok) {
+            form.innerHTML =
+              '<div class="alevo-thanks" role="status"><i>' +
+              svg(ICON.check) +
+              "</i><strong>Thanks. We’ll be in touch shortly.</strong><p>Your message has been received. " +
+              esc(company) +
+              " will reply by email or phone.</p></div>";
+            return;
+          }
+          busy(false);
+          var errors = (r.json && r.json.errors) || {};
+          var any = false;
+          Object.keys(errors).forEach(function (k) {
+            setError(k, errors[k]);
+            any = true;
+          });
+          if (!any) setError("form", (r.json && r.json.error) || "Something went wrong. Please try again.");
+          var first = form.querySelector(".is-invalid");
+          if (first) first.focus();
+        })
+        .catch(function () {
+          busy(false);
+          setError("form", "Could not send. Check your connection and try again.");
+        });
+    });
+  }
+
+  // The form shows even if the details can't be fetched (offline, slow, or turned off).
+  if (script.getAttribute("data-details") === "false") return render(null);
+  var done = false;
+  function once(d) {
+    if (done) return;
+    done = true;
+    render(d);
+  }
+  setTimeout(function () {
+    once(null);
+  }, 3000);
+  fetch(api, { headers: { accept: "application/json" } })
+    .then(function (res) {
+      return res.ok ? res.json() : null;
+    })
+    .then(function (json) {
+      once(json && json.ok ? json : null);
+    })
+    .catch(function () {
+      once(null);
+    });
 })();

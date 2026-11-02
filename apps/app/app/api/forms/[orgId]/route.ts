@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { captureLead, readLeadFields } from "@/lib/leads/capture";
 import { requestOrigin } from "@/lib/app-url";
+import { loadContactDetails } from "@/lib/leads/contact-details";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,21 @@ export const dynamic = "force-dynamic";
  */
 const CORS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "POST, OPTIONS",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
   "access-control-allow-headers": "content-type",
   "access-control-max-age": "86400",
 };
 
 export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS });
+}
+
+/** What the embed script shows beside the form: the business name and the contact details the owner chose to publish. */
+export async function GET(_req: Request, { params }: { params: Promise<{ orgId: string }> }) {
+  const org = await loadContactDetails((await params).orgId);
+  if (!org) return NextResponse.json({ ok: false, error: "This form is not available." }, { status: 404, headers: CORS });
+  const { name, email, phone, address, hours } = org;
+  return NextResponse.json({ ok: true, name, email, phone, address, hours }, { headers: { ...CORS, "cache-control": "public, max-age=60" } });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ orgId: string }> }) {

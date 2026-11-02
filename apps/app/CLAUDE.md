@@ -269,6 +269,7 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
   `last_seen_at` bumped on every poll; service path only, no policies). See Website chat.
 - **0030–0031** `memberships.support` (Alevo staff in a client org — see Admin provisioning) +
   `org_profiles.booking_declined` / `phone_declined` / `slack_declined` ("Not using this" on the setup checklists).
+- **0032** `org_profiles.contact_email` / `contact_phone` / `contact_hours` — the public details beside the contact form (with `business_address`); edited under Workspace → Business profile → Contact details.
 - **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
   `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
   `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
@@ -561,6 +562,7 @@ field reading/validation and `spam.ts` the checks, both pure (`tests/lead-form.t
 - **Endpoint** `POST /api/forms/[orgId]` (public in `proxy.ts`, open CORS): JSON,
   form-encoded or multipart → `{ ok: true }` / 400 `{ errors }` / 404 / 429 / 500. An
   `Accept: text/html` form post is redirected to the hosted page instead.
+- **Contact details + colours:** `loadContactDetails` (`lib/leads/contact-details.ts`, cached per request) feeds the hosted page's details column (`contact-info.tsx`) and the public `GET /api/forms/[orgId]` the embed reads (`?details=0` / `data-details="false"` hide the column). Colour: `embed.js` inherits the page's font, text colour and background and defaults its button to the page's text colour; `data-accent` or a `--alevo-accent` CSS variable overrides it, with white/navy text picked by contrast. The iframe cannot read its parent, so it takes `?accent=<hex>` and `theme=` (`lib/leads/present.ts`).
 - **Embed** `public/embed.js` (vanilla, no build): renders the form into `data-target`,
   posts JSON to the endpoint, spinner + disabled fieldset while sending, per-field errors
   inline, thank-you block on success. Snippets (hosted link, script, iframe, API) are

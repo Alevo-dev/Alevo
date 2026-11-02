@@ -18,6 +18,7 @@ describe("validateLead", () => {
     ).toEqual({
       name: "Name is required.",
       email: "Email is required.",
+      message: "Tell us how we can help.",
       consent: "Please confirm you agree to be contacted.",
     });
   });
@@ -26,7 +27,7 @@ describe("validateLead", () => {
       name: "Pat",
       phone: "",
       company: "",
-      message: "",
+      message: "Hi",
       consent: true,
     };
     expect(validateLead({ ...base, email: "pat@" }).email).toBe("Enter a valid email address.");
@@ -77,5 +78,20 @@ describe("spam checks", () => {
     const key = ipKey("lead_form", "203.0.113.9");
     expect(key).toMatch(/^lead_form:ip:[0-9a-f]{32}$/);
     expect(key).not.toContain("203.0.113.9");
+  });
+});
+
+describe("contact form presentation", () => {
+  it("picks readable text for an accent colour", async () => {
+    const { onAccent, parseAccent, telHref } = await import("../lib/leads/present");
+    expect(onAccent("#ffffff")).toBe("#06091a");
+    expect(onAccent("#111111")).toBe("#ffffff");
+    expect(onAccent("#2e9be6")).toBe("#06091a");
+    expect(parseAccent("#2E9BE6")).toBe("#2e9be6");
+    expect(parseAccent("2e9be6")).toBe("#2e9be6");
+    expect(parseAccent("red")).toBeUndefined();
+    expect(parseAccent("#12345")).toBeUndefined();
+    expect(telHref("(614) 555-0100 ext 2")).toBe("tel:6145550100" + "2");
+    expect(telHref("+1 614 555 0100")).toBe("tel:+16145550100");
   });
 });
