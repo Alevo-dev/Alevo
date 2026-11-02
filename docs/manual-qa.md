@@ -1079,3 +1079,20 @@ Migrations 0028 + 0029 applied. Integrations → Slack connected.
 - [ ] Trigger any real alert while it is broken (e.g. a qualified lead): the card stays Needs attention; nothing crashes.
 - [ ] Paste the real webhook, Save: the card reads Untested (not Connected). Send test → green, now Connected.
 - [ ] With the real webhook, Send test then break the channel on Slack's side (delete the webhook in the Slack app config) and Send test again: Needs attention. Clearing the webhook with the Clear button → Not connected, no issue row.
+
+# Admin provisioning + Getting started (2026-11-02)
+
+Migrations 0030 + 0031 applied. Signed in to the admin console (:3002) as a platform admin; a second email address you can read (the "owner"). `NEXT_PUBLIC_ADMIN_URL` set in `apps/app/.env.local` (dev: `http://localhost:3002`); `NEXT_PUBLIC_APP_URL` in `apps/admin/.env.local` set to the app's ngrok URL (console-sent invites redirect there — localhost would strand the owner on another device). Clerk dashboard: confirm the plan allows backend organization creation and enough members per org (client seats + one support member).
+- [ ] Organizations → **New organization**: empty name / bad email → red border + message under the field, nothing created. Plan list shows only active plans. Fill in name, the owner email, Starter → Create: you land on the org page; the owner's inbox gets the Clerk invite.
+- [ ] Organizations list: the new row is first, **Members 0** (you are support, not a seat), plan Starter · trialing.
+- [ ] Org page: header pill + agent dot + created date; **Setup** card reads "1 of 9 done" or "0 of 9 done" (Slack / alerts may already count); Members shows you as **Alevo support** and the owner as "Invited … Owner · pending"; **Resend owner invite** sends a second email.
+- [ ] **Leave workspace** (confirm dialog) → you disappear from Members; **Join as support** → back, still "Alevo support", Members count on the list unchanged.
+- [ ] While not a member, click **Open** on any Setup row → the app sends you back to the console org page with "Join as support first…". As a member, **Open in app** → the app with that workspace active on the dashboard; **Open** on Business profile → Workspace → Profile.
+- [ ] Setup rows: **Not using this** on Phone → the row goes green, header count +1, button reads "Using this after all"; click it → back to amber. Same on Booking and Slack (Slack offers it only while no webhook is saved; saving one clears it).
+- [ ] Plan card: pick another plan → Save appears → Save → header pill updates; `org_subscriptions.plan_id` changed, status unchanged.
+- [ ] In the app (as support), fill in the business profile, add a KB document, connect Slack + Send test, switch the agent on: each Setup row turns green on the next console load.
+- [ ] Accept the invite on the owner account: Setup "Owner joined" green. The owner's dashboard shows **Getting started** with the remaining items, each with Set up linking to the page; the Members tab (Manage) shows "Alevo support" with no role select and no trash can; a rep account sees no Getting started card.
+- [ ] Owner: **Not using this** on Booking → toast "Marked as not used.", row green. Then connect a booking tool under Agent → Booking → `org_profiles.booking_declined` is false again.
+- [ ] Trigger any org alert (qualified lead etc.): the owner gets the email, the support member does not.
+- [ ] Finish every item (send a test lead so the agent replies) → the Getting started card is gone; console Setup reads **Ready**.
+- [ ] Owner tries to change the support member's role or remove them via a crafted form → "Alevo support members are managed by Alevo."

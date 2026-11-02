@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-10-27
+**Last updated:** 2026-11-02
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 
@@ -295,15 +295,13 @@ Audit against the standard "don't get sued" list (legal pages, data, honesty, ac
 - [x] Super-admin view: same numbers across all orgs — `apps/admin` `/dashboard`, 7 / 30 / 90 switch, per-org funnel + p50 / p95 with slow orgs flagged; console restyled on the shared `@alevo/ui` package (2026-10-27, hand-tested). Lists paginated 2026-10-27: dashboard cards show one page of 25 with "View all" into `/organizations` and `/activity` (Previous / Next keyset pages reading "Page X of N", migration 0024 indexes; renamed from Newer / Older 2026-10-28 so sorting and filters can come later); the app's Conversations and Meetings page the same way
 - [x] Slack: qualified lead, meeting booked, escalation requested — all four post to the org's Slack (`lib/notifications/lead-events.ts`): strong fit reached (first score ≥ 70), meeting booked (agent, voice, Cal.com external, Calendly), hand-off, escalation; plus the usage alerts and the **no-reply fallback** (`reply-watchdog`: 5 minutes without an outbound reply, or the agent off / paused / contact opted out → lead marked handed off + "Lead needs a person" with contact details) (2026-10-27). **Booking failed** (2026-10-28): the calendar failing under the agent (availability or booking, not a slot conflict) hands the lead off and posts "Booking failed for a qualified lead … Calendar said: …"; and **every org Slack alert** (qualified lead, booked, hand-off / escalation, needs a person, booking failed, call summaries) is also emailed to the owners/admins — "Email the team" switch under Workspace → Agent → Notifications (migrations 0026–0027); the Slack card is Untested until the first successful post, Needs attention with Slack's reason after a failed one (migrations 0028–0029)
 
-### Sprint 6 — Onboarding wizard (15–20h) — ⏸ deferred 2026-10-28: the first clients are set up by hand (Workspace pages + Admin), the wizard comes after the first tenant is live
-- [ ] Company profile + brand basics
-- [ ] ICP builder (verticals, size, geography, must-haves, disqualifiers)
-- [ ] KB upload
-- [ ] Number provisioning + call-forwarding instructions
-- [ ] Booking connect: existing Cal.com (API key + event type), Google or Microsoft calendar (OAuth), or Calendly link; no booking tool → guided Cal.com setup, then connect; ConnectWise connect (company ID, site, public/private API keys)
-- [ ] Chat widget: colours, greeting, install snippet
-- [ ] Prospecting setup: buy/connect sending domains, DNS (SPF/DKIM/DMARC) instructions, start warmup at signup
-- [ ] "Test it": test SMS and test call to the owner before go-live
+### Sprint 6 — Admin provisioning + onboarding checklist (built 2026-11-02; spec `docs/superpowers/specs/2026-11-02-admin-provisioning-onboarding-design.md`)
+Replaces the step-by-step wizard: Alevo provisions the workspace from the console, sets it up in the app as a flagged support member, and one readiness checklist shows both sides what is still missing.
+- [x] Admin → Organizations → **New organization** (name, owner email, plan): creates the Clerk org with the admin as creator, invites the owner (owner role), puts it on the plan; the webhook mirrors the rest (`organizations/actions.ts`, `new-org-dialog.tsx`)
+- [x] **Support membership** (migration 0030 `memberships.support`): any platform admin's membership is "Alevo support" — admin role (never owner), no seat, excluded from owner/admin alert emails, shown as a muted pill in the client's Members tab with no role select / Remove; console org page has Join as support / Leave workspace
+- [x] **Readiness checklist**, one source (`@alevo/db` `readiness()` + `loadReadinessFacts()`): owner joined, business profile, knowledge base, booking, phone, Slack verified, email alerts, agent on, first reply — console **Setup** card (`/organizations/<id>`, deep links that activate the org in the app via `/admin/open`) and the owner's **Getting started** dashboard card (gone once everything is done). Booking, phone and Slack can be marked **Not using this** (`booking_declined` / `phone_declined` / `slack_declined`, migrations 0030–0031), cleared again when the tool is connected
+- [x] Console org page: plan + status, Members and invites with Resend owner invite, Plan card
+- Later (own items): number provisioning + call-forwarding instructions; prospecting setup (sending domains, DNS, warmup); guided Cal.com setup for MSPs with no booking tool; "Test it" SMS/call to the owner
 
 ### Sprint 7 — Chat widget, lead sourcing, email prospecting (55–70h)
 

@@ -267,6 +267,8 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
 - **0025** website chat: `org_profiles.chat_enabled` / `chat_greeting` / `chat_accent` +
   `chat_sessions` (one row per visitor session: the HASH of the token the browser holds,
   `last_seen_at` bumped on every poll; service path only, no policies). See Website chat.
+- **0030–0031** `memberships.support` (Alevo staff in a client org — see Admin provisioning) +
+  `org_profiles.booking_declined` / `phone_declined` / `slack_declined` ("Not using this" on the setup checklists).
 - **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
   `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
   `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
@@ -808,6 +810,27 @@ update public.users set is_platform_admin = true where email = '<you>@example.co
 
 `supabase/seed.sql` does this for the builder on `supabase db reset`.
 
+## Admin provisioning + Getting started
+
+Sprint 6. Alevo creates client workspaces from the console (Admin → Organizations →
+New organization: Clerk org with the admin as creator + owner invite + plan) and sets
+them up in THIS app. **Support rule:** any platform admin's membership in any org is
+`support` (`lib/webhooks/membership-role.ts`, set by the webhook mirror): app role
+`admin`, never owner; excluded from seats and from `ownerEmails`; the Members tab shows
+"Alevo support" with no role select / Remove and the members actions refuse to touch
+them (`lib/members/guards.ts`). **Readiness** lives in `@alevo/db`
+(`packages/db/src/onboarding/`: pure `readiness()` over `loadReadinessFacts(orgId)`,
+nine items) and feeds both the console's Setup card and the dashboard's **Getting
+started** card (`dashboard/getting-started.tsx`, owners/admins only, gone when
+`isReady`). Booking / phone / Slack can be declined (`declineSetupItem` → `setSetupDecline`,
+keys in `DECLINE_KEYS`); choosing a tool, setting a number or saving a webhook clears the flag. **Deep links** from the console hit
+`app/admin/open/page.tsx` (`?org=<clerkOrgId>&to=/workspace/…`): platform admin +
+member → client-side `setActive` then a full navigation to `to`
+(`lib/admin/destination.ts` allowlist, else `/dashboard`); not a member → back to the
+console (`NEXT_PUBLIC_ADMIN_URL`) with "Join as support first". Explicit-org Clerk
+wrappers (`createOrganizationAs`, `inviteToOrg`, `addMemberToOrg`, `removeFromOrg`,
+`revokeOrgInvitation`) sit beside the active-org ones in `@alevo/auth`.
+
 ## Local dev
 
 Dev runs against a **cloud Supabase dev project** (separate from staging/prod) —
@@ -816,7 +839,7 @@ over the network; no local Postgres required.
 
 ```bash
 npx supabase link --project-ref <dev-ref>   # one-time; prompts for DB password
-npx supabase db push                        # apply supabase/migrations/* to the cloud DB
+npx supabase db push --remote               # apply supabase/migrations/* to the cloud DB (CLI 3 defaults to a local stack)
 npx inngest-cli dev                          # later phases
 pnpm --filter @alevo/app dev                 # app on :3001 (web :3000, admin :3002)
 ```

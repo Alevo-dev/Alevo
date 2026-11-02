@@ -81,6 +81,8 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
       sendWindowStartHour: values.sendWindowStartHour,
       sendWindowEndHour: values.sendWindowEndHour,
       smsFromNumber: nullable(values.smsFromNumber),
+      // Setting a number clears a "Not using phone" from the Getting started card.
+      ...(values.smsFromNumber ? { phoneDeclined: false } : {}),
       emailAlerts: values.emailAlerts,
     };
     await withOrg((tx) =>

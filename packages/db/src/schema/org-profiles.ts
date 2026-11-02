@@ -58,6 +58,11 @@ export const orgProfiles = pgTable(
     // The chosen tool must also be configured (Cal.com key + event type, a
     // connected calendar, or a Calendly link) before the agent books through it.
     bookingTool: bookingProvider("booking_tool"),
+    // "Not using this" on the Getting started / Setup checklists (migrations
+    // 0030–0031): booking, phone or Slack counts as done without being connected.
+    bookingDeclined: boolean("booking_declined").notNull().default(false),
+    phoneDeclined: boolean("phone_declined").notNull().default(false),
+    slackDeclined: boolean("slack_declined").notNull().default(false),
     // Inbound voice (migration 0018). Calls arrive on `smsFromNumber`, imported
     // into Vapi, which runs the assistant built from this profile.
     voiceEnabled: boolean("voice_enabled").notNull().default(false),

@@ -32,7 +32,8 @@ function orgQuery(tx: Tx) {
       planName: plans.name,
       status: orgSubscriptions.status,
       agentOn: orgProfiles.enabled,
-      memberCount: sql<number>`count(distinct ${memberships.id})`.mapWith(Number),
+      // Seats: Alevo support members (migration 0030) are not counted.
+      memberCount: sql<number>`count(distinct ${memberships.id}) filter (where not ${memberships.support})`.mapWith(Number),
     })
     .from(organizations)
     .leftJoin(memberships, eq(memberships.orgId, organizations.id))

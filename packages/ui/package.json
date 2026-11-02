@@ -19,6 +19,7 @@
     "./page-header": "./src/page-header.tsx",
     "./pager": "./src/pager.tsx",
     "./pill": "./src/pill.tsx",
+    "./select": "./src/select.tsx",
     "./skeleton": "./src/skeleton.tsx",
     "./stat-tile": "./src/stat-tile.tsx",
     "./status-screen": "./src/status-screen.tsx",

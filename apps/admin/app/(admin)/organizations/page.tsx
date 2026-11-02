@@ -7,6 +7,8 @@ import { cursorHref, Pager } from "@alevo/ui/pager";
 import { StatusDot } from "@alevo/ui/pill";
 import { OrgsTable } from "@/components/orgs-table";
 import { orgCounts, orgsPage } from "@/lib/orgs";
+import { activePlans } from "@/lib/plans";
+import { NewOrgDialogButton } from "./new-org-dialog";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Organizations" };
@@ -14,7 +16,7 @@ export const metadata: Metadata = { title: "Organizations" };
 /** Every tenant, newest first, a page at a time. */
 export default async function OrganizationsPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
   const cursor = parseCursor((await searchParams).cursor);
-  const [counts, page] = await Promise.all([orgCounts(), orgsPage(cursor)]);
+  const [counts, page, plans] = await Promise.all([orgCounts(), orgsPage(cursor), activePlans()]);
 
   return (
     <div className="space-y-6">
@@ -26,7 +28,9 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
             {counts.live} of {counts.total} agents on. Newest first, {PAGE_SIZE} per page
           </>
         }
-      />
+      >
+        <NewOrgDialogButton plans={plans} />
+      </PageHeader>
       <Card padding="none">
         <OrgsTable
           rows={page.rows}

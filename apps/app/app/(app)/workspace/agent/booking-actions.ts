@@ -72,6 +72,8 @@ export async function saveBookingSettings(_prev: BookingState, formData: FormDat
     const tool = values.enabled ? values.tool : null;
     const set = {
       bookingTool: tool,
+      // Choosing a tool clears a "Not using booking" from the Getting started card.
+      ...(tool ? { bookingDeclined: false } : {}),
       ...(tool === "google" || tool === "m365"
         ? {
             bookingLengthMin: values.bookingLengthMin,

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Pill } from "@alevo/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@alevo/ui/table";
 import { fmtWhen } from "@/lib/metrics-format";
@@ -24,7 +25,11 @@ export function OrgsTable({ rows, empty, className }: { rows: OrgRow[]; empty: R
         ) : (
           rows.map((o) => (
             <Tr key={o.id}>
-              <Td className="font-medium text-ink">{o.name}</Td>
+              <Td className="font-medium text-ink">
+                <Link href={`/organizations/${o.id}`} className="text-ink no-underline hover:underline">
+                  {o.name}
+                </Link>
+              </Td>
               <Td className={NUM}>{o.memberCount}</Td>
               <Td className="text-ink-muted">{o.planName ?? "—"}</Td>
               <Td>

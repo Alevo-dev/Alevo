@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq, sql, type SQLWrapper } from "drizzle-orm";
-import { calls, contacts, conversations, meetings } from "@alevo/db";
-import { getCurrentOrg, withOrg } from "@alevo/auth";
+import { calls, contacts, conversations, isReady, loadReadinessFacts, meetings, readiness } from "@alevo/db";
+import { getCurrentOrg, getCurrentRole, withOrg } from "@alevo/auth";
 import { getAgentOn } from "@/lib/agent-on";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { getCurrentUsage } from "@/lib/usage/current";
 import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
 import { AutoRefresh } from "./auto-refresh";
 import { ChannelDonut } from "./channel-donut";
+import { GettingStarted } from "./getting-started";
 import { KpiTiles, toSeries } from "./kpi-tiles";
 import { SpeedCard } from "./speed-card";
 import { TrendChart } from "./trend-chart";
@@ -72,9 +73,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     sql`${conversations.createdAt} >= ${windowStart}`,
   );
 
-  const [org, [clock], convDaily, meetingDaily, [outcomes], callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn] =
+  // Owners and admins see the Getting started checklist until the workspace is ready.
+  const [org, role] = await Promise.all([getCurrentOrg(), getCurrentRole()]);
+  const showSetup = org && (role === "admin" || role === "owner");
+
+  const [facts, [clock], convDaily, meetingDaily, [outcomes], callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn] =
     await Promise.all([
-      getCurrentOrg(),
+      showSetup ? loadReadinessFacts(org.id) : null,
       withOrg((tx) => tx.select({ today: sql<string>`${today}::text` }).from(sql`(select 1) as t`)),
       withOrg((tx) =>
         tx
@@ -178,6 +183,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Median reply per bucket, oldest first; null where nothing was answered.
   const medianByAgo = new Map(speedDaily.map((r) => [r.ago, r.median]));
   const speedTrend = labels.map((label, i) => ({ label, seconds: medianByAgo.get(buckets - 1 - i) ?? null }));
+  const setup = facts ? readiness(facts) : null;
 
   return (
     <div className="space-y-6">
@@ -198,6 +204,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Link>
         )}
       </PageHeader>
+
+      {setup && !isReady(setup) && <GettingStarted items={setup} />}
 
       <KpiTiles days={days} labels={labels} period={bucket} {...series} />
 

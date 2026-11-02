@@ -91,8 +91,9 @@ jobs:
       - name: Link the prod project
         run: supabase link --project-ref "${{ secrets.SUPABASE_PROD_PROJECT_REF }}"
 
+      # CLI 3 targets a local Docker stack unless told otherwise, and asks before applying.
       - name: Show pending migrations
-        run: supabase db push --dry-run
+        run: supabase db push --remote --dry-run
 
       - name: Apply migrations to prod
-        run: supabase db push
+        run: supabase db push --remote --yes

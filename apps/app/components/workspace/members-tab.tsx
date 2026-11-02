@@ -185,38 +185,44 @@ function MemberRow({ member, reload }: { member: MemberView; reload: () => void 
         {member.name && member.email && <div className="truncate text-label text-ink-muted">{member.email}</div>}
       </div>
       <div className="hidden w-24 shrink-0 text-label text-ink-muted sm:block">{fmtDate(member.joinedAt)}</div>
-      <form action={roleAction} onSubmit={() => setDirty(false)} className="flex shrink-0 items-center gap-1.5">
-        <input type="hidden" name="userId" value={member.userId} />
-        <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
-        {/* Fixed width so the trigger doesn't resize with the selected role. */}
-        <div className="w-28">
-          <Select
-            name="role"
-            size="sm"
-            options={ROLE_OPTIONS}
-            defaultValue={member.role}
-            onChange={() => setDirty(true)}
-            aria-label={`Role for ${member.email ?? member.userId}`}
-          />
-        </div>
-        {dirty && (
-          <Button type="submit" size="sm" variant="ghost" loading={rolePending}>
-            Save
-          </Button>
-        )}
-      </form>
-      <form action={rmAction} className="shrink-0">
-        <input type="hidden" name="userId" value={member.userId} />
-        <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
-        <ConfirmSubmit
-          icon={Trash2}
-          aria-label={`Remove ${member.name ?? member.email ?? "member"}`}
-          loading={rmPending}
-          title={`Remove ${member.name ?? member.email ?? "this member"}?`}
-          description="They lose access to this workspace right away. Their past activity stays on the record."
-          confirmLabel="Remove member"
-        />
-      </form>
+      {member.support ? (
+        <Pill tone="muted">Alevo support</Pill>
+      ) : (
+        <>
+          <form action={roleAction} onSubmit={() => setDirty(false)} className="flex shrink-0 items-center gap-1.5">
+            <input type="hidden" name="userId" value={member.userId} />
+            <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
+            {/* Fixed width so the trigger doesn't resize with the selected role. */}
+            <div className="w-28">
+              <Select
+                name="role"
+                size="sm"
+                options={ROLE_OPTIONS}
+                defaultValue={member.role}
+                onChange={() => setDirty(true)}
+                aria-label={`Role for ${member.email ?? member.userId}`}
+              />
+            </div>
+            {dirty && (
+              <Button type="submit" size="sm" variant="ghost" loading={rolePending}>
+                Save
+              </Button>
+            )}
+          </form>
+          <form action={rmAction} className="shrink-0">
+            <input type="hidden" name="userId" value={member.userId} />
+            <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
+            <ConfirmSubmit
+              icon={Trash2}
+              aria-label={`Remove ${member.name ?? member.email ?? "member"}`}
+              loading={rmPending}
+              title={`Remove ${member.name ?? member.email ?? "this member"}?`}
+              description="They lose access to this workspace right away. Their past activity stays on the record."
+              confirmLabel="Remove member"
+            />
+          </form>
+        </>
+      )}
     </li>
   );
 }

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   memberships,
   orgInvitations,
@@ -8,6 +8,7 @@ import {
   type AppRole,
   type Tx,
 } from "@alevo/db";
+import { membershipFor } from "./membership-role";
 
 /**
  * Minimal structural views of the Clerk webhook payloads — only the fields we
@@ -65,17 +66,6 @@ function primaryEmail(data: ClerkUserData): string | null {
   const list = data.email_addresses ?? [];
   const primary = list.find((e) => e.id === data.primary_email_address_id);
   return primary?.email_address ?? list[0]?.email_address ?? null;
-}
-
-/**
- * Owner bootstrap (plan.md fix): the org creator becomes `owner`; other admins
- * map to `admin`; everyone else to `rep`. Invitation-carried roles are refined
- * in the Phase 2 members flow.
- */
-function resolveRole(clerkRole: string, isCreator: boolean): AppRole {
-  if (isCreator) return "owner";
-  if (clerkRole === "org:admin") return "admin";
-  return "rep";
 }
 
 export async function mirrorUser(data: ClerkUserData) {
@@ -146,28 +136,42 @@ export async function mirrorMembership(data: ClerkMembershipData) {
         imageUrl: pud.image_url ?? null,
       })
       .onConflictDoUpdate({ target: users.clerkId, set: { updatedAt: new Date() } })
-      .returning({ id: users.id });
+      .returning({ id: users.id, isPlatformAdmin: users.isPlatformAdmin });
 
     if (!org || !user) throw new Error("Failed to backfill org/user for membership");
 
-    // Prefer the role from a matching pending invite (carries the exact app
-    // role); otherwise fall back to creator → owner / Clerk-role mapping.
-    const role = (await applyPendingInviteRole(tx, org.id, pud.identifier ?? null))
-      ?? resolveRole(data.role, isCreator);
+    // Role + support flag (membership-role.ts): a platform admin is Alevo
+    // support; otherwise a matching pending invite's role, else creator → owner,
+    // else Clerk's role mapped.
+    const { role, support } = membershipFor({
+      isPlatformAdmin: user.isPlatformAdmin,
+      inviteRole: await applyPendingInviteRole(tx, org.id, pud.identifier ?? null),
+      clerkRole: data.role,
+      isCreator,
+    });
 
     await tx
       .insert(memberships)
-      .values({ orgId: org.id, userId: user.id, role, clerkMembershipId: data.id })
+      .values({ orgId: org.id, userId: user.id, role, support, clerkMembershipId: data.id })
       .onConflictDoUpdate({
         target: [memberships.orgId, memberships.userId],
-        set: { role, clerkMembershipId: data.id, updatedAt: new Date() },
+        // `membership.updated` (a Clerk-role change, a re-sync) must never lower a
+        // real owner: Clerk only knows admin/member, so "owner" lives here alone.
+        set: {
+          role: sql`case when ${memberships.role} = 'owner' and not excluded.support then 'owner' else excluded.role end`,
+          support,
+          clerkMembershipId: data.id,
+          updatedAt: new Date(),
+        },
       });
   });
 }
 
 /**
- * If a pending invite matches (org, email), mark it accepted and return its
- * role. Returns null if there is none (e.g. the org creator, or a Clerk-dashboard
+ * If an invite matches (org, email), mark it accepted and return its role.
+ * Accepted invites match too: Svix does not order event types, so
+ * `organizationInvitation.accepted` can land before this membership event.
+ * Returns null if there is none (e.g. the org creator, or a Clerk-dashboard
  * add). `tx` is the surrounding service transaction.
  */
 async function applyPendingInviteRole(
@@ -177,17 +181,20 @@ async function applyPendingInviteRole(
 ): Promise<AppRole | null> {
   if (!email) return null;
   const [invite] = await tx
-    .update(orgInvitations)
-    .set({ status: "accepted", updatedAt: new Date() })
+    .select({ id: orgInvitations.id, role: orgInvitations.role })
+    .from(orgInvitations)
     .where(
       and(
         eq(orgInvitations.orgId, orgId),
-        eq(orgInvitations.status, "pending"),
+        inArray(orgInvitations.status, ["pending", "accepted"]),
         sql`lower(${orgInvitations.email}) = lower(${email})`,
       ),
     )
-    .returning({ role: orgInvitations.role });
-  return invite?.role ?? null;
+    .orderBy(desc(orgInvitations.createdAt))
+    .limit(1);
+  if (!invite) return null;
+  await tx.update(orgInvitations).set({ status: "accepted", updatedAt: new Date() }).where(eq(orgInvitations.id, invite.id));
+  return invite.role;
 }
 
 /** Mirror an org invitation (created in our UI, or in the Clerk dashboard). */
@@ -198,7 +205,9 @@ export async function mirrorInvitation(data: ClerkInvitationData) {
       .from(organizations)
       .where(eq(organizations.clerkId, data.organization_id))
       .limit(1);
-    if (!org) return; // org not mirrored yet; the membership path will backfill
+    // Org not mirrored yet (webhook ordering): fail so Svix retries this event
+    // after organization.created has landed — returning would lose the invite.
+    if (!org) throw new Error(`Invitation ${data.id} for unmirrored org ${data.organization_id}`);
 
     await tx
       .insert(orgInvitations)

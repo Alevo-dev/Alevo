@@ -9,8 +9,8 @@ import { ForbiddenError, UnauthorizedError } from "./errors";
 /** Role hierarchy: a higher rank satisfies any requirement at or below it. */
 const RANK: Record<AppRole, number> = { viewer: 0, rep: 1, admin: 2, owner: 3 };
 
-/** The caller's role in the active org (our DB, not Clerk — rule 4). Deduped per request. */
-const currentRole = cache(async (): Promise<AppRole | null> =>
+/** The caller's role in the active org (our DB, not Clerk — rule 4), or null. Deduped per request. */
+export const getCurrentRole = cache(async (): Promise<AppRole | null> =>
   withOrg(async (tx) => {
     const rows = await tx.execute<{ role: AppRole | null }>(sql`select app.current_role() as role`);
     return rows[0]?.role ?? null;
@@ -23,7 +23,7 @@ const currentRole = cache(async (): Promise<AppRole | null> =>
  * can branch further. The role lookup itself runs once per request.
  */
 export async function requireRole(minimum: AppRole): Promise<AppRole> {
-  const role = await currentRole();
+  const role = await getCurrentRole();
   if (!role) throw new UnauthorizedError("No membership in the active organization");
   if (RANK[role] < RANK[minimum]) {
     throw new ForbiddenError(`Requires ${minimum}; you are ${role}`);

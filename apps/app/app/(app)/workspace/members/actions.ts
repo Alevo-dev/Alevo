@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, count, eq, ne } from "drizzle-orm";
+import { canChangeRole, canRemove } from "@/lib/members/guards";
 import {
   memberships,
   orgInvitations,
@@ -116,12 +117,14 @@ export async function changeMemberRole(
 
     const [current] = await withService((tx) =>
       tx
-        .select({ role: memberships.role })
+        .select({ role: memberships.role, support: memberships.support })
         .from(memberships)
         .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, userId)))
         .limit(1),
     );
     if (!current) return { error: "Member not found" };
+    const refused = canChangeRole(current);
+    if (refused) return { error: refused };
 
     // Touching an owner (either direction) requires owner.
     if (current.role === "owner" || newRole === "owner") await requireRole("owner");
@@ -135,6 +138,7 @@ export async function changeMemberRole(
             and(
               eq(memberships.orgId, org.id),
               eq(memberships.role, "owner"),
+              eq(memberships.support, false),
               ne(memberships.userId, userId),
             ),
           ),
@@ -175,22 +179,22 @@ export async function removeMember(
 
     const [current] = await withService((tx) =>
       tx
-        .select({ role: memberships.role })
+        .select({ role: memberships.role, support: memberships.support })
         .from(memberships)
         .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, userId)))
         .limit(1),
     );
     if (!current) return { error: "Member not found" };
-    if (current.role === "owner") {
-      await requireRole("owner");
-      const [owners] = await withService((tx) =>
-        tx
-          .select({ n: count() })
-          .from(memberships)
-          .where(and(eq(memberships.orgId, org.id), eq(memberships.role, "owner"))),
-      );
-      if (!owners || owners.n <= 1) return { error: "Cannot remove the last owner" };
-    }
+    if (current.role === "owner") await requireRole("owner");
+    // Other real owners (Alevo support rows never count as owners).
+    const [owners] = await withService((tx) =>
+      tx
+        .select({ n: count() })
+        .from(memberships)
+        .where(and(eq(memberships.orgId, org.id), eq(memberships.role, "owner"), eq(memberships.support, false), ne(memberships.userId, userId))),
+    );
+    const refused = canRemove(current, owners?.n ?? 0);
+    if (refused) return { error: refused };
 
     // Remove in Clerk (revokes their access); our webhook mirrors the deletion,
     // but delete locally too so the UI updates immediately.

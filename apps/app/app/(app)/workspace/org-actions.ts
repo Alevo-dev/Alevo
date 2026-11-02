@@ -26,6 +26,8 @@ export type MemberView = {
   email: string | null;
   name: string | null;
   role: AppRole;
+  /** Alevo staff helping with setup (migration 0030): shown as "Alevo support", not editable here. */
+  support: boolean;
   joinedAt: string; // ISO
 };
 
@@ -65,6 +67,7 @@ export async function loadMembers(): Promise<MembersResult> {
             firstName: users.firstName,
             lastName: users.lastName,
             role: memberships.role,
+            support: memberships.support,
             joinedAt: memberships.createdAt,
           })
           .from(memberships)
@@ -91,6 +94,7 @@ export async function loadMembers(): Promise<MembersResult> {
         email: r.email,
         name: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
         role: r.role,
+        support: r.support,
         joinedAt: (r.joinedAt instanceof Date ? r.joinedAt : new Date(r.joinedAt)).toISOString(),
       })),
       pending: invites,

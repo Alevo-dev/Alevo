@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
-import { deleteOrgSecret, orgProfiles, recordAudit } from "@alevo/db";
+import { deleteOrgSecret, orgProfiles, recordAudit, setSetupDecline } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isSecretKey } from "@/lib/secrets-registry";
 import { readSecretFields, storeSecrets, validateSecrets, type SecretErrors } from "@/lib/secrets/save";
@@ -72,7 +72,10 @@ export async function saveSecrets(_prev: SaveSecretsState, formData: FormData): 
     const errors = validateSecrets(entries);
     if (Object.keys(errors).length > 0) return { errors };
     await storeSecrets(org.id, actorId, entries);
-    if (entries.some((e) => e.key === "slack_webhook_url")) await resetSlackHealth(org.id); // new URL → Untested until Send test
+    if (entries.some((e) => e.key === "slack_webhook_url")) {
+      await resetSlackHealth(org.id); // new URL → Untested until Send test
+      await setSetupDecline(org.id, "slack", false); // a webhook clears "Not using Slack"
+    }
     revalidatePath("/workspace/integrations");
     return { ok: true };
   } catch (error) {

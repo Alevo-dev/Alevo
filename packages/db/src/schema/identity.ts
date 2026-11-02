@@ -55,6 +55,9 @@ export const memberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: appRole("role").notNull().default("rep"),
+    // Alevo staff helping set the workspace up (migration 0030): any platform
+    // admin's membership. No seat, no alert emails, not removable by the client.
+    support: boolean("support").notNull().default(false),
     clerkMembershipId: text("clerk_membership_id").unique(),
     ...timestamps,
   },
