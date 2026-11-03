@@ -7,7 +7,7 @@ import { orgProfiles, recordAudit } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { buildAssistantBody, VOICE_SECRET_HEADER, voiceServerUrl } from "@/lib/voice/assistant";
 import { bookingLinked } from "@/lib/voice/schedule";
-import { createAssistant, importTwilioNumber, isVapiConfigured, updateAssistant } from "@/lib/voice/vapi";
+import { createAssistant, detachAssistantFromNumber, importTwilioNumber, isVapiConfigured, updateAssistant } from "@/lib/voice/vapi";
 
 export type VoiceValues = { enabled: boolean; afterHours: "voicemail" | "take_message" };
 export type VoiceErrors = Partial<Record<"enabled" | "afterHours", string>>;
@@ -75,15 +75,14 @@ export async function saveVoiceSettings(_prev: VoiceState, formData: FormData): 
       } else {
         vapiAssistantId = (await createAssistant(body)).id;
       }
+      const routing = { serverUrl: voiceServerUrl(appUrl), secretHeader: VOICE_SECRET_HEADER, secret };
       if (!vapiPhoneNumberId) {
-        const imported = await importTwilioNumber({
-          number: profile.smsFromNumber,
-          name: `${org.name} inbound`,
-          serverUrl: voiceServerUrl(appUrl),
-          secretHeader: VOICE_SECRET_HEADER,
-          secret,
-        });
+        const imported = await importTwilioNumber({ number: profile.smsFromNumber, name: `${org.name} inbound`, ...routing });
         vapiPhoneNumberId = imported.id;
+      } else {
+        // A number that has an assistant attached (dashboard edit, older import)
+        // never asks us which assistant to use — every call gets the stale one.
+        await detachAssistantFromNumber({ phoneNumberId: vapiPhoneNumberId, ...routing });
       }
     }
 

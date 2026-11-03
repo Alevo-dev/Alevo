@@ -313,6 +313,11 @@ Replaces the step-by-step wizard: Alevo provisions the workspace from the consol
 - [x] Captures name/email/phone mid-chat → contact + consent record; can hand off to SMS/email *(anonymous contact + `chat` consent at the first message; the agent asks for name + email early and saves them with `save_contact_details`)*
 - [x] Counts as an inbound conversation for usage
 
+**Clients, identity, calls (Sprint 7.2, ~8h)** — ✅ built 2026-11-02 (spec `docs/superpowers/specs/2026-11-02-clients-and-calls-design.md`; migrations 0037–0038)
+- [x] One contact per person and org: `resolveContact` / `claimIdentity` in `@alevo/db` match by normalised email or phone, merge duplicates (older keeps its id; conversations, consents, meetings, calls move; `contact.merged` audit), enforced by unique partial indexes; every channel and the agent's save-details tool route through it
+- [x] One conversation per phone call (`callThread` keyed on Vapi's call id; the end-of-call report fills the stub); Vapi summary with our prompt + Claude fallback; call card in the thread (duration, outcome, summary, recording playback for admins, transcript)
+- [x] Conversations page organised by client (`contacts.last_activity_at` kept by a DB trigger; channels, latest status, best fit, open count) + client page with every conversation; thread links back to the client
+
 **Email prospecting (~35–45h)**
 - [ ] Sending-provider adapter (Instantly or Smartlead): create workspace/campaign per tenant, add leads, pause/resume
 - [ ] Per-tenant sending domains + mailboxes; warmup status shown in the dashboard; sends blocked until warmup completes

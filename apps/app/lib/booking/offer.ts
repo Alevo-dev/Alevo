@@ -1,3 +1,4 @@
+import { zonedToUtc } from "./slots";
 import type { BookingAdapter, Slot } from "./types";
 
 /**
@@ -65,6 +66,31 @@ export async function offerSlots(adapter: BookingAdapter, timeZone: string, max 
   const week = await adapter.availableSlots(fromIso, new Date(now.getTime() + FALLBACK_WINDOW_MS).toISOString(), timeZone);
   if (week.length === 0) return { slots: [], window: "none" };
   return { slots: spreadSlots(week, timeZone, max), window: "7d" };
+}
+
+/** The UTC window of one local calendar day (`YYYY-MM-DD`) in `timeZone`, or null if it isn't a date. */
+export function dayWindow(day: string, timeZone: string): { fromIso: string; toIso: string } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const from = zonedToUtc(y, mo, d, 0, 0, timeZone);
+  if (Number.isNaN(from.getTime())) return null;
+  return { fromIso: from.toISOString(), toIso: zonedToUtc(y, mo, d + 1, 0, 0, timeZone).toISOString() };
+}
+
+/**
+ * Every open slot on one local day, for "anything Wednesday around 11?". The
+ * spread offer is a first pass; this is the full list once the lead names a day.
+ */
+export async function daySlots(adapter: BookingAdapter, day: string, timeZone: string, now = new Date()): Promise<Slot[] | null> {
+  const w = dayWindow(day, timeZone);
+  if (!w) return null;
+  const earliest = new Date(now.getTime() + MIN_NOTICE_MS).toISOString();
+  // A day already over (or ending inside the notice window) has nothing to offer; an
+  // empty range would make the calendar answer 400 and read as "calendar broke".
+  if (w.toIso <= earliest) return [];
+  return adapter.availableSlots(w.fromIso > earliest ? w.fromIso : earliest, w.toIso, timeZone);
 }
 
 /** "Tue, Oct 28, 10:00 AM EDT" (chat / email) or "Tuesday, October 28 at 10:00 AM" (spoken). */

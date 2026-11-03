@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
-import { and, eq, sql } from "drizzle-orm";
-import { consents, contacts, conversations, hitRateLimit, messages, organizations, withService } from "@alevo/db";
+import { eq } from "drizzle-orm";
+import { consents, conversations, hitRateLimit, messages, organizations, resolveContact, withService } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
 import { meterUsage } from "@/lib/usage/limits";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
@@ -71,46 +71,14 @@ export async function captureLead(
     const phone = fields.phone || null;
     const company = fields.company || null;
 
+    // One contact per person: matched by email or phone, merged if both already exist.
+    const { id: contactId } = await resolveContact(
+      orgId,
+      { email, phone },
+      { firstName: firstName ?? null, lastName, company, timezone, source: "form" },
+    );
+
     const conversationId = await withService(async (tx) => {
-      const [existing] = await tx
-        .select({ id: contacts.id })
-        .from(contacts)
-        .where(and(eq(contacts.orgId, orgId), sql`lower(${contacts.email}) = ${email}`))
-        .limit(1);
-
-      let contactId: string;
-      if (existing) {
-        await tx
-          .update(contacts)
-          .set({
-            phone,
-            firstName: firstName ?? null,
-            lastName,
-            company,
-            // Only set tz when we captured one; never clobber a known value.
-            ...(timezone ? { timezone } : {}),
-            updatedAt: new Date(),
-          })
-          .where(eq(contacts.id, existing.id));
-        contactId = existing.id;
-      } else {
-        const [created] = await tx
-          .insert(contacts)
-          .values({
-            orgId,
-            email,
-            phone,
-            firstName: firstName ?? null,
-            lastName,
-            company,
-            timezone,
-            source: "form",
-          })
-          .returning({ id: contacts.id });
-        if (!created) throw new Error("Failed to create contact");
-        contactId = created.id;
-      }
-
       const [conversation] = await tx
         .insert(conversations)
         .values({ orgId, contactId, channel: "form", status: "new" })

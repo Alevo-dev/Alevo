@@ -1,14 +1,14 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
+import { claimIdentity, conversations, meetings, messages, withService, type OrgProfile } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
 import { notifyBookingFailed, notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
 import type { BookingFailure } from "@/lib/notifications/lead-messages";
 import { crossedStrongFit } from "@/lib/notifications/lead-messages";
 import { getBookingAdapter, bookingConfigFromProfile } from "@/lib/booking";
-import { formatSlot, offerSlots } from "@/lib/booking/offer";
-import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
+import { daySlots, formatSlot, offerSlots } from "@/lib/booking/offer";
+import { CONTACT_DETAILS_TOOL, getContactEmail, saveContactDetails } from "@/lib/contact-details";
 import { retrieveKbContext } from "@/lib/kb/retrieve";
 import { notifyOrg } from "@/lib/notifications/notify";
 import { profileTimeZone } from "./schedule";
@@ -50,11 +50,12 @@ export async function dispatchVoiceTool(
 ): Promise<string> {
   switch (name) {
     case CONTACT_DETAILS_TOOL.name: {
-      const saved = await saveContactDetails(ctx.orgId, ctx.contactId, {
+      const { saved, contactId } = await saveContactDetails(ctx.orgId, ctx.contactId, {
         name: str(args.name),
         email: str(args.email),
         company: str(args.company),
       });
+      ctx.contactId = contactId; // the caller may have just merged into an existing contact
       return saved.length ? `Saved ${saved.join(", ")}.` : "Nothing new to save.";
     }
 
@@ -87,7 +88,9 @@ export async function dispatchVoiceTool(
       if (!name && !reason && !callback) {
         return "Error: no details received. Call take_message again with the reason, the caller's name and their callback number.";
       }
-      if (name) await saveContactDetails(ctx.orgId, ctx.contactId, { name });
+      if (name) ctx.contactId = (await saveContactDetails(ctx.orgId, ctx.contactId, { name })).contactId;
+      // A callback number is an identity too: it may belong to a contact the org already knows.
+      if (callback) ctx.contactId = (await claimIdentity(ctx.orgId, ctx.contactId, { phone: callback })).id;
       const body = [
         "Message taken on a call",
         name && `Name: ${name}`,
@@ -121,50 +124,68 @@ export async function dispatchVoiceTool(
     }
 
     case "check_availability": {
-      const adapter = await getBookingAdapter(ctx.orgId, bookingConfigFromProfile(ctx.profile));
-      if (!adapter) return "Booking isn't connected. Take a message instead.";
       const tz = profileTimeZone(ctx.profile);
-      let offer;
+      const day = str(args.day);
+      // Anything that fails here — token refresh, free/busy, an unreadable calendar —
+      // is a hand-off, never a guess: the agent must not offer times it cannot see.
       try {
-        offer = await offerSlots(adapter, tz);
+        const adapter = await getBookingAdapter(ctx.orgId, bookingConfigFromProfile(ctx.profile));
+        if (!adapter) return "Booking isn't connected. Take a message instead.";
+        const line = (s: { startIso: string }) => `- ${formatSlot(s.startIso, tz, "spoken")} (start: ${s.startIso})`;
+        if (day) {
+          const slots = await daySlots(adapter, day, tz);
+          if (!slots) return "Error: day must be YYYY-MM-DD.";
+          if (slots.length === 0) return `Nothing open on ${day}. Offer another day.`;
+          return `Open times on ${day}. Offer the ones closest to what the caller asked for, then call book_meeting with the chosen start:\n${slots.slice(0, 16).map(line).join("\n")}`;
+        }
+        const offer = await offerSlots(adapter, tz);
+        if (offer.window === "none") return "No open times in the next 7 days. Take a message instead.";
+        const note = offer.window === "7d" ? "Nothing open in the next three days, so these are the soonest this week. " : "";
+        return `${note}Open times. Offer two of them by day and time (the rest if neither suits). If the caller asks for a different day or time, call check_availability again with that day. Then call book_meeting with the chosen start:\n${offer.slots.map(line).join("\n")}`;
       } catch (err) {
         Sentry.captureException(err);
         return bookingBroke(ctx, { step: "availability", detail: err instanceof Error ? err.message : null });
       }
-      if (offer.window === "none") return "No open times in the next 7 days. Take a message instead.";
-      const lines = offer.slots.map((s) => `- ${formatSlot(s.startIso, tz, "spoken")} (start: ${s.startIso})`);
-      const note = offer.window === "7d" ? "Nothing open in the next three days, so these are the soonest this week. " : "";
-      return `${note}Open times. Offer two of them by day and time (the rest if neither suits), then call book_meeting with the chosen start:\n${lines.join("\n")}`;
     }
 
     case "book_meeting": {
       const startIso = str(args.start);
-      const email = str(args.email);
+      // The model often saves the email in the same batch and forgets to pass it here;
+      // asking again made it repeat its waiting line. Use what is on file.
+      const email = str(args.email) || ((await getContactEmail(ctx.orgId, ctx.contactId)) ?? "");
       if (!email) return "Ask the caller for their email address first.";
       if (!startIso || Number.isNaN(Date.parse(startIso))) {
         return "Error: use the start value from check_availability.";
       }
-      const adapter = await getBookingAdapter(ctx.orgId, bookingConfigFromProfile(ctx.profile));
-      if (!adapter) return "Booking isn't connected. Take a message instead.";
-
-      const attendeeName = str(args.name) || "Caller";
-      const result = await adapter.book({
-        startIso,
-        attendeeName,
-        attendeeEmail: email,
-        attendeeTimeZone: profileTimeZone(ctx.profile),
-        conversationId: ctx.conversationId,
-        orgId: ctx.orgId,
-        orgName: ctx.orgName,
-      });
+      // Resolving the adapter (token refresh) can throw like the booking itself; both
+      // are a hand-off with the calendar's reason, never a bare "something went wrong".
+      let adapter: Awaited<ReturnType<typeof getBookingAdapter>>;
+      let result: Awaited<ReturnType<NonNullable<typeof adapter>["book"]>>;
+      try {
+        adapter = await getBookingAdapter(ctx.orgId, bookingConfigFromProfile(ctx.profile));
+        if (!adapter) return "Booking isn't connected. Take a message instead.";
+        result = await adapter.book({
+          startIso,
+          attendeeName: str(args.name) || "Caller",
+          attendeeEmail: email,
+          attendeeTimeZone: profileTimeZone(ctx.profile),
+          conversationId: ctx.conversationId,
+          orgId: ctx.orgId,
+          orgName: ctx.orgName,
+        });
+      } catch (err) {
+        Sentry.captureException(err);
+        return bookingBroke(ctx, { step: "booking", detail: err instanceof Error ? err.message : null });
+      }
       if (!result.ok) {
         if (result.conflict) return `Booking failed (${result.error}). Offer another time.`;
         return bookingBroke(ctx, { step: "booking", detail: result.error });
       }
 
-      // The real name only (never the "Caller" placeholder) plus the email they gave.
-      await saveContactDetails(ctx.orgId, ctx.contactId, { name: str(args.name), email });
-      await withService(async (tx) => {
+      // The calendar has the event: from here the caller hears "Booked" whatever else
+      // fails (on 2026-11-02 a contact write between the two left events in Google and
+      // nothing in Meetings). Record first; every later step is best-effort.
+      const recorded = await withService(async (tx) => {
         await tx
           .insert(meetings)
           .values({
@@ -183,9 +204,25 @@ export async function dispatchVoiceTool(
           .update(conversations)
           .set({ status: "booked", updatedAt: new Date() })
           .where(scoped(ctx));
-      });
-      await notifyMeetingBooked(ctx.orgId, ctx.conversationId);
-      await requestPsaWriteback(ctx.orgId, ctx.conversationId, "booked");
+      }).then(
+        () => true,
+        (err: unknown) => {
+          Sentry.captureException(err);
+          return false;
+        },
+      );
+      if (!recorded) {
+        await notifyOrg(ctx.orgId, `A call booked ${result.startIso} on the calendar (${adapter.provider} ${result.uid}) but Alevo could not record it. Check Meetings.`).catch(() => {});
+      }
+      // The real name only (never the "Caller" placeholder) plus the email they gave.
+      // A merge moves the meeting row along with the contact.
+      try {
+        ctx.contactId = (await saveContactDetails(ctx.orgId, ctx.contactId, { name: str(args.name), email })).contactId;
+      } catch (err) {
+        Sentry.captureException(err);
+      }
+      await notifyMeetingBooked(ctx.orgId, ctx.conversationId).catch((e: unknown) => Sentry.captureException(e));
+      await requestPsaWriteback(ctx.orgId, ctx.conversationId, "booked").catch((e: unknown) => Sentry.captureException(e));
       return "Booked. A calendar invite is on its way to the caller by email. Confirm the time out loud and end the call.";
     }
 

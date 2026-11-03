@@ -4,8 +4,10 @@ import {
   contacts,
   conversations,
   messages,
+  normalizePhone,
   orgProfiles,
   recordConsent,
+  resolveContact,
   revokeConsentForContact,
   withService,
 } from "@alevo/db";
@@ -67,29 +69,17 @@ export const POST = trackDeliveries("twilio", async (req, track) => {
         tx
           .select({ id: contacts.id })
           .from(contacts)
-          .where(and(eq(contacts.orgId, orgId), eq(contacts.phone, fromPhone)))
+          .where(and(eq(contacts.orgId, orgId), eq(contacts.phone, normalizePhone(fromPhone) ?? fromPhone)))
           .limit(1),
       );
       if (c) await revokeConsentForContact(orgId, c.id, "sms").catch((e) => Sentry.captureException(e));
       return twiml();
     }
 
-    const result = await withService(async (tx) => {
-      const [existing] = await tx
-        .select({ id: contacts.id })
-        .from(contacts)
-        .where(and(eq(contacts.orgId, orgId), eq(contacts.phone, fromPhone)))
-        .limit(1);
-      let contactId = existing?.id;
-      if (!contactId) {
-        const [c] = await tx
-          .insert(contacts)
-          .values({ orgId, phone: fromPhone, source: "sms" })
-          .returning({ id: contacts.id });
-        contactId = c?.id;
-      }
-      if (!contactId) throw new Error("Failed to resolve contact");
+    // One contact per person: by phone, merged into an existing email contact when known.
+    const { id: contactId } = await resolveContact(orgId, { phone: fromPhone }, { source: "sms" });
 
+    const result = await withService(async (tx) => {
       const [open] = await tx
         .select({ id: conversations.id })
         .from(conversations)

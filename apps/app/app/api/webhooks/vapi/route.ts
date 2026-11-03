@@ -4,7 +4,7 @@ import { organizations, orgProfiles, withService } from "@alevo/db";
 import { inngest, type VoiceCallEndedData } from "@/lib/inngest/client";
 import { safeEqual } from "@/lib/crypto/safe-equal";
 import { buildAssistantBody, VOICE_SECRET_HEADER } from "@/lib/voice/assistant";
-import { ensureVoiceContact } from "@/lib/voice/contact";
+import { callThread } from "@/lib/voice/contact";
 import { bookingLinked, voiceModeNow } from "@/lib/voice/schedule";
 import { dispatchVoiceTool, type VoiceToolContext } from "@/lib/voice/tools";
 import { overAllowance } from "@/lib/usage/limits";
@@ -116,26 +116,18 @@ export async function POST(req: Request) {
             : [];
         if (!org) return Response.json({ results: [] });
 
+        // A withheld number still gets a thread (anonymous contact), so the caller can
+        // leave a message or book; the agent learns who they are from the details tool.
         const customer = str(obj(call.customer).number);
-        if (!customer) {
-          return Response.json({
-            results: toolCalls.map((tc) => {
-              const t = obj(tc);
-              return {
-                name: str(obj(t.function).name) ?? "",
-                toolCallId: str(t.id) ?? "",
-                result: "Couldn't link this call to a contact. Apologise and ask the caller to text this number.",
-              };
-            }),
-          });
-        }
 
-        const link = await ensureVoiceContact(org.profile.orgId, customer);
+        // One conversation per call, keyed on Vapi's call id (the first tool call opens it).
+        const callRef = str(call.id) ?? "unknown";
+        const link = await callThread(org.profile.orgId, callRef, customer);
         const ctx: VoiceToolContext = {
           orgId: org.profile.orgId,
           orgName: org.orgName,
           profile: org.profile,
-          callRef: str(call.id) ?? "unknown",
+          callRef,
           contactId: link.contactId,
           conversationId: link.conversationId,
         };

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
-import { contacts, conversations, emailSuppressions, meetings, messages, orgProfiles } from "@alevo/db";
-import { withOrg } from "@alevo/auth";
+import { ChevronLeft } from "lucide-react";
+import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
+import { calls, contacts, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
+import { getCurrentRole, withOrg } from "@alevo/auth";
+import { CallCard } from "@/components/conversations/call-card";
 import { CardTitle } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { Pill, StatusDot } from "@/components/ui/pill";
@@ -64,7 +66,7 @@ export default async function ConversationThread({ params }: { params: Promise<{
   // Wrong id, or another org's conversation (RLS + the explicit filter hide it).
   if (!conv) notFound();
 
-  const [tz, thread, [profile], [meeting], psa] = await Promise.all([
+  const [tz, thread, [profile], [meeting], psa, callRows, role, others] = await Promise.all([
     getOrgTimezone(),
     withOrg((tx) =>
       tx
@@ -74,6 +76,7 @@ export default async function ConversationThread({ params }: { params: Promise<{
           author: messages.author,
           body: messages.body,
           createdAt: messages.createdAt,
+          providerRef: messages.providerRef,
         })
         .from(messages)
         .where(and(eq(messages.conversationId, id), sql`${messages.orgId} = ${inOrg}`))
@@ -94,8 +97,42 @@ export default async function ConversationThread({ params }: { params: Promise<{
     ),
     // What was written back to the PSA for this lead (explicit org filter).
     withOrg((tx) => linkedRecords(tx, conv.orgId, conv.id, conv.contactId)),
+    // The phone calls in this thread (one conversation per call, so usually one).
+    withOrg((tx) =>
+      tx
+        .select({
+          id: calls.id,
+          providerRef: calls.providerRef,
+          startedAt: calls.startedAt,
+          createdAt: calls.createdAt,
+          durationSec: calls.durationSec,
+          outcome: calls.outcome,
+          summary: calls.summary,
+          transcript: calls.transcript,
+          recordingKey: calls.recordingKey,
+        })
+        .from(calls)
+        .where(and(eq(calls.conversationId, id), sql`${calls.orgId} = ${inOrg}`)),
+    ),
+    getCurrentRole(),
+    // The client's other conversations (any channel), for the aside link.
+    withOrg((tx) =>
+      tx
+        .select({ n: count() })
+        .from(conversations)
+        .where(and(eq(conversations.contactId, conv.contactId), sql`${conversations.orgId} = ${inOrg}`, ne(conversations.id, id))),
+    ),
   ]);
+  const otherCount = others[0]?.n ?? 0;
   const qualifierEnabled = profile?.enabled ?? false;
+  const canPlay = role === "admin" || role === "owner";
+
+  // Messages and calls in one timeline, oldest first.
+  type Entry = { at: Date } & ({ kind: "message"; m: (typeof thread)[number] } | { kind: "call"; c: (typeof callRows)[number] });
+  const entries: Entry[] = [
+    ...thread.map((m) => ({ kind: "message" as const, at: m.createdAt, m })),
+    ...callRows.map((c) => ({ kind: "call" as const, at: c.startedAt ?? c.createdAt, c })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
   // Is this contact's email suppressed? (unsubscribe / bounce / complaint)
   let suppressedReason: string | null = null;
@@ -128,12 +165,17 @@ export default async function ConversationThread({ params }: { params: Promise<{
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
       <section aria-label="Messages" className="flex min-w-0 flex-col gap-6">
         <header className="border-b border-hairline pb-5">
-          <Link href="/conversations" transitionTypes={["nav-back"]} className="text-label text-ink-muted no-underline hover:text-ink">
+          <Link href="/conversations" transitionTypes={["nav-back"]} className="inline-flex items-center gap-1 text-label text-ink-muted no-underline hover:text-ink">
+            <ChevronLeft className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
             Conversations
           </Link>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="truncate text-title font-semibold text-ink">{name}</h1>
+              <h1 className="truncate text-title font-semibold text-ink">
+                <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]} className="text-ink no-underline hover:underline">
+                  {name}
+                </Link>
+              </h1>
               <p className="mt-2 flex items-center gap-2 text-sm text-ink-muted">
                 <StatusDot tone={status.tone} live={isOpen && qualifierEnabled} />
                 {conv.company ? `${conv.company}. ` : ""}Started by {CHANNEL_LABEL[conv.channel].toLowerCase()} at{" "}
@@ -154,8 +196,29 @@ export default async function ConversationThread({ params }: { params: Promise<{
         )}
 
         <ol className="flex flex-col gap-5">
-          {thread.length === 0 && <li className="text-sm text-ink-muted">No messages yet.</li>}
-          {thread.map((m) => {
+          {entries.length === 0 && <li className="text-sm text-ink-muted">No messages yet.</li>}
+          {entries.map((e) => {
+            if (e.kind === "call") {
+              const c = e.c;
+              return (
+                <CallCard
+                  key={c.id}
+                  tz={tz}
+                  canPlay={canPlay}
+                  call={{
+                    id: c.id,
+                    startedAt: c.startedAt,
+                    durationSec: c.durationSec,
+                    outcome: (c.outcome ?? "none") as CallOutcome,
+                    summary: c.summary,
+                    transcript: c.transcript,
+                    hasRecording: Boolean(c.recordingKey),
+                    messageTaken: thread.some((m) => m.providerRef === `call:${c.providerRef}:message`),
+                  }}
+                />
+              );
+            }
+            const m = e.m;
             const fromContact = m.author === "contact";
             return (
               <li key={m.id} className={cx("flex max-w-[720px] flex-col", fromContact ? "self-start" : "self-end items-end")}>
@@ -193,6 +256,12 @@ export default async function ConversationThread({ params }: { params: Promise<{
           <dd>{conv.company ?? "—"}</dd>
           <dt className="text-ink-muted">Channel</dt>
           <dd>{CHANNEL_LABEL[conv.channel]}</dd>
+          <dt className="text-ink-muted">Client</dt>
+          <dd>
+            <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]}>
+              {otherCount === 0 ? "No other conversations" : otherCount === 1 ? "1 other conversation" : `${otherCount} other conversations`}
+            </Link>
+          </dd>
         </dl>
 
         {conv.scoreReasons && (

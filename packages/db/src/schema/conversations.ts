@@ -2,6 +2,7 @@
  * CRM core — contacts, conversations, messages, consents. Typed mirror of
  * migration 0007. The lead/conversation spine of the SDR engine.
  */
+import { sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -9,6 +10,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { organizations, timestamps, users } from "./identity";
@@ -39,9 +41,17 @@ export const contacts = pgTable(
     company: text("company"),
     source: text("source"),
     timezone: text("timezone"), // IANA; best-effort (lead-form browser tz). Picks nudge send windows.
+    // Most recent message / conversation / call; kept by a trigger (0038), never by app code.
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
     ...timestamps,
   },
-  (t) => [index("contacts_org_id_idx").on(t.orgId)],
+  (t) => [
+    index("contacts_org_id_idx").on(t.orgId),
+    index("contacts_org_activity_idx").on(t.orgId, t.lastActivityAt.desc(), t.id.desc()),
+    // One contact per person and org (0007 for email, 0037 for phone); the resolver merges duplicates.
+    uniqueIndex("contacts_org_email_unique").on(t.orgId, sql`lower(${t.email})`).where(sql`${t.email} is not null`),
+    uniqueIndex("contacts_org_phone_unique").on(t.orgId, t.phone).where(sql`${t.phone} is not null`),
+  ],
 );
 
 export const conversations = pgTable(

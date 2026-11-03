@@ -21,4 +21,6 @@ export { ownerEmails } from "./onboarding/owner-emails";
 export { isReady, readiness, type ReadinessFacts, type ReadinessItem, type ReadinessKey } from "./onboarding/readiness";
 export { loadReadinessFacts } from "./onboarding/load-readiness";
 export { DECLINE_KEYS, isDeclineKey, setSetupDecline, type DeclineKey } from "./onboarding/declines";
+export { normalizeEmail, normalizePhone } from "./crm/identity";
+export { claimIdentity, keeperOf, resolveContact, type ContactFields, type ContactIdentity, type Resolved } from "./crm/resolve-contact";
 export * from "./schema";

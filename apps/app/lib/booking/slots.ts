@@ -55,7 +55,7 @@ function tzOffsetMs(at: Date, timeZone: string): number {
 }
 
 /** The UTC instant for a wall-clock time in `timeZone`. */
-function zonedToUtc(
+export function zonedToUtc(
   year: number,
   month: number, // 1–12
   day: number,

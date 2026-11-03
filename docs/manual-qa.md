@@ -525,13 +525,13 @@ Dashboards: **App** `/dashboard`, **Supabase** (orgs, memberships, conversations
 ### General tab: Leave workspace
 - [ ] **Leave workspace,** click the red link.
 - [ ] Confirm: "Leave this workspace?" Click the red button.
-- [ ] Toast/working state, then land on `/dashboard` and the workspace is gone from your picker. (Deleted in Clerk + our DB.)
+- [ ] Working state, then you land on `/dashboard` **inside another workspace of yours** (one you own first) and the left one is gone from the picker. With no other workspace you are signed out to `/sign-in`. Never the stale shell + "Select a workspace".
 - [ ] **Sole owner:** confirm text changes to "You're the only owner…"; Leave is disabled.
 
 ### General tab: Delete workspace
 - [ ] **Delete workspace,** click the red link.
 - [ ] Confirm: "Delete [Name]?" with a scary description. Click the red button.
-- [ ] Land on `/dashboard`. Workspace gone. Supabase: the org row is deleted (CASCADE wipes conversations/messages/members).
+- [ ] Land on `/dashboard` in another workspace of yours (owned first), or signed out to `/sign-in` when it was your only one. Workspace gone from the picker. Supabase: the org row is deleted (CASCADE wipes conversations/messages/members).
 
 ### Members tab: list + invite
 - [ ] Members tab shows members with: name+email, joined date, role dropdown, red trash-can (remove).
@@ -626,7 +626,21 @@ Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx sup
 - Name recognition looped three times ("Later 1" / "Less o 1" / "Lace"). Transcriber set to Deepgram nova-3; prompt now asks for a spelling once and moves on.
 - No `calls` row: the recording upload failed (`R2 put failed (411)`) and took the whole Inngest run with it. `putObject` now sends `content-length`; a recording failure no longer loses the call record.
 
+**Re-test 2026-11-02** (5:41pm Ottawa, Google Calendar connected 7 minutes earlier): the agent said it had "no calendar access" and took a message, and the call landed inside the Oct 26 thread instead of a new row. Causes, both fixed:
+- The Vapi number still had the Oct 26 assistant attached (Vapi's own record of the call: `assistantId` set, no `check_availability` tool). A number with an assistant never sends `assistant-request`, so every call got the stale open-mode, no-calendar assistant. Phone calls → Save now detaches it and re-asserts the server URL. **Re-save Phone calls once**, then check in Vapi's dashboard that the number shows no assistant.
+- `ensureVoiceContact` reused a `handed_off` conversation. Hand-off is terminal now (like booked): the next call opens a fresh conversation at the top of the list.
+- Also seen: `analysis.summary` was empty on the end-of-call report, so the thread entry reads "Call ended with no summary." Gone once the per-call assistant answered (the 11:02pm calls carry Vapi's summary).
+
+**Second re-test, 6:02pm:** routing fixed (closed-but-booking greeting, calendar tools present, summary present). The agent offered 9:00 and 12:00 on Tue/Wed (the spread picks one morning and one afternoon slot per day — not a calendar read failure, but the caller asking for 11 had no way to get it), then `book_meeting` threw and the model got the generic "Something went wrong". Fixes:
+- `check_availability` takes an optional `day` (YYYY-MM-DD) and returns every open slot that day; the agent is told to call it again when the caller asks for another day or time.
+- Google free/busy that answers with a per-calendar `errors` list (unreadable calendar) now throws → hand-off with the reason, never "all free". The agent must never offer times it cannot see.
+- Any throw while resolving the calendar (token refresh) or booking now goes through the booking-failed path: Slack/email say what the calendar said, and the caller is told a colleague will call back.
+- **Found (6:30pm call):** the Google event WAS created; the throw came right after it, from `saveContactDetails` writing the caller's email onto the phone contact while a form lead in the same org already held that email (`contacts_org_email_unique`). The meeting row and the booked status were never written, and the caller heard "something went wrong". The async `save_contact_details` with an email had been failing silently the same way all day. Fix: a duplicate email is skipped (other fields still save) instead of thrown; the proper merge is the Sprint 7.2 identity work. **Clean-up:** delete the orphan "Alevo" events on the connected Google calendar (Nov 3 11:00, Nov 4 9:00) by hand.
+- [ ] Re-test: call, ask for 11 when offered 9 or 12 → it checks the day and offers 11; give an email that another lead already has → booking completes, thread shows Booked, invite arrives, Slack "meeting booked".
+
 Re-test after those fixes:
+- [ ] **Agent → Phone calls → Save** once (any change, or toggle and back). In Vapi's dashboard the number now shows **no** assistant and the Server URL ends in `/api/webhooks/vapi`.
+- [ ] Call again: a NEW row appears at the top of Conversations for the call (not the old hand-off thread). The greeting matches the hour (open vs. closed-but-booking), and the agent offers two times from the connected calendar.
 - [ ] Set **Agent → Default timezone** (America/Toronto for Ottawa) and Save. Call at a weekday afternoon: the OPEN greeting plays ("How can I help you today?").
 - [ ] Give your name once. If the agent is unsure it asks you to spell it, repeats it once, and moves on. The conversation list and thread show the name (or the phone number before a name is known), not "—".
 - [ ] Qualify as a good lead: the agent offers two times by day and time without being asked, takes your email, books. Thread shows Booked, invite arrives.
@@ -1127,6 +1141,37 @@ Needs `ANTHROPIC_API_KEY` set. Signed in as an admin on Workspace → Business p
 - [ ] Qualifier and voice prompts use the preset's description (check a test conversation reads in that style), and the legacy text is passed through as written.
 - [ ] Knowledge → add URL `http://localhost:3000` (or a private IP) → the source fails with "That address is not allowed" instead of being fetched. A normal public URL still ingests.
 
+## Clients, one contact per person, one conversation per call (Sprint 7.2, 2026-11-02)
+
+Run `pnpm db:push:dev` first: **0037** normalises emails/phones, merges contacts that share a phone, adds the unique phone index; **0038** adds `contacts.last_activity_at` with its triggers. The app's schema mirror is ahead of the database until both are applied (every contact read fails with "column last_activity_at does not exist").
+
+Identity (one contact per person):
+- [ ] Submit the lead form with your email, then call the Twilio number from your phone and give the agent the same email: `select count(*) from contacts where email = '<you>'` in that org is **1**, and that contact has both your email and phone. The Conversations list shows ONE client row with both the form and the call.
+- [ ] Chat as a visitor and give an email the org already knows: the visitor row disappears, the chat conversation now sits under the existing client, and the chat keeps working (the widget keeps its token).
+- [ ] Text the number from a phone the org knows only by email + different phone: a second contact is NOT created when the agent later learns the email; the two fold into the older one. `audit_log` has a `contact.merged` row with the loser's id as target and `{"into": <keeper>}`.
+- [ ] A 10-digit number typed on the form (`613-884-1155`) is stored as `+16138841155`; a UK number keeps its `+44`.
+- [ ] Booking on a call now completes even when the caller's email belongs to an existing lead (the 2026-11-02 failure): the thread shows **Booked**, the invite arrives, Slack posts the meeting.
+
+Calls (one conversation per call, summary, card):
+- [ ] Phone calls → Save once (re-pushes the assistant with the summary plan). Call, qualify, hang up. Conversations shows a NEW row/thread for the call; call again → another new thread, same client row.
+- [ ] The thread shows a **Phone call** card (not a bare message): duration, outcome pill (Booked / Handed off / Not a fit / No outcome), the summary (who, need, fit, outcome, next step), a **Transcript** disclosure.
+- [ ] Admin/owner: **Play recording** fetches a 10-minute link and plays inline. A rep sees no Play button. A call with no recording shows no button.
+- [ ] Hang up during the greeting: a thread + call card still appear ("No outcome", a one-line summary or "No summary").
+- [ ] Leave a message on a call: the card shows a muted **Message taken** pill beside the outcome. Give a callback number the org already knows by email → the caller folds into that contact.
+- [ ] Call with caller ID withheld (`#31#` prefix in Canada/UK): the agent can still take a message or book; the client row reads "Unknown caller" until a name or email is given.
+- [ ] Ask for a day that is already over ("anything yesterday?" / "today" late in the evening): the agent says nothing is open that day; no "calendar isn't working" alert goes out.
+- [ ] Give a wrong email then correct it on the same call: the record carries the corrected one; mis-hear a name, spell it: the corrected name sticks.
+- [ ] Call after hours (booking hours ended): the greeting is the daytime one — "Thanks for calling <company>. This call may be recorded. How can I help you today?" — and the agent never says "closed" or "after hours"; it books (calendar connected) or takes a message.
+- [ ] Give your email, pick a time: ONE "give me a few seconds while I get that booked", then the confirmation. No second "give me a few seconds" from the agent, no repeat on a retry (the email is taken from the record if the model forgot to pass it). If the calendar is slow, after about six seconds you hear "Still with you — just a few more moments" once.
+- [ ] Break the recording link (e.g. stop ngrok briefly) and press Play: the error shows with a **Try again** button, which works once the link is back.
+- [ ] Stop the Inngest dev server, call, restart it: the report is processed once; a replayed `voice/call.ended` changes nothing (one `calls` row, minutes metered once).
+
+Clients list + client page:
+- [ ] `/conversations`: one row per client — name + company, channel icons (hover/aria label names the channel), Latest status pill, Fit (highest), Open count (muted when 0), Last activity. Header reads "N clients across your channels. Most recent first, 25 per page." Most recently touched client on top; a brand-new client with no conversation sorts by its creation time and shows "No conversations".
+- [ ] Click a row → `/conversations/client/<id>`: contact card (email, phone, company, first seen via, client since, consent on file; opt-out notice when suppressed) and the conversations table newest first (channel link → thread; calls show duration · outcome; last entry time + preview). Non-UUID or another org's id → 404.
+- [ ] Thread page: the name in the header links to the client page; the Lead details list has a **Client** row reading "N other conversations" (or "No other conversations") linking there. Pager still pages the clients list.
+- [ ] Platform admin viewing a client org: the list and the client page show that org's clients only.
+
 ## Contact card redesign (2026-11-02)
 
 Builds on the contact form section above (migration 0032 applied).
@@ -1148,7 +1193,7 @@ Builds on the contact form section above (migration 0032 applied).
 - [x] Integrations → Website form and Chat widget dialogs: in each snippet block the title is on its own line, and the **Copy** button sits on the right across from the subtitle (the description), with the description wrapping beside it.
 
 - [x] On a workspace with Booking off and nothing connected, connect a calendar (Google or Microsoft 365) under Integrations: after the redirect back, Workspace → Agent → Booking is ON with that calendar chosen, and "Not using booking" on Getting started is cleared. Same for Cal.com (key + event type ID, saved together) and Calendly (link).
-- [ ] Turn Booking off in Agent, then change another setting on the connected tool (for example its webhook key) and Save: Booking stays OFF. Disconnect the tool and connect it again: it turns on again.
+- [x] Turn Booking off in Agent, then change another setting on the connected tool (for example its webhook key) and Save: Booking stays OFF. Disconnect the tool and connect it again: it turns on again.
 - [ ] With one tool already chosen, connecting a second does not switch the choice.
 - [ ] Integrations → Website form → Manage shows two snippets: Embed on your site and Your own form (no Hosted page). The card subtitle reads "Embed script or API".
 - [ ] Chat bubble with only `data-org`: unchanged (Alevo blue, or the colour saved under Chat widget, white icon and text). With `data-accent="#ff6a00"`: orange bubble, header and your own messages, and the text on them turns navy (an orange accent is too light for white). Add `data-color="#ffffff"`: white again. A dark accent keeps white text. An invalid value (`data-accent="nope"`) is ignored. `--alevo-accent` / `--alevo-color` in the page CSS do the same, attributes winning.

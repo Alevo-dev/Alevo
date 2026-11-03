@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { and, count, eq, sql } from "drizzle-orm";
-import { contacts, conversations, finishPage, keysetOrder, keysetWhere, PAGE_SIZE, pageCount, parseCursor } from "@alevo/db";
+import { FileText, Mail, MessageCircle, MessageSquare, Phone } from "lucide-react";
+import { pageCount, parseCursor, PAGE_SIZE, type Channel } from "@alevo/db";
 import { getCurrentOrg, withOrg } from "@alevo/auth";
 import { buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,7 +9,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cursorHref, Pager } from "@/components/ui/pager";
 import { Pill } from "@/components/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
-import { anonymousLabel, displayName, fmtDateTime, tzLabel } from "@/lib/format";
+import { clientCount, clientsPage } from "@/lib/clients/queries";
+import { cx } from "@/lib/cx";
+import { displayName, fmtShort } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
 
@@ -17,96 +19,74 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Conversations" };
 
-// Explicit active-org scope on every read: platform admins bypass RLS.
-const ORG = sql`${conversations.orgId} = (select app.current_org_id())`;
-const KEY = { at: conversations.createdAt, id: conversations.id };
+const CHANNEL_ICON: Record<Channel, typeof Phone> = { form: FileText, email: Mail, sms: MessageSquare, chat: MessageCircle, voice: Phone };
 
+/**
+ * Conversations, organised by client: one row per contact, most recent activity
+ * first. A row opens the client page with every conversation that person has had.
+ * Explicit org id on every read: platform admins bypass RLS.
+ */
 export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ cursor?: string }> }) {
-  const cursor = parseCursor((await searchParams).cursor);
-
-  // All four are independent: one round trip. The list is one page (newest
-  // first); the header count is its own cheap aggregate.
-  const [org, tz, countRows, fetched] = await Promise.all([
-    getCurrentOrg(),
-    getOrgTimezone(),
-    withOrg((tx) => tx.select({ total: count() }).from(conversations).where(ORG)),
-    withOrg((tx) =>
-      tx
-        .select({
-          id: conversations.id,
-          status: conversations.status,
-          channel: conversations.channel,
-          fitScore: conversations.fitScore,
-          createdAt: conversations.createdAt,
-          firstName: contacts.firstName,
-          lastName: contacts.lastName,
-          email: contacts.email,
-          phone: contacts.phone,
-          company: contacts.company,
-        })
-        .from(conversations)
-        .innerJoin(contacts, eq(contacts.id, conversations.contactId))
-        .where(and(ORG, keysetWhere(conversations, KEY, cursor)))
-        .orderBy(...keysetOrder(KEY, cursor))
-        .limit(PAGE_SIZE + 1),
-    ),
-  ]);
-  const page = finishPage(fetched, cursor);
-  const total = countRows[0]?.total ?? 0;
+  const [cursor, org, tz] = await Promise.all([parseCursor((await searchParams).cursor), getCurrentOrg(), getOrgTimezone()]);
+  if (!org) return null;
+  const [page, total] = await Promise.all([withOrg((tx) => clientsPage(tx, org.id, cursor)), withOrg((tx) => clientCount(tx, org.id))]);
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Conversations" description={`${total} leads across your channels. Newest first, ${PAGE_SIZE} per page.`}>
-        {org && (
-          <a href={`/form/${org.id}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
-            Open lead form
-          </a>
-        )}
+      <PageHeader title="Conversations" description={`${total} clients across your channels. Most recent first, ${PAGE_SIZE} per page.`}>
+        <a href={`/form/${org.id}`} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
+          Open lead form
+        </a>
       </PageHeader>
 
       <Card padding="none">
         <Table>
           <thead>
             <tr>
-              <Th>Contact</Th>
-              <Th>Channel</Th>
-              <Th>Status</Th>
-              <Th className="text-right">Score</Th>
-              <Th>Received ({tzLabel(tz)})</Th>
+              <Th>Client</Th>
+              <Th>Channels</Th>
+              <Th>Latest</Th>
+              <Th className="text-right">Fit</Th>
+              <Th className="text-right">Open</Th>
+              <Th>Last activity</Th>
             </tr>
           </thead>
           <tbody>
             {page.rows.length === 0 ? (
-              <EmptyRow colSpan={5}>
+              <EmptyRow colSpan={6}>
                 {cursor ? (
                   <>
                     This page is empty — the list has changed since this link was made. <Link href="/conversations">Go to page 1</Link>.
                   </>
                 ) : (
-                  "No conversations yet. Submit your lead form to create one."
+                  "No clients yet. Submit your lead form to create one."
                 )}
               </EmptyRow>
             ) : (
-              page.rows.map((c) => {
-                const status = CONVERSATION_STATUS[c.status];
+              page.rows.map((r) => {
+                const status = r.latestStatus ? CONVERSATION_STATUS[r.latestStatus] : null;
+                const anonymous = r.channels.length === 1 && r.channels[0] === "chat" ? "Website visitor" : r.channels.includes("voice") ? "Unknown caller" : "New client";
                 return (
-                  <Tr key={c.id}>
+                  <Tr key={r.id}>
                     <Td>
-                      <Link
-                        href={`/conversations/${c.id}`}
-                        transitionTypes={["nav-forward"]}
-                        className="block font-semibold text-ink no-underline hover:underline"
-                      >
-                        {displayName(c.firstName, c.lastName, c.email ?? c.phone ?? anonymousLabel(c.channel))}
+                      <Link href={`/conversations/client/${r.id}`} transitionTypes={["nav-forward"]} className="block font-semibold text-ink no-underline hover:underline">
+                        {displayName(r.firstName, r.lastName, r.email ?? r.phone ?? anonymous)}
                       </Link>
-                      <span className="block text-label text-ink-muted">{c.company ?? c.email ?? ""}</span>
+                      <span className="block text-label text-ink-muted">{r.company ?? r.email ?? ""}</span>
                     </Td>
-                    <Td className="text-ink-muted">{CHANNEL_LABEL[c.channel]}</Td>
                     <Td>
-                      <Pill tone={status.tone}>{status.label}</Pill>
+                      <span className="flex items-center gap-1.5 text-ink-muted">
+                        {r.channels.length === 0 && <span className="text-label">No conversations</span>}
+                        {r.channels.map((ch) => {
+                          const Icon = CHANNEL_ICON[ch];
+                          return <Icon key={ch} className="size-4" strokeWidth={1.75} aria-label={CHANNEL_LABEL[ch]} role="img" />;
+                        })}
+                      </span>
                     </Td>
-                    <Td className="tabular text-right font-mono text-ink-muted">{c.fitScore ?? "—"}</Td>
-                    <Td className="tabular font-mono text-label text-ink-muted">{fmtDateTime(c.createdAt, tz)}</Td>
+                    <Td>{status ? <Pill tone={status.tone}>{status.label}</Pill> : <span className="text-label text-ink-muted">—</span>}</Td>
+                    <Td className="tabular text-right font-mono text-ink-muted">{r.maxFit ?? "—"}</Td>
+                    <Td className={cx("tabular text-right font-mono", r.openCount ? "text-ink" : "text-ink-muted")}>{r.openCount}</Td>
+                    <Td className="tabular font-mono text-label text-ink-muted">{fmtShort(r.lastActivityAt, tz)}</Td>
                   </Tr>
                 );
               })

@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // Load apps/app/.env.local so `pnpm --filter @alevo/app test` picks up
@@ -9,6 +10,13 @@ try {
 }
 
 export default defineConfig({
+  // `import "server-only"` throws outside an RSC bundle; tests reach those modules directly.
+  resolve: {
+    alias: {
+      "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
+      "@": fileURLToPath(new URL("./", import.meta.url)), // the app's tsconfig path alias
+    },
+  },
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],

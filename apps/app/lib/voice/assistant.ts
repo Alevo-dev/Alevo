@@ -2,6 +2,7 @@ import "server-only";
 import type { OrgProfile } from "@alevo/db";
 import { CONTACT_DETAILS_TOOL } from "@/lib/contact-details";
 import { bookingOnCall, buildVoicePrompt, voiceGreeting, type VoiceMode } from "./prompt";
+import { summaryPlanFor } from "./summary-prompt";
 
 /** Header Vapi sends back to our server URL with the shared secret (we set it). */
 export const VOICE_SECRET_HEADER = "x-alevo-secret";
@@ -29,6 +30,10 @@ const VOICE_MODEL = "claude-sonnet-5";
  */
 type Sound = { say: string } | { async: true };
 
+/** Spoken once if a tool is still running after this long — a different sentence, never the first one again. */
+const DELAYED_AFTER_MS = 6000;
+const STILL_WAITING = "Still with you — just a few more moments.";
+
 function tools(canBook: boolean) {
   const fn = (
     name: string,
@@ -40,7 +45,12 @@ function tools(canBook: boolean) {
     type: "function",
     ..."async" in sound
       ? { async: true }
-      : { messages: [{ type: "request-start", content: sound.say }] },
+      : {
+          messages: [
+            { type: "request-start", content: sound.say },
+            { type: "request-response-delayed", content: STILL_WAITING, timingMilliseconds: DELAYED_AFTER_MS },
+          ],
+        },
     function: { name, description, parameters: { type: "object", properties, required } },
   });
 
@@ -70,7 +80,9 @@ function tools(canBook: boolean) {
   if (!canBook) return base;
 
   return [
-    fn("check_availability", "List open meeting times for the next week. Call before offering a time.", {}, [], {
+    fn("check_availability", "List open meeting times. Without arguments: a few times spread over the next days. With `day`: every open time on that day — use it when the caller asks for a specific day or a time you didn't offer.", {
+      day: { type: "string", description: "Optional. A calendar day as YYYY-MM-DD, in the business's timezone." },
+    }, [], {
       say: "Let me pull up the calendar, one moment.",
     }),
     fn("book_meeting", "Book a meeting at a slot the caller agreed to. Needs the caller's email.", {
@@ -120,6 +132,8 @@ export function buildAssistantBody(args: {
     // of waiting for the caller to.
     endCallFunctionEnabled: true,
     artifactPlan: { recordingEnabled: true },
+    // The end-of-call summary the team reads in the thread, in our words.
+    analysisPlan: summaryPlanFor(),
     maxDurationSeconds: 900,
   };
 }

@@ -86,3 +86,15 @@ export function fmtSize(bytes: number | null | undefined): string {
 export function fmtCount(n: number): string {
   return n.toLocaleString("en-US");
 }
+
+/** "4 s", "2 min 41 s", "2 min", "1 h 2 min" — how long a call lasted. */
+export function fmtDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return "—";
+  const s = Math.max(0, Math.round(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  if (h) return m ? `${h} h ${m} min` : `${h} h`;
+  if (m) return r ? `${m} min ${r} s` : `${m} min`;
+  return `${r} s`;
+}

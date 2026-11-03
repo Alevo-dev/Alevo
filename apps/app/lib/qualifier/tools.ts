@@ -9,7 +9,7 @@ import { notifyOrg } from "@/lib/notifications/notify";
 import { isEmailConfigured, sendQualifierEmail } from "@/lib/email/resend";
 import { isSmsConfigured, sendSms } from "@/lib/sms/twilio";
 import { getBookingAdapter, type BookingConfig } from "@/lib/booking";
-import { formatSlot, offerSlots } from "@/lib/booking/offer";
+import { daySlots, formatSlot, offerSlots } from "@/lib/booking/offer";
 import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
 import { chatVisitorPresent } from "@/lib/chat/service";
 
@@ -109,8 +109,13 @@ export const BOOKING_TOOLS: Anthropic.Tool[] = [
   {
     name: "check_availability",
     description:
-      "List open meeting times to offer the contact: a few spread over the next 24–72 hours (a week if the calendar is full). Call it as soon as the lead is qualified, then propose two or three of them.",
-    input_schema: { type: "object", properties: {} },
+      "List open meeting times to offer the contact: a few spread over the next 24–72 hours (a week if the calendar is full). Call it as soon as the lead is qualified, then propose two or three of them. With `day`, lists every open time on that day — use it when the contact asks for a specific day or a time you didn't offer.",
+    input_schema: {
+      type: "object",
+      properties: {
+        day: { type: "string", description: "Optional. A calendar day as YYYY-MM-DD in the contact's timezone." },
+      },
+    },
   },
   {
     name: "book_meeting",
@@ -331,11 +336,12 @@ export async function dispatchTool(
 
     case CONTACT_DETAILS_TOOL.name: {
       const field = (k: string) => String(input[k] ?? "").trim();
-      const saved = await saveContactDetails(target.orgId, target.contactId, {
+      const { saved, contactId } = await saveContactDetails(target.orgId, target.contactId, {
         name: field("name"),
         email: field("email"),
         company: field("company"),
       });
+      target.contactId = contactId; // the contact may have just merged into an existing one
       return saved.length ? `Saved ${saved.join(", ")}.` : "Nothing new to save.";
     }
 
@@ -400,60 +406,64 @@ export async function dispatchTool(
     }
 
     case "check_availability": {
-      const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
-      if (!adapter) return "Booking isn't connected for this org — hand off instead.";
       const tz = target.contactTimezone ?? "UTC";
-      let offer;
+      const day = String(input.day ?? "").trim();
+      // Anything that fails here — token refresh, free/busy, an unreadable calendar —
+      // is a hand-off, never a guess: the agent must not offer times it cannot see.
       try {
-        offer = await offerSlots(adapter, tz);
+        const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
+        if (!adapter) return "Booking isn't connected for this org — hand off instead.";
+        const line = (s: { startIso: string }) => `- ${formatSlot(s.startIso, tz, "written")} — ${s.startIso}`;
+        if (day) {
+          const slots = await daySlots(adapter, day, tz);
+          if (!slots) return "Error: day must be YYYY-MM-DD.";
+          if (slots.length === 0) return `Nothing open on ${day} — offer another day.`;
+          return `Open times on ${day} in the contact's timezone (${tz}). Offer the ones closest to what they asked for, then call book_meeting with the chosen ISO start:\n${slots.slice(0, 16).map(line).join("\n")}`;
+        }
+        const offer = await offerSlots(adapter, tz);
+        if (offer.window === "none") return "No open slots in the next 7 days — hand off to a human.";
+        const note = offer.window === "7d" ? "Nothing open in the next 72 hours, so these are the soonest times this week. " : "";
+        return `${note}Open times in the contact's timezone (${tz}). Offer two or three of them; if the contact asks for another day or time, call check_availability again with that day. Then call book_meeting with the chosen ISO start:\n${offer.slots.map(line).join("\n")}`;
       } catch (err) {
         Sentry.captureException(err);
         return bookingBroke(target, effects, { step: "availability", detail: err instanceof Error ? err.message : null });
       }
-      if (offer.window === "none") return "No open slots in the next 7 days — hand off to a human.";
-      const lines = offer.slots.map((s) => `- ${formatSlot(s.startIso, tz, "written")} — ${s.startIso}`);
-      const note = offer.window === "7d" ? "Nothing open in the next 72 hours, so these are the soonest times this week. " : "";
-      return `${note}Open times in the contact's timezone (${tz}). Offer two or three of them, then call book_meeting with the chosen ISO start:\n${lines.join("\n")}`;
     }
 
     case "book_meeting": {
       if (!target.contactEmail) return "Ask the contact for their email before booking.";
-      const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
-      if (!adapter) return "Booking isn't connected for this org — hand off instead.";
       const startIso = String(input.start ?? "").trim();
       if (!startIso || Number.isNaN(Date.parse(startIso))) {
         return "Error: provide the slot start as an ISO-8601 timestamp from check_availability.";
       }
-      const result = await adapter.book({
-        startIso,
-        attendeeName: target.contactName,
-        attendeeEmail: target.contactEmail,
-        attendeeTimeZone: target.contactTimezone ?? "UTC",
-        conversationId: target.conversationId,
-        orgId: target.orgId,
-        orgName: target.orgName,
-      });
+      // Resolving the adapter (token refresh) can throw like the booking itself; both
+      // are a hand-off with the calendar's reason, never a bare tool error.
+      let adapter: Awaited<ReturnType<typeof getBookingAdapter>>;
+      let result: Awaited<ReturnType<NonNullable<typeof adapter>["book"]>>;
+      try {
+        adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
+        if (!adapter) return "Booking isn't connected for this org — hand off instead.";
+        result = await adapter.book({
+          startIso,
+          attendeeName: target.contactName,
+          attendeeEmail: target.contactEmail,
+          attendeeTimeZone: target.contactTimezone ?? "UTC",
+          conversationId: target.conversationId,
+          orgId: target.orgId,
+          orgName: target.orgName,
+        });
+      } catch (err) {
+        Sentry.captureException(err);
+        return bookingBroke(target, effects, { step: "booking", detail: err instanceof Error ? err.message : null });
+      }
       if (!result.ok) {
         if (result.conflict) return `Booking failed (${result.error}). Offer another time.`;
         return bookingBroke(target, effects, { step: "booking", detail: result.error });
       }
 
-      // Confirm to the contact ourselves — never rely on the model to follow up.
-      const when = new Intl.DateTimeFormat("en-US", {
-        timeZone: target.contactTimezone ?? "UTC",
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        timeZoneName: "short",
-      }).format(new Date(result.startIso));
-      const note = await deliverMessage(
-        target,
-        `Great news — you're booked for ${when}. You'll get a calendar invite by email with all the details. Looking forward to speaking!`,
-      );
-
-      await withService(async (tx) => {
+      // The calendar has the event: record it FIRST, before the confirmation goes out.
+      // From here the tool answers "Booked" whatever else fails.
+      const recorded = await withService(async (tx) => {
         await tx
           .insert(meetings)
           .values({
@@ -472,10 +482,40 @@ export async function dispatchTool(
           .update(conversations)
           .set({ status: "booked", updatedAt: new Date() })
           .where(scoped(target));
-      });
+      }).then(
+        () => true,
+        (err: unknown) => {
+          Sentry.captureException(err);
+          return false;
+        },
+      );
       effects.booked = true;
-      effects.replied = true;
-      await notifyMeetingBooked(target.orgId, target.conversationId);
+      if (!recorded) {
+        await notifyOrg(target.orgId, `A lead booked ${result.startIso} on the calendar (${adapter.provider} ${result.uid}) but Alevo could not record it. Check Meetings.`).catch(() => {});
+      }
+
+      // Confirm to the contact ourselves — never rely on the model to follow up.
+      const when = new Intl.DateTimeFormat("en-US", {
+        timeZone: target.contactTimezone ?? "UTC",
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(new Date(result.startIso));
+      let note: string;
+      try {
+        note = await deliverMessage(
+          target,
+          `Great news — you're booked for ${when}. You'll get a calendar invite by email with all the details. Looking forward to speaking!`,
+        );
+        effects.replied = true;
+      } catch (err) {
+        Sentry.captureException(err);
+        note = "The confirmation message could not be delivered; the calendar invite still goes out by email.";
+      }
+      await notifyMeetingBooked(target.orgId, target.conversationId).catch((e: unknown) => Sentry.captureException(e));
       await requestPsaWriteback(target.orgId, target.conversationId, "booked");
       return `Booked for ${result.startIso} and confirmed to the contact (${note}). You're done — do not send another message.`;
     }

@@ -73,6 +73,26 @@ export async function importTwilioNumber(params: {
 }
 
 /**
+ * Re-assert the per-call routing on an already imported number: no fixed
+ * assistant (a number with one attached never sends `assistant-request`, so a
+ * stale assistant answers every call) and the current server URL + secret.
+ */
+export async function detachAssistantFromNumber(params: {
+  phoneNumberId: string;
+  serverUrl: string;
+  secretHeader: string;
+  secret: string;
+}): Promise<void> {
+  await json(
+    await vapi(`/phone-number/${encodeURIComponent(params.phoneNumberId)}`, {
+      method: "PATCH",
+      body: { assistantId: null, server: { url: params.serverUrl, headers: { [params.secretHeader]: params.secret } } },
+    }),
+    "update phone number",
+  );
+}
+
+/**
  * Download a call's mono recording. Vapi answers with a redirect to a signed URL
  * that expires, so this follows it immediately and returns the bytes.
  */

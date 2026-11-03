@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useOrganization } from "@clerk/nextjs";
+import { useClerk, useOrganization } from "@clerk/nextjs";
 import { Check, Copy, Upload } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { initials } from "@/lib/format";
+import { nextWorkspace } from "@/lib/orgs/next-workspace";
 import { toast } from "@/lib/ui/use-action-toast";
 import { deleteOrg, leaveOrg, loadOrgIdentity } from "@/app/(app)/workspace/org-actions";
 import { AccountRow, LinkButton, Pane } from "@/components/account/rows";
@@ -18,6 +19,7 @@ const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
 /** General workspace settings: profile (name + logo), leave, delete. */
 export function GeneralTab() {
+  const clerk = useClerk();
   const { organization, isLoaded } = useOrganization();
   const [editing, setEditing] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -25,30 +27,40 @@ export function GeneralTab() {
   const [leaving, setLeaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  /**
+   * After leaving or deleting: open another workspace of theirs, or sign out when
+   * there is none. The session token still names the old org for up to a minute,
+   * so a bare reload would draw the stale shell; `setActive` refreshes it first.
+   * Full navigation on purpose — every server component must re-read the new org.
+   */
+  async function moveOn(leftId: string) {
+    try {
+      const { data } = (await clerk.user?.getOrganizationMemberships()) ?? { data: [] };
+      const next = nextWorkspace(data, leftId);
+      if (!next) return void clerk.signOut({ redirectUrl: "/sign-in" });
+      await clerk.setActive({ organization: next });
+    } catch {
+      // Fall through: the reload below still lands on the picker.
+    }
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign("/dashboard");
+  }
+
   async function leave() {
+    if (!organization) return;
     setLeaving(true);
     const r = await leaveOrg();
-    if (r.ok) {
-      // Full navigation on purpose: no active org now → every server component and
-      // client cache must re-read; the app then routes to org-selection.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign("/dashboard");
-      return;
-    }
+    if (r.ok) return moveOn(organization.id);
     setLeaving(false);
     setLeaveOpen(false);
     toast.error(r.error ?? "Couldn't leave the workspace.");
   }
 
   async function remove() {
+    if (!organization) return;
     setDeleting(true);
     const r = await deleteOrg();
-    if (r.ok) {
-      // Full navigation on purpose — the workspace is gone; reset all state.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign("/dashboard");
-      return;
-    }
+    if (r.ok) return moveOn(organization.id);
     setDeleting(false);
     setDeleteOpen(false);
     toast.error(r.error ?? "Couldn't delete the workspace.");

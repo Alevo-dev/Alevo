@@ -1,5 +1,6 @@
 import "server-only";
 import { getOrgSecret } from "@alevo/db";
+import { busyFromFreeBusy } from "./freebusy";
 import { refreshAccessToken, refreshTokenKey } from "./oauth";
 import { generateSlots, isBusy, type BusyInterval } from "./slots";
 import {
@@ -43,11 +44,7 @@ async function freeBusy(
     body: JSON.stringify({ timeMin: fromIso, timeMax: toIso, items: [{ id: calendarId }] }),
   }, { idempotent: true }); // a read, despite the POST
   if (!res.ok) throw await vendorError(res, "Google free/busy");
-  const json = (await res.json()) as {
-    calendars?: Record<string, { busy?: { start: string; end: string }[] }>;
-  };
-  const busy = json.calendars?.[calendarId]?.busy ?? [];
-  return busy.map((b) => ({ start: new Date(b.start), end: new Date(b.end) }));
+  return busyFromFreeBusy(await res.json(), calendarId);
 }
 
 export async function makeGoogleAdapter(

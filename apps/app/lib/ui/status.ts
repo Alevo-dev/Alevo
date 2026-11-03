@@ -6,6 +6,7 @@
  */
 import type {
   BookingProvider,
+  CallOutcome,
   Channel,
   ConversationStatus,
   KbDocStatus,
@@ -30,6 +31,16 @@ export const MEETING_STATUS: Record<MeetingStatus, StatusView> = {
   completed: { label: "Completed", tone: "success" },
   cancelled: { label: "Cancelled", tone: "danger" },
   no_show: { label: "No-show", tone: "danger" },
+};
+
+/** How a phone call ended (calls.outcome). */
+export const CALL_OUTCOME: Record<CallOutcome, StatusView> = {
+  booked: { label: "Booked", tone: "success" },
+  handed_off: { label: "Handed off", tone: "warning" },
+  disqualified: { label: "Not a fit", tone: "muted" },
+  escalated: { label: "Escalated", tone: "warning" },
+  voicemail: { label: "Voicemail", tone: "muted" },
+  none: { label: "No outcome", tone: "muted" },
 };
 
 export const KB_STATUS: Record<KbDocStatus, StatusView> = {

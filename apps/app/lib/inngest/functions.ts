@@ -12,7 +12,8 @@ import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/li
 import { FOLLOWUPS } from "@/lib/cadence/schedule";
 import { nextSendTime } from "@/lib/cadence/send-window";
 import { ingestDocument } from "@/lib/kb/ingest";
-import { recordCall, storeRecording } from "@/lib/voice/process-call";
+import { summarizeCall } from "@/lib/qualifier/summarize-call";
+import { recordCall, setCallSummary, storeRecording } from "@/lib/voice/process-call";
 import {
   inngest,
   type ConversationAwaitingReplyData,
@@ -231,7 +232,15 @@ export const processVoiceCall = inngest.createFunction(
       Sentry.captureException(err);
       return null;
     });
-    return step.run("record-call", () => recordCall(data, recordingKey));
+    const recorded = await step.run("record-call", () => recordCall(data, recordingKey));
+    // Vapi normally summarises with our prompt; when a FIRST report arrives empty and we
+    // have the transcript, write the summary ourselves (its own step: a vendor call). A
+    // replayed report is a duplicate and never spends the call.
+    if (recorded.needsSummary && data.transcript?.trim()) {
+      const summary = await step.run("summarize", () => summarizeCall(data.transcript!));
+      if (summary) await step.run("save-summary", () => setCallSummary(data.orgId, data.callRef, summary));
+    }
+    return recorded;
   },
 );
 

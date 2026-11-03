@@ -273,6 +273,7 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
 - **0035** `org_profiles.brand_text_color` — the **font colour** that goes with the Brand colour (the text ON it: the chat bubble / header / visitor messages, the form's coloured panel and button, the hosted page's `--ds-on-brand`). Null = white or navy by contrast. Set in the Brand colour dialog (below): a second `ColourField` row under the colour, one Save, with a live preview and a contrast warning under 3:1 (`contrastRatio`, `lib/colour.ts`).
 - **0033–0034** `org_profiles.brand_color` (0033 added it as `form_accent`, 0034 renamed it) — the workspace **Brand colour** (#rrggbb): the default colour of the website form (embed + hosted page) and the chat bubble, chosen with the colour picker in the Brand colour card at the top of Integrations. `chat_accent` is the older chat-only colour, read only while this is blank.
 - **0032** `org_profiles.contact_email` / `contact_phone` / `contact_hours` — the public details beside the contact form (with `business_address`); edited under Workspace → Business profile → Contact details.
+- **0037** contact identity — emails/phones normalised, contacts sharing a phone merged, unique `(org_id, phone)` (email was unique since 0007). **0038** `contacts.last_activity_at` (not null, default now) + `app.touch_contact_activity()` triggers on `messages` / `conversations` / `calls` inserts. See Contacts, clients and calls.
 - **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
   `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
   `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
@@ -297,7 +298,13 @@ still active, it arms the follow-up cadence (see Durable workflows below).
   asks to put a call on the calendar and OFFERS TIMES in the same turn. The offer
   comes from `lib/booking/offer.ts` (`offerSlots`: a few slots spread over the next
   24-72 hours with 2h notice, widening to a week if that window is full;
-  `formatSlot` written vs. spoken) — both `check_availability` tools use it. Calendly
+  `formatSlot` written vs. spoken) — both `check_availability` tools use it. With a
+  `day` (YYYY-MM-DD) the tool returns every open slot that day (`daySlots`) — the
+  agent calls it again when the lead asks for a day or time it didn't offer. **Never
+  offer times the calendar didn't confirm:** Google free/busy with a per-calendar
+  `errors` list throws (`busyFromFreeBusy`, tested), and any throw while resolving
+  the adapter or booking goes through `bookingBroke` (hand-off + the calendar's
+  reason), never a bare tool error. Calendly
   mode sends the link in the same turn; no calendar at all → promise a callback
   within a business day and hand off. The prompts, the tool descriptions and the
   nudge directive all say this; keep them in step if you change one.
@@ -432,13 +439,20 @@ against a live call on 2026-10-26.
   assistant-level `serverMessages` entry (Vapi 400s) — the assistant lists only
   `tool-calls` + `end-of-call-report`. Turning calls off needs no Vapi call. The saved
   assistant (`vapi_assistant_id`) exists to validate the body at Save and to show in
-  Vapi's dashboard; calls don't use it directly.
+  Vapi's dashboard; calls don't use it directly. A number WITH an assistant attached
+  never sends `assistant-request`, so that stale assistant answers every call (bit us
+  2026-11-02: a calendar connected after the attach was never offered). Every Phone
+  calls Save therefore re-asserts the routing on an existing number
+  (`detachAssistantFromNumber`: `assistantId: null` + current server URL/secret).
+  Every call is its own conversation (`callThread`, see Contacts, clients and calls).
 - **Mode** = `voiceModeNow(profile)`: weekdays within the booking hours in the org's
   timezone, via `profileTimeZone` (falls back to `DEFAULT_TIMEZONE`, never UTC — a null
   timezone once made 3pm Ottawa read as 7pm UTC = "closed").
 - **Booking after hours too.** `bookingOnCall(mode, afterHoursStyle, bookingConnected)`:
   open calls always; after hours when the org takes details (not plain voicemail). The
-  greeting says the office is closed, then the agent qualifies and offers times anyway.
+  greeting is the SAME after hours as during the day and the prompt forbids "we're
+  closed" (owner, 2026-11-02); only voice-off turns a caller away. Any meeting booked
+  after hours lands in office hours.
 - **Who called:** `save_contact_details` (`lib/contact-details.ts`, shared with the
   Qualifier) writes name / email / company onto the contact as soon as the agent learns
   them; `take_message` and `book_meeting` save the name too. Conversations fall back to
@@ -447,7 +461,12 @@ against a live call on 2026-10-26.
 - **Sounding human:** Vapi speaks a stock filler at the start of every synchronous tool
   call unless the tool has its own `request-start` message. Bookkeeping tools
   (`save_contact_details`, `record_fit_score`, `set_status`) run `async` (silent); the rest
-  carry one natural line ("give me a few seconds while I get that booked"). The prompt
+  carry one natural line ("give me a few seconds while I get that booked") plus a
+  `request-response-delayed` line at 6s ("Still with you — just a few more moments"), and the
+  prompt tells the model NOT to add its own waiting line before those tools — the two
+  together said "give me a few seconds" three times in eight seconds (2026-11-02). The voice
+  `book_meeting` falls back to the email on file when the model forgets to pass it, so it is
+  never re-asked (a retry re-speaks the tool's line). The prompt
   wraps up with "anything else I can help with?" → thanks → `endCall`
   (`endCallFunctionEnabled: true`): the agent hangs up, never the caller.
 - **After the call:** `end-of-call-report` → Inngest `process-voice-call`: the recording
@@ -807,6 +826,45 @@ dashboard's sense — handed to a person, or a meeting booked — never on a sco
   `psa-panel.tsx`) from `psa_links` with an explicit org filter.
 - Not built: updates after creation (status changes, notes appended), HaloPSA,
   CRMs, plan gating on `plans.psa_integrations`.
+
+## Contacts, clients and calls
+
+Sprint 7.2 (spec `docs/superpowers/specs/2026-11-02-clients-and-calls-design.md`).
+
+- **One contact per person and org.** `resolveContact(orgId, { email, phone }, fields)` and
+  `claimIdentity(orgId, contactId, { email, phone })` in `@alevo/db` (`packages/db/src/crm/`)
+  own contact identity: `normalizeEmail` / `normalizePhone` (10 digits → `+1…`), lookup by
+  either key, fill-only-empty (a `form` touch may overwrite name/company), and a **merge**
+  when a touch proves two rows are one person — the OLDER row keeps its id, conversations /
+  consents / meetings / calls move, the loser is deleted, `contact.merged` is audited
+  (`target` = loser, `metadata.into` = keeper). Partial unique indexes on `(org_id,
+  lower(email))` and `(org_id, phone)` enforce it; a racing insert re-reads. The form, SMS and
+  voice entry points call `resolveContact`; chat still inserts an anonymous contact and the
+  agent's `save_contact_details` (`lib/contact-details.ts`) goes through `claimIdentity` and
+  returns `{ saved, contactId }` — the voice and Qualifier tool contexts replace their
+  `contactId` with the survivor, because a `book_meeting` in the same batch must land on it.
+- **One conversation per call.** `callThread(orgId, callRef, phone)` (`lib/voice/contact.ts`)
+  keys a `voice` conversation and a `calls` stub on Vapi's call id; every `tool-calls` and the
+  `end-of-call-report` resolve through it, so the next call is a new thread. `recordCall(data,
+  recordingKey, summary?)` UPDATES the stub (`ended_at is null` = first report; a replay is a
+  no-op) and no longer writes a summary message. A withheld number gets an anonymous voice
+  contact. Summary: `analysisPlan.summaryPlan` with `CALL_SUMMARY_PROMPT`
+  (`lib/voice/summary-prompt.ts`); when the report has none and there is a transcript,
+  `process-voice-call` runs `summarizeCall` (`lib/qualifier/summarize-call.ts`) as its own step.
+  The thread renders calls as `CallCard` (`components/conversations/call-card.tsx`: duration,
+  `CALL_OUTCOME` pill, summary, transcript, **Play recording** via the `recordingUrl` server
+  action — admin+, presigned R2 GET, 10 minutes).
+- **Clients list.** `/conversations` is one row per contact, most recent first, keyset on
+  `contacts.last_activity_at` (kept by the 0038 insert triggers; the one app-side write is a
+  merge, which carries the loser's newest activity onto the keeper). Row facts come
+  from correlated subqueries in `lib/clients/queries.ts` (`clientsPage(tx, orgId, cursor)`,
+  `clientCount`); the client page `/conversations/client/[contactId]` reads
+  `clientDetail(tx, orgId, contactId)` (`lib/clients/detail.ts`). Both take the org id
+  explicitly (platform admins bypass RLS). The thread's name links to the client page and the
+  aside says "N other conversations".
+- Tests: `tests/identity.test.ts`, `resolve-contact-db`, `contact-details-db`, `call-thread-db`,
+  `call-summary`, `format`, `client-activity-db`, `clients-query-db`. Vitest aliases
+  `server-only` to a stub and `@` to the app root (`vitest.config.ts`).
 
 ## Platform-admin bootstrap
 

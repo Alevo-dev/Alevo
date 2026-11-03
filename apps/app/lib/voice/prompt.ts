@@ -16,25 +16,21 @@ export function bookingOnCall(mode: VoiceMode, afterHours: AfterHoursStyle, book
   return mode === "open" || afterHours === "take_message";
 }
 
-const QUALIFY_AND_BOOK = `Qualify the caller against the criteria above, one question at a time. Booking is the goal: as soon as the caller is a fit (the criteria check out and the call is going well), don't wait to be asked — say you'd like to get them a proper call with the team and offer times. Call check_availability (it returns open times in the next day or three), then offer two of them by day and time; if neither suits, offer the others. Once they choose, ask for their email and call book_meeting with that slot's ISO start. Once a booking succeeds, confirm the day and time out loud, then wrap up. If nothing works, call take_message so a colleague can find a time.`;
+const QUALIFY_AND_BOOK = `Qualify the caller against the criteria above, one question at a time. Booking is the goal: as soon as the caller is a fit (the criteria check out and the call is going well), don't wait to be asked — say you'd like to get them a proper call with the team and offer times. Call check_availability (it returns open times in the next day or three), then offer two of them by day and time; if neither suits, offer the others. If the caller asks for a particular day or a time you didn't offer, call check_availability again with that day (YYYY-MM-DD) — it lists every open time that day — and never guess a time the calendar didn't return. Once they choose, ask for their email and call book_meeting with that slot's ISO start. Once a booking succeeds, confirm the day and time out loud, then wrap up. If nothing works, call take_message so a colleague can find a time.`;
 
 function section(label: string, value: string | null): string | null {
   const v = value?.trim();
   return v ? `${label}:\n${v}` : null;
 }
 
-/** Greeting spoken first. The recording disclosure is part of it, on every mode. */
-export function voiceGreeting(company: string, mode: VoiceMode, afterHoursStyle: AfterHoursStyle, canBook: boolean): string {
+/**
+ * Greeting spoken first. The recording disclosure is part of it, on every mode.
+ * After hours sounds exactly like office hours — a caller is never told "we're
+ * closed" (owner, 2026-11-02); only a switched-off line turns them away.
+ */
+export function voiceGreeting(company: string, mode: VoiceMode, _afterHoursStyle: AfterHoursStyle, _canBook: boolean): string {
   if (mode === "closed") {
     return `Thanks for calling ${company}. We're not taking calls right now, so please text this number and we'll get back to you. Thanks for calling.`;
-  }
-  if (mode === "after_hours") {
-    if (canBook) {
-      return `Thanks for calling ${company}. We're closed right now, but I can still help and get you a time with the team. This call may be recorded. Who am I speaking with?`;
-    }
-    return afterHoursStyle === "take_message"
-      ? `Thanks for calling ${company}. We're closed right now, but I can take a message. This call may be recorded. Who am I speaking with?`
-      : `Thanks for calling ${company}. We're closed right now. This call may be recorded. Leave your name and what you need, and we'll call you back first thing.`;
   }
   return `Thanks for calling ${company}. This call may be recorded. How can I help you today?`;
 }
@@ -62,8 +58,8 @@ export function buildVoicePrompt(profile: OrgProfile, mode: VoiceMode, bookingCo
       ? "Voice is switched off. Say the greeting, do not qualify or book, and call endCall."
       : mode === "after_hours"
         ? canBook
-          ? `The office is closed, so nobody can take the call right now — say so once, then carry on: ${QUALIFY_AND_BOOK} Any meeting you book is during office hours, so the team will be there.`
-          : `The office is closed. Do not book meetings. Collect the caller's name, the reason for calling, and the best callback number, then call take_message with them. Tell them someone will follow up.`
+          ? `It is outside office hours, but do not say so and do not say the office is closed — help exactly as you would during the day: ${QUALIFY_AND_BOOK} Any meeting you book is during office hours, so the team will be there.`
+          : `It is outside office hours, but do not say so and do not say the office is closed. Do not book meetings. Collect the caller's name, the reason for calling, and the best callback number, then call take_message with them. Tell them someone from the team will get back to them.`
         : canBook
           ? QUALIFY_AND_BOOK
           : `Qualify the caller against the criteria above, one question at a time. Booking is the goal even without a calendar: as soon as the caller is a fit, say a colleague will call back within one business day to set up a time, and call take_message with their name, reason and callback number.`;
@@ -77,7 +73,7 @@ How to speak on the phone:
 - Never read out lists of more than two options.
 - Get the caller's name early. Names are hard to hear on the phone: if you're unsure, ask them to spell it, repeat it back once, and move on. Never ask for it more than twice.
 - As soon as you learn the caller's name, email or company, call save_contact_details so the team sees who called.
-- When you need a moment to save, book or look something up, say so ONCE in your own words ("give me a few seconds while I get that entered"), then say nothing until it's done. Never repeat "hang on" or "one moment"; never narrate the steps.
+- Waiting: the calendar, booking, lookup, escalate and message tools announce the wait themselves ("give me a few seconds while I get that booked") — do NOT add your own "one moment" or "bear with me" before or after calling them; just call the tool and stay silent until it answers. If a wait drags on, the tool says "just a few more moments" by itself. Never say the same waiting sentence twice in a row, and never narrate the steps.
 - Wrapping up: when the booking or message is done, ask "Is there anything else I can help you with?". If not, thank them for calling, say goodbye, and call endCall. You end the call — never leave the caller waiting for you to hang up.
 - If you don't know a specific answer, call lookup_knowledge rather than guessing. If it has no answer, say you'll have someone follow up.
 - If the caller asks for a person, or is upset, or the situation is urgent, call escalate_to_human with a short reason.

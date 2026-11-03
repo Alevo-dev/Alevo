@@ -1,12 +1,12 @@
 import "server-only";
-import { eq, and } from "drizzle-orm";
-import { calls, conversations, messages, recordConsent, withService } from "@alevo/db";
+import { and, eq, isNull } from "drizzle-orm";
+import { calls, conversations, recordConsent, withService } from "@alevo/db";
 import { putObject } from "@/lib/r2";
 import { meterUsage } from "@/lib/usage/limits";
 import { notifyOrg } from "@/lib/notifications/notify";
 import type { VoiceCallEndedData } from "@/lib/inngest/client";
 import { fetchCallRecording, isVapiConfigured } from "./vapi";
-import { ensureVoiceContact } from "./contact";
+import { callThread } from "./contact";
 
 /** Fetch the recording from Vapi and store it in R2. Returns the object key, or null if none. */
 export async function storeRecording(data: VoiceCallEndedData): Promise<string | null> {
@@ -20,77 +20,67 @@ export async function storeRecording(data: VoiceCallEndedData): Promise<string |
 }
 
 /**
- * Write the call record and its summary into the contact's thread, meter the
- * minutes, and alert the team. Idempotent per (org, call): a repeated report
- * changes nothing and is not metered or alerted twice.
+ * Fill the call's row (opened by the first tool call, or here for a call with
+ * none) with how it ended, meter the minutes, and alert the team. The thread
+ * shows the call itself (summary, outcome, recording) — no summary message is
+ * written. Idempotent per (org, call): a second report finds `ended_at` already
+ * set and changes nothing. `summary` overrides the report's (the Claude fallback).
  */
-export async function recordCall(data: VoiceCallEndedData, recordingKey: string | null) {
-  const link = data.customerNumber ? await ensureVoiceContact(data.orgId, data.customerNumber) : null;
+export async function recordCall(data: VoiceCallEndedData, recordingKey: string | null, summary?: string | null) {
+  const thread = await callThread(data.orgId, data.callRef, data.customerNumber);
 
   // Outcome comes from where the conversation ended up during the call.
-  let outcome: string = "none";
-  if (link) {
-    const [conv] = await withService((tx) =>
-      tx
-        .select({ status: conversations.status })
-        .from(conversations)
-        .where(and(eq(conversations.id, link.conversationId), eq(conversations.orgId, data.orgId)))
-        .limit(1),
-    );
-    if (conv?.status === "booked") outcome = "booked";
-    else if (conv?.status === "handed_off") outcome = "handed_off";
-    else if (conv?.status === "disqualified") outcome = "disqualified";
-  }
-
-  const inserted = await withService((tx) =>
+  const [conv] = await withService((tx) =>
     tx
-      .insert(calls)
-      .values({
-        orgId: data.orgId,
-        contactId: link?.contactId ?? null,
-        conversationId: link?.conversationId ?? null,
-        providerRef: data.callRef,
-        fromNumber: data.customerNumber,
+      .select({ status: conversations.status })
+      .from(conversations)
+      .where(and(eq(conversations.id, thread.conversationId), eq(conversations.orgId, data.orgId)))
+      .limit(1),
+  );
+  const outcome: string =
+    conv?.status === "booked" || conv?.status === "handed_off" || conv?.status === "disqualified" ? conv.status : "none";
+  const text = (summary ?? data.summary)?.trim() || null;
+
+  const updated = await withService((tx) =>
+    tx
+      .update(calls)
+      .set({
         toNumber: data.toNumber,
         endedReason: data.endedReason,
-        startedAt: data.startedAt ? new Date(data.startedAt) : null,
-        endedAt: data.endedAt ? new Date(data.endedAt) : null,
+        startedAt: data.startedAt ? new Date(data.startedAt) : undefined,
+        endedAt: data.endedAt ? new Date(data.endedAt) : new Date(),
         durationSec: data.durationSec,
-        summary: data.summary,
+        summary: text,
         transcript: data.transcript,
         recordingKey,
         outcome,
       })
-      .onConflictDoNothing()
+      .where(and(eq(calls.id, thread.callId), eq(calls.orgId, data.orgId), isNull(calls.endedAt)))
       .returning({ id: calls.id }),
   );
-  if (inserted.length === 0) return { ok: true, duplicate: true };
+  if (updated.length === 0) return { ok: true, duplicate: true, needsSummary: false };
 
   const minutes = Math.max(1, Math.ceil((data.durationSec ?? 0) / 60));
-  const summary = data.summary?.trim() || "No summary";
 
-  // Independent writes, run together: the thread entry + caller consent (voice
-  // channel, idempotent — as for form, email and SMS), the minutes, and the alert.
+  // Independent writes, run together: caller consent (voice channel, idempotent —
+  // as for form, email and SMS), the minutes, and the alert.
   await Promise.all([
-    link &&
-      withService((tx) =>
-        tx
-          .insert(messages)
-          .values({
-            orgId: data.orgId,
-            conversationId: link.conversationId,
-            direction: "inbound",
-            author: "contact",
-            channel: "voice",
-            body: data.summary?.trim() || "Call ended with no summary.",
-            providerRef: `call:${data.callRef}:summary`,
-          })
-          .onConflictDoNothing(),
-      ),
-    link && recordConsent(data.orgId, link.contactId, "voice", "inbound_call", { source: "voice" }).catch(() => {}),
+    recordConsent(data.orgId, thread.contactId, "voice", "inbound_call", { source: "voice" }).catch(() => {}),
     meterUsage(data.orgId, "voice_minutes", minutes),
-    notifyOrg(data.orgId, `Call ended (${outcome.replace("_", " ")}, ${minutes} min). ${summary}`).catch(() => {}),
+    notifyOrg(data.orgId, `Call ended (${outcome.replace("_", " ")}, ${minutes} min). ${text ?? "No summary"}`).catch(() => {}),
   ]);
 
-  return { ok: true, duplicate: false, outcome, recordingKey };
+  return { ok: true, duplicate: false, outcome, recordingKey, needsSummary: text === null };
+}
+
+/** The Claude fallback's summary, written after the first report found none. */
+export async function setCallSummary(orgId: string, callRef: string, summary: string): Promise<void> {
+  const text = summary.trim();
+  if (!text) return;
+  await withService((tx) =>
+    tx
+      .update(calls)
+      .set({ summary: text })
+      .where(and(eq(calls.orgId, orgId), eq(calls.providerRef, callRef), isNull(calls.summary))),
+  );
 }
