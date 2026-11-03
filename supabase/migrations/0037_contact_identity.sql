@@ -30,7 +30,11 @@ from cleaned c
 where c.id = p.id;
 
 -- (b) merge duplicates by phone ----------------------------------------------
-create temp table contact_merge on commit drop as
+-- A plain table, not a temp one: CI applies files with psql, which commits every
+-- statement on its own, so an "on commit drop" table vanished before its first use.
+-- Dropped at the end; the drop-if-exists first makes a re-run after a failure safe.
+drop table if exists public.contact_merge;
+create table public.contact_merge as
 select loser.id as loser_id, keeper.id as keeper_id
 from public.contacts loser
 join lateral (
@@ -76,5 +80,7 @@ from contact_merge m join public.contacts l on l.id = m.loser_id;
 
 delete from public.contacts where id in (select loser_id from contact_merge);
 
+drop table public.contact_merge;
+
 -- (c) enforce -------------------------------------------------------------------
-create unique index contacts_org_phone_unique on public.contacts (org_id, phone) where phone is not null;
+create unique index if not exists contacts_org_phone_unique on public.contacts (org_id, phone) where phone is not null;
