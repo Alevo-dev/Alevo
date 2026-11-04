@@ -221,40 +221,40 @@ Qualifier) with a contact that has an email, or replies just record in-app._
 Dashboards: **Cal.com** (Bookings), **Calendly** (Scheduled events + Webhooks), **Inngest** dev UI, **App** `/meetings`, **Supabase** (`meetings`, `consents` tables).
 
 ### Cal.com booking (API mode)
-- [ ] In Workspace â†’ Integrations set a Cal.com **API key** + **webhook secret**; in Workspace â†’ Agent set the numeric **event-type ID**. The Qualifier now offers to book.
-- [ ] As a lead, ask for a meeting. The Qualifier calls `check_availability` and offers real open slots; on acceptance it books â†’ you see the booking in **Cal.com** and a new row in **`/meetings`** (status `scheduled`, source `calcom`), and the lead gets a **confirmation message**.
-- [ ] The conversation flips to **`booked`** (terminal â€” Qualifier stops, cadence stops).
-- [ ] From `/meetings`, **Reschedule** (pick a new time) and **Cancel** both propagate to Cal.com and update the row; cancel **reopens** the conversation.
-- [ ] Cancel/reschedule the booking **in Cal.com directly** â†’ the `/api/webhooks/calcom` sync updates our row (visible in Inngest + the Meetings tab).
+- [x] In Workspace â†’ Integrations set a Cal.com **API key** + **webhook secret**; in Workspace â†’ Agent set the numeric **event-type ID**. The Qualifier now offers to book.
+- [x] As a lead, ask for a meeting. The Qualifier calls `check_availability` and offers real open slots; on acceptance it books â†’ you see the booking in **Cal.com** and a new row in **`/meetings`** (status `scheduled`, source `calcom`), and the lead gets a **confirmation message**.
+- [x] The conversation flips to **`booked`** (terminal â€” Qualifier stops, cadence stops).
+- [x] From `/meetings`, **Reschedule** (pick a new time) and **Cancel** both propagate to Cal.com and update the row; cancel **reopens** the conversation.
+- [x] Cancel/reschedule the booking **in Cal.com directly** â†’ the `/api/webhooks/calcom` sync updates our row (visible in Inngest + the Meetings tab).
 
 ### Calendly booking (link mode)
-- [ ] Leave the Cal.com event-type **blank**; in Workspace â†’ Agent paste a **Calendly scheduling link** (`https://calendly.com/...`) and set `calendly_webhook_secret` in Integrations. Add a Calendly webhook subscription (invitee.created + invitee.canceled) pointing at `/api/webhooks/calendly`.
-- [ ] As a lead, ask to book. The Qualifier sends the **Calendly link** (not slot options) â€” the URL carries `utm_source=alevo` and `utm_content=<conversationId>`.
-- [ ] Book through the Calendly link. Calendly fires `invitee.created` â†’ a new **`/meetings`** row appears (source `calendly`, status `scheduled`) and the conversation flips to **`booked`**. Confirm in Inngest the webhook was signature-verified and processed once (idempotent).
-- [ ] On a Calendly row, the Meetings tab shows **outcome + converted controls only** â€” no Reschedule/Cancel buttons (managed via Calendly's own links).
-- [ ] Cancel the event in Calendly â†’ `invitee.canceled` cancels the row and **reopens** the conversation.
-- [ ] (Precedence) With **both** a Cal.com event-type and a Calendly URL set, the Qualifier uses **Cal.com** (API booking), not the link.
+- [x] Leave the Cal.com event-type **blank**; in Workspace â†’ Agent paste a **Calendly scheduling link** (`https://calendly.com/...`) and set `calendly_webhook_secret` in Integrations. Add a Calendly webhook subscription (invitee.created + invitee.canceled) pointing at `/api/webhooks/calendly`.
+- [x] As a lead, ask to book. The Qualifier sends the **Calendly link** (not slot options) â€” the URL carries `utm_source=alevo` and `utm_content=<conversationId>`.
+- [x] Book through the Calendly link. Calendly fires `invitee.created` â†’ a new **`/meetings`** row appears (source `calendly`, status `scheduled`) and the conversation flips to **`booked`**. Confirm in Inngest the webhook was signature-verified and processed once (idempotent).
+- [x] On a Calendly row, the Meetings tab shows **outcome + converted controls only** â€” no Reschedule/Cancel buttons (managed via Calendly's own links).
+- [x] Cancel the event in Calendly â†’ `invitee.canceled` cancels the row and **reopens** the conversation.
+- [x] (Precedence) With **both** a Cal.com event-type and a Calendly URL set, the Qualifier uses **Cal.com** (API booking), not the link.
 
 ### Google Calendar / Microsoft 365 booking (OAuth direct)
 Prereq: a Google Cloud OAuth app (`calendar.events` + `calendar.freebusy` scopes; see DEVELOPMENT.md → "Google Calendar OAuth app") and/or an Azure app registration (`Calendars.ReadWrite`, `User.Read`), with client id/secret in env (`GOOGLE_OAUTH_CLIENT_ID/SECRET`, `MICROSOFT_OAUTH_CLIENT_ID/SECRET`) and the redirect URIs `${NEXT_PUBLIC_APP_URL}/api/oauth/{google,microsoft}/callback` registered.
-- [ ] Workspace â†’ Agent â†’ **Booking calendar** â†’ **Connect Google Calendar** (or Microsoft 365). Works from **localhost:3001 and from the ngrok URL**: the callback (public in the proxy) stores the grant and sends you back to the origin you started on, so there is no sign-in bounce. You're sent to the provider's consent screen; approving returns to Settings with a green "Connected â€¦" banner showing the account email.
-- [ ] Leave Cal.com event-type blank. Set a **Meeting length** + **Earliest/Latest** working hours and Save.
-- [ ] As a lead, ask to book. The Qualifier calls `check_availability` and offers open times â€” only weekday slots inside your window, in the contact's timezone, with your calendar's busy blocks removed.
-- [ ] Accept a time. A `/meetings` row appears (source `google`/`m365`, status `scheduled`) with a **Join** link (Google Meet / Teams), the event shows on your real calendar with the lead invited, the lead gets a confirmation message, and the conversation flips to **`booked`**.
-- [ ] **Booked is final.** After a successful booking the conversation reads **Booked**, never "Handed to a rep" — even if the agent also tries to route it. `handed_off` is reserved for qualified leads a person still has to reach out to and book (no offered time worked, they'd rather be called, pricing/contract questions).
-- [ ] A personal Outlook account books a plain event (no Teams link; Join is empty); a work account gets a Teams link. Free/busy works for both.
-- [ ] The invite is titled "<Company>: intro call with <Lead>" with a body naming the company; the organizer is the connected account's own mailbox name.
-- [ ] Double-booking guard: block the chosen time on your calendar between the offer and the booking â†’ `book_meeting` declines and the Qualifier offers another time.
-- [ ] From `/meetings`, **Reschedule** and **Cancel** both update the real calendar event; cancel reopens the conversation.
-- [ ] **Disconnect** (Booking calendar block) â†’ the connection clears; the Qualifier falls back to Cal.com / Calendly / handoff.
-- [ ] (Precedence) Cal.com (key + event type) wins over a connected calendar, which wins over a Calendly link.
+- [x] Workspace â†’ Agent â†’ **Booking calendar** â†’ **Connect Google Calendar** (or Microsoft 365). Works from **localhost:3001 and from the ngrok URL**: the callback (public in the proxy) stores the grant and sends you back to the origin you started on, so there is no sign-in bounce. You're sent to the provider's consent screen; approving returns to Settings with a green "Connected â€¦" banner showing the account email.
+- [x] Leave Cal.com event-type blank. Set a **Meeting length** + **Earliest/Latest** working hours and Save.
+- [x] As a lead, ask to book. The Qualifier calls `check_availability` and offers open times â€” only weekday slots inside your window, in the contact's timezone, with your calendar's busy blocks removed.
+- [x] Accept a time. A `/meetings` row appears (source `google`/`m365`, status `scheduled`) with a **Join** link (Google Meet / Teams), the event shows on your real calendar with the lead invited, the lead gets a confirmation message, and the conversation flips to **`booked`**.
+- [x] **Booked is final.** After a successful booking the conversation reads **Booked**, never "Handed to a rep" — even if the agent also tries to route it. `handed_off` is reserved for qualified leads a person still has to reach out to and book (no offered time worked, they'd rather be called, pricing/contract questions).
+- [x] A personal Outlook account books a plain event (no Teams link; Join is empty); a work account gets a Teams link. Free/busy works for both.
+- [x] The invite is titled "<Company>: intro call with <Lead>" with a body naming the company; the organizer is the connected account's own mailbox name.
+- [x] Double-booking guard: block the chosen time on your calendar between the offer and the booking â†’ `book_meeting` declines and the Qualifier offers another time.
+- [x] From `/meetings`, **Reschedule** and **Cancel** both update the real calendar event; cancel reopens the conversation.
+- [x] **Disconnect** (Booking calendar block) â†’ the connection clears; the Qualifier falls back to Cal.com / Calendly / handoff.
+- [x] (Precedence) Cal.com (key + event type) wins over a connected calendar, which wins over a Calendly link.
 
 ### Meeting outcomes (all providers)
-- [ ] On a booked meeting in `/meetings`, set **Outcome** = Showed / No-show and toggle **Mark converted**. Both persist (refresh) and are visible in Supabase (`meetings.outcome`, `meetings.converted`). Requires a `rep`+ role.
+- [x] On a booked meeting in `/meetings`, set **Outcome** = Showed / No-show and toggle **Mark converted**. Both persist (refresh) and are visible in Supabase (`meetings.outcome`, `meetings.converted`). Requires a `rep`+ role.
 
 ### Consent capture + revocation
-- [ ] An inbound email/SMS reply records a `consents` row for that channel (idempotent â€” a second reply doesn't duplicate it).
-- [ ] Email unsubscribe (footer link or one-click) and SMS **STOP** both revoke consent + add a suppression; the Qualifier then **skips** that contact (suppression banner shows on the thread).
+- [x] An inbound email/SMS reply records a `consents` row for that channel (idempotent â€” a second reply doesn't duplicate it).
+- [x] Email unsubscribe (footer link or one-click) and SMS **STOP** both revoke consent + add a suppression; the Qualifier then **skips** that contact (suppression banner shows on the thread).
 
 ---
 
@@ -344,7 +344,7 @@ Custom screens over Clerk's sign-in/sign-up flows (no Clerk-hosted UI). Check in
 - [x] **Forgot password?** â†’ email step â†’ "We sent a code to â€¦" â†’ code + new password â†’ signed in on `/dashboard`. "Use a different email" and "Back to sign in" work.
 - [x] **Create account**: name, company, work email, password, terms checkbox all validate inline; submitting sends a code; the verify step â†’ **Create account** signs you in, creates a workspace named after the company (org switcher shows it), and lands on `/dashboard`. "Send a new code" resends. If Clerk bot-protection is on, its widget appears above the button.
 - [x] **Continue with Google** from either tab round-trips through Google. A brand-new Google user lands on **Pick a workspace** (`/onboarding/choose-organization`): creating one (name prefilled from their first name) opens `/dashboard`; a user who already belongs to workspaces sees them listed with **Open**. Existing users with an active workspace go straight to `/dashboard`.
-- [x] **Invitations** (custom auth): invite an address from Workspace â†’ Members. The email link opens `/sign-up?__clerk_ticket=â€¦` on the public app URL and shows **You're invited**. A brand-new address gets name + password â†’ **Create account and join**, or **Continue with Google** (same email) which signs up via Google and lands on Pick a workspace with the invitation listed under **You've been invited to** â†’ **Accept** opens it â†’ lands in the inviting workspace on `/dashboard` (no verification code; the invite verified the email). An existing account that's signed out gets a one-click **Join the workspace**. An already-signed-in user sees "Opening your new workspaceâ€¦" and lands in it. In Members the invite moves from pending to a member with the invited role.
+- [x] **Invitations** (custom auth): invite an address from Workspace â†’ Members. The email link opens `/sign-up?__clerk_ticket=â€¦` on the public app URL and shows **You're invited**. A brand-new address gets name + password â†’ **Create account and join**, or **Continue with Google** (same email) which redeems the invite first and then signs up via Google (works with the Clerk instance in **invite-only** mode, no "sign-ups are currently restricted") and lands on Pick a workspace with the inviting workspace listed â†’ open it â†’ lands in the inviting workspace on `/dashboard` (no verification code; the invite verified the email). An existing account that's signed out gets a one-click **Join the workspace**. An already-signed-in user sees "Opening your new workspaceâ€¦" and lands in it. In Members the invite moves from pending to a member with the invited role.
 - [x] Pick a workspace: a user with exactly one workspace and a pending session is opened into it automatically; with several, the list shows.
 - [x] Email sign-up creates the workspace from the Company field and lands on `/dashboard` directly; if workspace creation fails it falls back to Pick a workspace instead of bouncing to sign-in.
 - [x] Theme: the screen follows light/dark like the rest of the app.
@@ -363,35 +363,35 @@ replaced by our own menus, matching Clerk's popovers in size and features on our
 Clerk still provides the data + session; only the UI is ours.
 
 ## Account menu (top-right avatar)
-- [ ] The avatar shows your photo (Google users) or your initials on brand blue (email users).
-- [ ] Clicking it opens **our** menu (design-system surface, right-aligned under the avatar): your avatar + name + email at the top, then **Manage account** and **Sign out** — no Clerk popover anywhere. Clerk-sized rows (~44px) and panel (~288px).
-- [ ] Keyboard: focus the avatar → Enter/ArrowDown opens, arrows move, Enter activates, Escape closes and returns focus. Click outside closes.
-- [ ] **Sign out** shows a spinner in the trigger and lands on `/sign-in`.
-- [ ] Both themes: the menu follows light/dark.
+- [x] The avatar shows your photo (Google users) or your initials on brand blue (email users).
+- [x] Clicking it opens **our** menu (design-system surface, right-aligned under the avatar): your avatar + name + email at the top, then **Manage account** and **Sign out** — no Clerk popover anywhere. Clerk-sized rows (~44px) and panel (~288px).
+- [x] Keyboard: focus the avatar → Enter/ArrowDown opens, arrows move, Enter activates, Escape closes and returns focus. Click outside closes.
+- [x] **Sign out** shows a spinner in the trigger and lands on `/sign-in`.
+- [x] Both themes: the menu follows light/dark.
 
 ## Manage account (our two-pane dialog, 1:1 with Clerk's Account modal)
-- [ ] Opens wide (two panes): left rail "Account / Manage your account info." with **Profile** and **Security** nav (active item on a blue tint); × top-right; stacks vertically on a phone.
-- [ ] **Profile → Profile row**: avatar + name, **Update profile** on the right → swaps to an edit form (Add/Change/Remove photo, first/last name, Save/Cancel). Empty first name → inline error; saving shows "Profile saved." and the menu header updates; the new photo shows everywhere.
-- [ ] **Profile → Email addresses**: every address listed with **Primary** / **Unverified** pills and a ⋯ menu (Set as primary · Verify email · Remove email — Remove asks first). **+ Add email address** → email form → "Send code" → code form → Verify → "Email address verified." and the new address appears. The code arrives at the new address.
-- [ ] **Profile → Connected accounts**: Google shows the colour "G", provider + email; ⋯ → Remove connection (confirm dialog). A disconnected account shows "This account has been disconnected. **Reconnect**" and Reconnect round-trips through Google.
-- [ ] **Security → Password**: with a password set, shows •••••••••• + **Change password** (current + new, inline errors, "Password updated."); a Google-only account shows **Set password** (no current-password field) and can then sign in with it.
-- [ ] **Security → Active devices**: this browser listed with "This device", browser + version, IP + location (mono), last-active time. A second signed-in browser appears too; its ⋯ → **Sign out of device** (confirm) removes it and that browser is signed out on next action.
-- [ ] **Security → Delete account**: red link → confirm dialog → deleting lands on `/sign-in` and the user is gone from Members (webhook mirror).
-- [ ] Escape / backdrop / × close the dialog (blocked while a save is in flight).
+- [x] Opens wide (two panes): left rail "Account / Manage your account info." with **Profile** and **Security** nav (active item on a blue tint); × top-right; stacks vertically on a phone.
+- [x] **Profile → Profile row**: avatar + name, **Update profile** on the right → swaps to an edit form (Add/Change/Remove photo, first/last name, Save/Cancel). Empty first name → inline error; saving shows "Profile saved." and the menu header updates; the new photo shows everywhere.
+- [x] **Profile → Email addresses**: every address listed with **Primary** / **Unverified** pills and a ⋯ menu (Set as primary · Verify email · Remove email — Remove asks first). **+ Add email address** → email form → "Send code" → code form → Verify → "Email address verified." and the new address appears. The code arrives at the new address.
+- [x] **Profile → Connected accounts**: Google shows the colour "G", provider + email; ⋯ → Remove connection (confirm dialog). A disconnected account shows "This account has been disconnected. **Reconnect**" and Reconnect round-trips through Google.
+- [x] **Security → Password**: with a password set, shows •••••••••• + **Change password** (current + new, inline errors, "Password updated."); a Google-only account shows **Set password** (no current-password field) and can then sign in with it.
+- [x] **Security → Active devices**: this browser listed with "This device", browser + version, IP + location (mono), last-active time. A second signed-in browser appears too; its ⋯ → **Sign out of device** (confirm) removes it and that browser is signed out on next action.
+- [x] **Security → Delete account**: red link → confirm dialog → deleting lands on `/sign-in` and the user is gone from Members (webhook mirror).
+- [x] Escape / backdrop / × close the dialog (blocked while a save is in flight).
 
 ## Create workspace (our dialog, 1:1 with Clerk's create-organization modal)
-- [ ] Layout: title + ×, **Logo** (square upload tile, Upload button, "Recommended size 1:1, up to 10MB."), **Name** field, one **Create workspace** button bottom-right.
-- [ ] Picking an image previews it in the tile (Change / Remove appear); a file over 10MB → inline error.
-- [ ] Creating with a logo: the new workspace's logo shows in the switcher trigger + menu after the reload.
+- [x] Layout: title + ×, **Logo** (square upload tile, Upload button, "Recommended size 1:1, up to 10MB."), **Name** field, one **Create workspace** button bottom-right.
+- [x] Picking an image previews it in the tile (Change / Remove appear); a file over 10MB → inline error.
+- [x] Creating with a logo: the new workspace's logo shows in the switcher trigger + menu after the reload.
 
 ## Workspace picker (sidebar, bottom)
-- [ ] The trigger shows the active workspace (initials tile or logo + name) and opens **upward** from the bottom of the sidebar (downward on the phone top-bar if there's room).
-- [ ] The menu matches Clerk's switcher: the **active workspace** (avatar + "Current workspace") on top, **Workspace settings** → `/workspace/profile`, then your **other** workspaces with avatar tiles, then **Create workspace** (dashed plus tile). More than 10 workspaces all appear (pagination is auto-fetched).
-- [ ] Picking another workspace shows a spinner in the trigger, then a **full page load** into `/dashboard` with that org's data everywhere (sidebar plan card, conversations, workspace tabs). No stale data from the previous org on any screen.
-- [ ] **Create workspace** opens our Dialog (not Clerk's modal): empty name → inline error under the field; a real name creates it, switches to it, and lands on `/dashboard`; the Clerk webhook mirrors the new org (`organizations` row in Supabase).
-- [ ] Cancel / Escape / backdrop close the dialog; buttons disable while creating.
-- [ ] A member invited to a second org sees both and can hop between them; each shows only its own data (RLS spot-check).
-- [ ] Nothing in the app renders Clerk-hosted UI anymore (the only Clerk surfaces left are the invisible OAuth callback and the session itself).
+- [x] The trigger shows the active workspace (initials tile or logo + name) and opens **upward** from the bottom of the sidebar (downward on the phone top-bar if there's room).
+- [x] The menu matches Clerk's switcher: the **active workspace** (avatar + "Current workspace") on top, **Workspace settings** → `/workspace/profile`, then your **other** workspaces with avatar tiles, then **Create workspace** (dashed plus tile). More than 10 workspaces all appear (pagination is auto-fetched).
+- [x] Picking another workspace shows a spinner in the trigger, then a **full page load** into `/dashboard` with that org's data everywhere (sidebar plan card, conversations, workspace tabs). No stale data from the previous org on any screen.
+- [x] **Create workspace** opens our Dialog (not Clerk's modal): empty name → inline error under the field; a real name creates it, switches to it, and lands on `/dashboard`; the Clerk webhook mirrors the new org (`organizations` row in Supabase).
+- [x] Cancel / Escape / backdrop close the dialog; buttons disable while creating.
+- [x] A member invited to a second org sees both and can hop between them; each shows only its own data (RLS spot-check).
+- [x] Nothing in the app renders Clerk-hosted UI anymore (the only Clerk surfaces left are the invisible OAuth callback and the session itself).
 
 ---
 
@@ -404,35 +404,35 @@ Dashboards: **Twilio Console** (Phone Numbers, Messaging logs, Monitor > Logs > 
 `contacts`, `consents`, `usage_counters`).
 
 ### Setup (once)
-- [ ] Platform creds in `.env.local`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`. Restart `pnpm dev:app`.
-- [ ] A Twilio number is bought/assigned (SMS-capable). In `/workspace/agent`, set the **SMS number (Twilio)** in E.164 (e.g. `+15551234567`) and Save. (DB: `org_profiles.sms_from_number` is set and unique to this org.)
-- [ ] The Qualifier is **enabled** (Agent on; Business profile complete).
-- [ ] Run the tunnel + event bus: `pnpm tunnel` (ngrok -> app :3001) and `pnpm inngest` (processes `conversation/message.received`). Both must stay running.
-- [ ] In Twilio Console, the number's **"A message comes in"** webhook = `https://<your-ngrok-domain>/api/webhooks/twilio`, method **POST**. (Prod uses the Vercel URL.)
-- [ ] (Trial accounts) your personal phone is a **Verified Caller ID**, and remember trial messages are prefixed by Twilio. Upgrade out of trial to text unverified numbers.
+- [x] Platform creds in `.env.local`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`. Restart `pnpm dev:app`.
+- [x] A Twilio number is bought/assigned (SMS-capable). In `/workspace/agent`, set the **SMS number (Twilio)** in E.164 (e.g. `+15551234567`) and Save. (DB: `org_profiles.sms_from_number` is set and unique to this org.)
+- [x] The Qualifier is **enabled** (Agent on; Business profile complete).
+- [x] Run the tunnel + event bus: `pnpm tunnel` (ngrok -> app :3001) and `pnpm inngest` (processes `conversation/message.received`). Both must stay running.
+- [x] In Twilio Console, the number's **"A message comes in"** webhook = `https://<your-ngrok-domain>/api/webhooks/twilio`, method **POST**. (Prod uses the Vercel URL.)
+- [x] (Trial accounts) your personal phone is a **Verified Caller ID**, and remember trial messages are prefixed by Twilio. Upgrade out of trial to text unverified numbers.
 
 ### Inbound -> conversation
-- [ ] From your phone, text anything to the Twilio number. The ngrok terminal shows `POST /api/webhooks/twilio 200`; Inngest shows a `conversation/message.received` run.
-- [ ] A conversation appears in `/conversations` with channel **SMS**; opening it shows your inbound message. (DB: a `contacts` row matched/created by your `From` phone; a `messages` row, channel `sms`, `provider_ref` = Twilio `MessageSid`.)
-- [ ] A brand-new SMS conversation increments `usage_counters` (metered once).
+- [x] From your phone, text anything to the Twilio number. The ngrok terminal shows `POST /api/webhooks/twilio 200`; Inngest shows a `conversation/message.received` run.
+- [x] A conversation appears in `/conversations` with channel **SMS**; opening it shows your inbound message. (DB: a `contacts` row matched/created by your `From` phone; a `messages` row, channel `sms`, `provider_ref` = Twilio `MessageSid`.)
+- [x] A brand-new SMS conversation increments `usage_counters` (metered once).
 
 ### Qualify -> outbound (the loop)
-- [ ] Within a few seconds the Qualifier replies and your phone receives an SMS **from the Twilio number**. The reply is short/human (SMS style: one question at a time, not a full email).
-- [ ] The reply is recorded in the thread as an outbound `assistant` `sms` message. Twilio Messaging logs show an outbound segment delivered.
-- [ ] Reply from your phone again -> it threads into the **same** conversation, the Qualifier answers again. The loop continues turn by turn.
-- [ ] Carry it to an end state: give qualifying info -> the Qualifier scores fit and either books / hands off / disqualifies (status pill updates), and texts a closing message.
+- [x] Within a few seconds the Qualifier replies and your phone receives an SMS **from the Twilio number**. The reply is short/human (SMS style: one question at a time, not a full email).
+- [x] The reply is recorded in the thread as an outbound `assistant` `sms` message. Twilio Messaging logs show an outbound segment delivered.
+- [x] Reply from your phone again -> it threads into the **same** conversation, the Qualifier answers again. The loop continues turn by turn.
+- [x] Carry it to an end state: give qualifying info -> the Qualifier scores fit and either books / hands off / disqualifies (status pill updates), and texts a closing message.
 
 ### Opt-out + edge cases
-- [ ] Text **STOP** to the number. Twilio blocks further messages at the carrier level; our side records the opt-out (a `consents` revoke + suppression). The Qualifier no longer texts that contact; the thread shows the suppression/opt-out state.
-- [ ] Text **START** (resubscribe) -> messaging resumes; a later inbound is handled normally again.
-- [ ] Idempotency: Twilio retries (or you re-point a second webhook) do **not** create duplicate `messages` rows (dedup on `MessageSid`).
-- [ ] Routing: if a second org has its own number, an inbound to that number opens a conversation in **that** org only (never cross-tenant).
-- [ ] Fallback when SMS isn't configured: with no `sms_from_number` (or Twilio keys unset), the Qualifier falls through to email, then in-app, and never crashes the turn.
-- [ ] Signature check: a `POST /api/webhooks/twilio` with a bad/missing `X-Twilio-Signature` is rejected (not processed).
+- [x] Text **STOP** to the number. Twilio blocks further messages at the carrier level; our side records the opt-out (a `consents` revoke + suppression). The Qualifier no longer texts that contact; the thread shows the suppression/opt-out state.
+- [x] Text **START** (resubscribe) -> messaging resumes; a later inbound is handled normally again.
+- [x] Idempotency: Twilio retries (or you re-point a second webhook) do **not** create duplicate `messages` rows (dedup on `MessageSid`).
+- [x] Routing: if a second org has its own number, an inbound to that number opens a conversation in **that** org only (never cross-tenant).
+- [x] Fallback when SMS isn't configured: with no `sms_from_number` (or Twilio keys unset), the Qualifier falls through to email, then in-app, and never crashes the turn.
+- [x] Signature check: a `POST /api/webhooks/twilio` with a bad/missing `X-Twilio-Signature` is rejected (not processed).
 
 ### Prod notes
-- [ ] A2P 10DLC registration is the gate for US SMS at volume - confirm the number/campaign is registered before real sends.
-- [ ] Vercel has `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`; the Twilio number's webhook points at the production `/api/webhooks/twilio`.
+- [x] A2P 10DLC registration is the gate for US SMS at volume - confirm the number/campaign is registered before real sends.
+- [x] Vercel has `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`; the Twilio number's webhook points at the production `/api/webhooks/twilio`.
 
 ---
 
@@ -443,47 +443,47 @@ Tests the custom auth UI after upgrading @clerk/nextjs from v6 to v7 (signals AP
 Dashboards: **App** (`http://localhost:3001`), **Clerk Dashboard** (Users, Sessions).
 
 ### Setup
-- [ ] `pnpm dev:app` runs; Clerk instance is v7 (check `@clerk/nextjs` in `package.json` → `^7.x.x`).
-- [ ] `.env.local` has `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`.
-- [ ] Go to `/sign-in`.
+- [x] `pnpm dev:app` runs; Clerk instance is v7 (check `@clerk/nextjs` in `package.json` → `^7.x.x`).
+- [x] `.env.local` has `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY`.
+- [x] Go to `/sign-in`.
 
 ### Sign up → new workspace
-- [ ] Click "Create account".
-- [ ] **Details:** fill in First name, Last name, Email, Password, accept legal. Field errors appear inline under the input.
-- [ ] **Send code:** after submit, form says "We've sent a code to [email]"; code input appears.
-- [ ] **Enter code:** paste from email, submit. "Creating your workspace…" briefly shows.
-- [ ] **Success:** land on `/dashboard` showing empty conversations. Clerk created the org; your `memberships` row has role `owner`.
+- [x] Click "Create account".
+- [x] **Details:** fill in First name, Last name, Email, Password, accept legal. Field errors appear inline under the input.
+- [x] **Send code:** after submit, form says "We've sent a code to [email]"; code input appears.
+- [x] **Enter code:** paste from email, submit. "Creating your workspace…" briefly shows.
+- [x] **Success:** land on `/dashboard` showing empty conversations. Clerk created the org; your `memberships` row has role `owner`.
 
 ### Sign in → existing user
-- [ ] Sign out (user menu → Sign out, lands on `/sign-in`).
-- [ ] Enter email + password. Wrong password shows error inline.
-- [ ] Correct password: land on `/dashboard` (no "already signed in" error).
+- [x] Sign out (user menu → Sign out, lands on `/sign-in`).
+- [x] Enter email + password. Wrong password shows error inline.
+- [x] Correct password: land on `/dashboard` (no "already signed in" error).
 
 ### Already signed in → no form flash
-- [ ] Signed in, visit `/sign-in` or `/sign-up` directly. Page redirects to `/dashboard` **instantly** (no sign-in form shown, even briefly). Same in both tabs.
+- [x] Signed in, visit `/sign-in` or `/sign-up` directly. Page redirects to `/dashboard` **instantly** (no sign-in form shown, even briefly). Same in both tabs.
 
 ### Forgot password
-- [ ] On sign-in, click "Forgot password?".
-- [ ] Enter email, submit. "We've sent a code to [email]".
-- [ ] Enter code from email, enter new password. "Password updated; redirecting…" lands on `/sign-in`.
+- [x] On sign-in, click "Forgot password?".
+- [x] Enter email, submit. "We've sent a code to [email]".
+- [x] Enter code from email, enter new password. "Password updated; redirecting…" lands on `/sign-in`.
 
 ### Google OAuth
-- [ ] On sign-in or sign-up, click "Sign in with Google".
-- [ ] Authenticate with Google.
-- [ ] **New user:** lands on `/dashboard` (auto-created account + org).
-- [ ] **Existing user:** lands on `/dashboard` directly.
+- [x] On sign-in or sign-up, click "Sign in with Google".
+- [x] Authenticate with Google.
+- [x] **New user:** lands on `/dashboard` (auto-created account + org).
+- [x] **Existing user:** lands on `/dashboard` directly.
 
 ### Invite acceptance (already signed in)
-- [ ] Sign in as User A (admin).
-- [ ] In a **different browser**, click an invite link.
+- [x] Sign in as User A (admin).
+- [x] In a **different browser**, click an invite link.
   - **New user:** sign-up flow, then `/onboarding/choose-organization` → Accept → lands in User A's workspace.
   - **Existing user (already signed in):** redirected straight to `/onboarding/choose-organization` (no "already signed in" error) → Accept.
-- [ ] User B is now in Members (with the invited role).
+- [x] User B is now in Members (with the invited role).
 
 ### Edge cases
-- [ ] Invalid code: "Invalid code" appears inline; a "Send new code" button resends.
-- [ ] Code expired: "Code expired" with a "Send new code" button.
-- [ ] Empty fields: local validation only; "This field is required" inline.
+- [x] Invalid code: "Invalid code" appears inline; a "Send new code" button resends.
+- [x] Code expired: "Code expired" with a "Send new code" button.
+- [x] Empty fields: local validation only; "This field is required" inline.
 
 ---
 
@@ -494,128 +494,128 @@ Tests the new workspace picker "Manage" feature: org profile edit, member manage
 Dashboards: **App** `/dashboard`, **Supabase** (orgs, memberships, conversations, messages).
 
 ### Manage button → dialog
-- [ ] Click workspace name in sidebar, then the small **Manage** button (gear icon + text).
-- [ ] Modal opens, two-pane: left tabs (**General**, **Members**), right content. Close button (X). Escape closes it.
+- [x] Click workspace name in sidebar, then the small **Manage** button (gear icon + text).
+- [x] Modal opens, two-pane: left tabs (**General**, **Members**), right content. Close button (X). Escape closes it.
 
 ### General tab: org profile
-- [ ] **Workspace profile:** shows org name + logo (or initials).
-- [ ] Click "Update profile" → editor: logo upload, name input.
-- [ ] Upload a logo. File > 10MB → "The logo must be 10MB or less."
-- [ ] Change name, click Save. Toast: "Workspace updated." Logo + name update in real-time in the header.
+- [x] **Workspace profile:** shows org name + logo (or initials).
+- [x] Click "Update profile" → editor: logo upload, name input.
+- [x] Upload a logo. File > 10MB → "The logo must be 10MB or less."
+- [x] Change name, click Save. Toast: "Workspace updated." Logo + name update in real-time in the header.
 
 ### Speed to lead sparkline with quiet days (2026-10-28)
-- [ ] A workspace whose replies fall on non-adjacent days (e.g. Oct 22, 26, 28): the sparkline shows a violet dot on each of those days, joined by a dashed line across the quiet days. Before, it was blank with only a hover dot.
-- [ ] Two adjacent reply days are joined by the solid line (still animates in).
-- [ ] Hover a quiet day: crosshair + "no replies"; hover a reply day: the dot grows a ring and the tooltip shows the median.
-- [ ] Only one reply day in the window: the "Trend appears after a second period with replies" placeholder still shows.
+- [x] A workspace whose replies fall on non-adjacent days (e.g. Oct 22, 26, 28): the sparkline shows a violet dot on each of those days, joined by a dashed line across the quiet days. Before, it was blank with only a hover dot.
+- [x] Two adjacent reply days are joined by the solid line (still animates in).
+- [x] Hover a quiet day: crosshair + "no replies"; hover a reply day: the dot grows a ring and the tooltip shows the median.
+- [x] Only one reply day in the window: the "Trend appears after a second period with replies" placeholder still shows.
 
 ### Calendar connect errors as toasts (2026-10-28)
-- [ ] Integrations → Google Calendar → Connect, then cancel on Google's consent screen → back on Integrations a red toast "Couldn't connect your calendar" with "You cancelled the sign-in before granting access." and the URL is plain `/workspace/integrations` (no `?calendar_error=`).
-- [ ] The toast does NOT disappear on its own; it goes only when you click its ×.
-- [ ] Reload the page → the toast does not come back.
-- [ ] A successful connect still shows the green 4s toast with the Agent link.
-- [ ] Open `/workspace/integrations?calendar_error=bad_state` by hand → toast "The sign-in link had expired. Try again." and the query is cleared.
+- [x] Integrations → Google Calendar → Connect, then cancel on Google's consent screen → back on Integrations a red toast "Couldn't connect your calendar" with "You cancelled the sign-in before granting access." and the URL is plain `/workspace/integrations` (no `?calendar_error=`).
+- [x] The toast does NOT disappear on its own; it goes only when you click its ×.
+- [x] Reload the page → the toast does not come back.
+- [x] A successful connect still shows the green 4s toast with the Agent link.
+- [x] Open `/workspace/integrations?calendar_error=bad_state` by hand → toast "The sign-in link had expired. Try again." and the query is cleared.
 
 ### General tab: Workspace ID (2026-10-28)
-- [ ] **Workspace ID** row shows the Alevo uuid in mono (not Clerk's `org_…`), loaded a moment after the dialog opens.
-- [ ] Click the copy icon → toast "Copied.", icon flips to a check for 2s; the clipboard holds the exact uuid.
-- [ ] It equals `data-org` in Integrations → Lead capture → Website form / Chat widget snippets.
-- [ ] Visible to every role (a rep sees it too).
+- [x] **Workspace ID** row shows the Alevo uuid in mono (not Clerk's `org_…`), loaded a moment after the dialog opens.
+- [x] Click the copy icon → toast "Copied.", icon flips to a check for 2s; the clipboard holds the exact uuid.
+- [x] It equals `data-org` in Integrations → Lead capture → Website form / Chat widget snippets.
+- [x] Visible to every role (a rep sees it too).
 
 ### General tab: Leave workspace
-- [ ] **Leave workspace,** click the red link.
-- [ ] Confirm: "Leave this workspace?" Click the red button.
-- [ ] Working state, then you land on `/dashboard` **inside another workspace of yours** (one you own first) and the left one is gone from the picker. With no other workspace you are signed out to `/sign-in`. Never the stale shell + "Select a workspace".
-- [ ] **Sole owner:** confirm text changes to "You're the only owner…"; Leave is disabled.
+- [x] **Leave workspace,** click the red link.
+- [x] Confirm: "Leave this workspace?" Click the red button.
+- [x] Working state, then you land on `/dashboard` **inside another workspace of yours** (one you own first) and the left one is gone from the picker. With no other workspace you are signed out to `/sign-in`. Never the stale shell + "Select a workspace".
+- [x] **Sole owner:** confirm text changes to "You're the only owner…"; Leave is disabled.
 
 ### General tab: Delete workspace
-- [ ] **Delete workspace,** click the red link.
-- [ ] Confirm: "Delete [Name]?" with a scary description. Click the red button.
-- [ ] Land on `/dashboard` in another workspace of yours (owned first), or signed out to `/sign-in` when it was your only one. Workspace gone from the picker. Supabase: the org row is deleted (CASCADE wipes conversations/messages/members).
+- [x] **Delete workspace,** click the red link.
+- [x] Confirm: "Delete [Name]?" with a scary description. Click the red button.
+- [x] Land on `/dashboard` in another workspace of yours (owned first), or signed out to `/sign-in` when it was your only one. Workspace gone from the picker. Supabase: the org row is deleted (CASCADE wipes conversations/messages/members).
 
 ### Members tab: list + invite
-- [ ] Members tab shows members with: name+email, joined date, role dropdown, red trash-can (remove).
-- [ ] Invitations tab shows pending with: email, "Invite pending" tag, role, red trash-can (revoke).
-- [ ] Both tabs have a search bar and **Invite** button.
+- [x] Members tab shows members with: name+email, joined date, role dropdown, red trash-can (remove).
+- [x] Invitations tab shows pending with: email, "Invite pending" tag, role, red trash-can (revoke).
+- [x] Both tabs have a search bar and **Invite** button.
 
 ### Members tab: add invite
-- [ ] Click Invite. Form appears: email, role dropdown (default Rep), Send invite.
-- [ ] Fill email, pick role, Send. Toast: "Invitation sent."
-- [ ] Invitations tab shows the email (pending).
+- [x] Click Invite. Form appears: email, role dropdown (default Rep), Send invite.
+- [x] Fill email, pick role, Send. Toast: "Invitation sent."
+- [x] Invitations tab shows the email (pending).
 
 ### Members tab: change role
-- [ ] On a member, click role dropdown, pick a new role. **Save** button appears.
-- [ ] Click Save. Toast: "Role updated."
+- [x] On a member, click role dropdown, pick a new role. **Save** button appears.
+- [x] Click Save. Toast: "Role updated."
 
 ### Members tab: remove member
-- [ ] Click red trash-can on a member.
-- [ ] Confirm dialog: "Remove [Name]?" Click red button.
-- [ ] Toast: "Member removed." Member disappears.
+- [x] Click red trash-can on a member.
+- [x] Confirm dialog: "Remove [Name]?" Click red button.
+- [x] Toast: "Member removed." Member disappears.
 
 ### Members tab: revoke invite
-- [ ] On a pending invite, click red trash-can.
-- [ ] Confirm: "Revoke the invite for [email]?" Click red button.
-- [ ] Toast: "Invite revoked." Invite disappears.
+- [x] On a pending invite, click red trash-can.
+- [x] Confirm: "Revoke the invite for [email]?" Click red button.
+- [x] Toast: "Invite revoked." Invite disappears.
 
 ### Red trash-can across the app
-- [ ] Every remove/delete row button is a small red trash-can icon (no text).
-- [ ] Hover → light red tint. Click → confirm dialog, no banners.
-- [ ] Spot-check: Members remove/revoke (done above), account profile remove photo, Knowledge delete document, create-workspace remove logo.
+- [x] Every remove/delete row button is a small red trash-can icon (no text).
+- [x] Hover → light red tint. Click → confirm dialog, no banners.
+- [x] Spot-check: Members remove/revoke (done above), account profile remove photo, Knowledge delete document, create-workspace remove logo.
 
 ### Edge cases
-- [ ] Search: enter a name/email in Members/Invitations → real-time filter.
-- [ ] Non-admin viewing Members: "You need an admin role to manage members." (No invite button, no list.)
-- [ ] Multiple orgs: each workspace's Manage shows **only** that workspace's members + invites.
-- [ ] Dialog closes on Escape / backdrop / X. Unsaved profile edits are discarded (no warning).
+- [x] Search: enter a name/email in Members/Invitations → real-time filter.
+- [x] Non-admin viewing Members: "You need an admin role to manage members." (No invite button, no list.)
+- [x] Multiple orgs: each workspace's Manage shows **only** that workspace's members + invites.
+- [x] Dialog closes on Escape / backdrop / X. Unsaved profile edits are discarded (no warning).
 
 ## Integrations page matches the Claude Design mockup (2026-10-22)
 
 Workspace → Integrations (`/workspace/integrations`).
 
 ### Layout
-- [ ] Heading "Connected services" then a grid of cards: Cal.com, Calendar, Calendly, Twilio, Resend, Slack. 3 columns on desktop, 2 on tablet, 1 on phone (no horizontal scroll).
-- [ ] Each card: dashed logo tile, name, one-line hint, status dot + label, and a button on the right.
-- [ ] Each card shows the brand's own mark in its colours on a white tile: Cal.com, Google Calendar + Microsoft squares (Calendar), Calendly, Twilio red, Resend, Slack. Marks are sharp at 40px.
-- [ ] No API keys section below the grid. The keys live in the Manage dialogs.
+- [x] Heading "Connected services" then a grid of cards: Cal.com, Calendar, Calendly, Twilio, Resend, Slack. 3 columns on desktop, 2 on tablet, 1 on phone (no horizontal scroll).
+- [x] Each card: dashed logo tile, name, one-line hint, status dot + label, and a button on the right.
+- [x] Each card shows the brand's own mark in its colours on a white tile: Cal.com, Google Calendar + Microsoft squares (Calendar), Calendly, Twilio red, Resend, Slack. Marks are sharp at 40px.
+- [x] No API keys section below the grid. The keys live in the Manage dialogs.
 
 ### Status is derived from real state
-- [ ] Fresh org: every service shows "Not connected" (grey dot). Resend and Twilio show "Not set up" when their platform env vars are missing.
-- [ ] Save a Slack webhook URL. Slack card turns green "Connected". Clear it: back to "Not connected".
-- [ ] Save a Cal.com API key without a webhook secret. Cal.com shows "Connected" and **Needs attention** lists "Cal.com webhook secret missing" with a Review link. Save the webhook secret: the Needs attention block disappears.
-- [ ] Twilio with platform keys set but no SMS number: "No number" in amber, listed under Needs attention. Set the number in Workspace → Agent, come back: "Connected".
+- [x] Fresh org: every service shows "Not connected" (grey dot). Resend and Twilio show "Not set up" when their platform env vars are missing.
+- [x] Save a Slack webhook URL. Slack card turns green "Connected". Clear it: back to "Not connected".
+- [x] Save a Cal.com API key without a webhook secret. Cal.com shows "Connected" and **Needs attention** lists "Cal.com webhook secret missing" with a Review link. Save the webhook secret: the Needs attention block disappears.
+- [x] Twilio with platform keys set but no SMS number: "No number" in amber, listed under Needs attention. Set the number in Workspace → Agent, come back: "Connected".
 
 ### Buttons
-- [ ] Cal.com, Calendly, Slack "Manage" opens a dialog titled with the service name, holding its key cards. Esc, backdrop and X close it; the page does not scroll.
-- [ ] Calendar and Twilio "Manage" opens a dialog with a note and an **Open Agent** button that goes to Workspace → Agent.
-- [ ] Resend has no Manage button (platform-level).
-- [ ] A "Needs attention" row's **Review** opens the same dialog as that service's Manage.
-- [ ] A dialog has one **Save** and one **Cancel**, and no Save on each key. Both are hidden until a field has text in it.
-- [ ] Type in one key: Save and Cancel appear beside each other. Cancel empties the fields and hides both.
-- [ ] Type in two keys, leave one blank: Save stores only the filled one(s). Toast "Keys saved." Fields empty, buttons hide, and the Set/Not set pills update.
-- [ ] Enter an invalid Slack URL with a valid Cal.com key: nothing saves, the Slack field shows its error in red beneath it.
-- [ ] Clearing and Send test sit under "Saved keys", each with its own action, not inside the form.
-- [ ] Non-admin: the key cards are read-only (inputs disabled), but the service cards still show status.
+- [x] Cal.com, Calendly, Slack "Manage" opens a dialog titled with the service name, holding its key cards. Esc, backdrop and X close it; the page does not scroll.
+- [x] Calendar and Twilio "Manage" opens a dialog with a note and an **Open Agent** button that goes to Workspace → Agent.
+- [x] Resend has no Manage button (platform-level).
+- [x] A "Needs attention" row's **Review** opens the same dialog as that service's Manage.
+- [x] A dialog has one **Save** and one **Cancel**, and no Save on each key. Both are hidden until a field has text in it.
+- [x] Type in one key: Save and Cancel appear beside each other. Cancel empties the fields and hides both.
+- [x] Type in two keys, leave one blank: Save stores only the filled one(s). Toast "Keys saved." Fields empty, buttons hide, and the Set/Not set pills update.
+- [x] Enter an invalid Slack URL with a valid Cal.com key: nothing saves, the Slack field shows its error in red beneath it.
+- [x] Clearing and Send test sit under "Saved keys", each with its own action, not inside the form.
+- [x] Non-admin: the key cards are read-only (inputs disabled), but the service cards still show status.
 
 ### Stays as it was
-- [ ] Saving or clearing a key still shows the toast and per-field errors (Slack URL format, required value).
-- [ ] Values are never shown again after saving (no reveal buttons in the mockup were added, by design).
+- [x] Saving or clearing a key still shows the toast and per-field errors (Slack URL format, required value).
+- [x] Values are never shown again after saving (no reveal buttons in the mockup were added, by design).
 
 ## Connection health card (2026-10-22)
 
 Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx supabase db push`). To see data without real traffic, run `supabase/seed-dev-health.sql` in the dev SQL editor (~80 deliveries per workspace over the last 24h, ~10% failed); its last statement deletes them again.
 
-- [ ] Workspace → Integrations: "Connection health" card sits at the top. Subtitle: "Last 24 hours across all connected services".
-- [ ] Fresh org: body reads "No webhooks in the last 24 hours…", no line, no stat tiles.
-- [ ] Send a Cal.com test webhook or a booking through Calendly. Reload: the card shows "Webhooks ok" with a percentage and "Failed" with a count. The line draws in once.
-- [ ] A webhook with a bad signature (e.g. Twilio with a wrong token) counts as failed. Failed goes up by one; the percentage drops.
-- [ ] Another workspace's deliveries don't change this workspace's card.
-- [ ] Phone width: the card and both tiles stack with no horizontal scroll.
+- [x] Workspace → Integrations: "Connection health" card sits at the top. Subtitle: "Last 24 hours across all connected services".
+- [x] Fresh org: body reads "No webhooks in the last 24 hours…", no line, no stat tiles.
+- [x] Send a Cal.com test webhook or a booking through Calendly. Reload: the card shows "Webhooks ok" with a percentage and "Failed" with a count. The line draws in once.
+- [x] A webhook with a bad signature (e.g. Twilio with a wrong token) counts as failed. Failed goes up by one; the percentage drops.
+- [x] Another workspace's deliveries don't change this workspace's card.
+- [x] Phone width: the card and both tiles stack with no horizontal scroll.
 
 ### Health and Needs attention layout
-- [ ] Desktop: Connection health (left, narrower) and Needs attention (right) sit side by side at the same height.
-- [ ] Mobile: the two cards stack, Connection health first, Needs attention below, with no horizontal scroll.
-- [ ] With nothing needing attention, the right card reads "Nothing needs attention. Every connected service is set up."
-- [ ] With an issue, each row shows a Warning dot and a **Review** button that opens that service's dialog.
+- [x] Desktop: Connection health (left, narrower) and Needs attention (right) sit side by side at the same height.
+- [x] Mobile: the two cards stack, Connection health first, Needs attention below, with no horizontal scroll.
+- [x] With nothing needing attention, the right card reads "Nothing needs attention. Every connected service is set up."
+- [x] With an issue, each row shows a Warning dot and a **Review** button that opens that service's dialog.
 
 ## Inbound voice — Sprint 4 (2026-10-22)
 
@@ -636,123 +636,123 @@ Requires migration `0017_webhook_deliveries.sql` applied to the dev DB (`npx sup
 - Google free/busy that answers with a per-calendar `errors` list (unreadable calendar) now throws → hand-off with the reason, never "all free". The agent must never offer times it cannot see.
 - Any throw while resolving the calendar (token refresh) or booking now goes through the booking-failed path: Slack/email say what the calendar said, and the caller is told a colleague will call back.
 - **Found (6:30pm call):** the Google event WAS created; the throw came right after it, from `saveContactDetails` writing the caller's email onto the phone contact while a form lead in the same org already held that email (`contacts_org_email_unique`). The meeting row and the booked status were never written, and the caller heard "something went wrong". The async `save_contact_details` with an email had been failing silently the same way all day. Fix: a duplicate email is skipped (other fields still save) instead of thrown; the proper merge is the Sprint 7.2 identity work. **Clean-up:** delete the orphan "Alevo" events on the connected Google calendar (Nov 3 11:00, Nov 4 9:00) by hand.
-- [ ] Re-test: call, ask for 11 when offered 9 or 12 → it checks the day and offers 11; give an email that another lead already has → booking completes, thread shows Booked, invite arrives, Slack "meeting booked".
+- [x] Re-test: call, ask for 11 when offered 9 or 12 → it checks the day and offers 11; give an email that another lead already has → booking completes, thread shows Booked, invite arrives, Slack "meeting booked".
 
 Re-test after those fixes:
-- [ ] **Agent → Phone calls → Save** once (any change, or toggle and back). In Vapi's dashboard the number now shows **no** assistant and the Server URL ends in `/api/webhooks/vapi`.
-- [ ] Call again: a NEW row appears at the top of Conversations for the call (not the old hand-off thread). The greeting matches the hour (open vs. closed-but-booking), and the agent offers two times from the connected calendar.
-- [ ] Set **Agent → Default timezone** (America/Toronto for Ottawa) and Save. Call at a weekday afternoon: the OPEN greeting plays ("How can I help you today?").
-- [ ] Give your name once. If the agent is unsure it asks you to spell it, repeats it once, and moves on. The conversation list and thread show the name (or the phone number before a name is known), not "—".
-- [ ] Qualify as a good lead: the agent offers two times by day and time without being asked, takes your email, books. Thread shows Booked, invite arrives.
-- [ ] Within a minute of hanging up: `calls` row, thread summary, Slack "Call ended (booked, N min)", voice minutes up, recording in R2 (no 411 in the Inngest run).
-- [ ] Empty tool calls (Vapi fires some with no arguments, then retries): the thread never shows "Message taken on a call / Reason: No reason given"; exactly ONE message with name, callback and reason appears per call, plus one call-summary entry.
-- [ ] Wrap-up sounds human: while the agent saves or books it says ONE line ("give me a few seconds while I get that noted down"), not "hang on a sec" several times. Scoring and status are silent. Then it asks "Is there anything else I can help you with?"; say no → it thanks you, says goodbye and HANGS UP itself (endCall).
-- [ ] Switched off: the closed greeting plays and the call ends by itself.
-- [ ] Set the booking hours to end an hour ago (or call on a weekend) with "Take details" selected: greeting says closed but offers to get you a time; the agent still books. With "Take a short message" selected it only takes a message.
+- [x] **Agent → Phone calls → Save** once (any change, or toggle and back). In Vapi's dashboard the number now shows **no** assistant and the Server URL ends in `/api/webhooks/vapi`.
+- [x] Call again: a NEW row appears at the top of Conversations for the call (not the old hand-off thread). The greeting matches the hour (open vs. closed-but-booking), and the agent offers two times from the connected calendar.
+- [x] Set **Agent → Default timezone** (America/Toronto for Ottawa) and Save. Call at a weekday afternoon: the OPEN greeting plays ("How can I help you today?").
+- [x] Give your name once. If the agent is unsure it asks you to spell it, repeats it once, and moves on. The conversation list and thread show the name (or the phone number before a name is known), not "—".
+- [x] Qualify as a good lead: the agent offers two times by day and time without being asked, takes your email, books. Thread shows Booked, invite arrives.
+- [x] Within a minute of hanging up: `calls` row, thread summary, Slack "Call ended (booked, N min)", voice minutes up, recording in R2 (no 411 in the Inngest run).
+- [x] Empty tool calls (Vapi fires some with no arguments, then retries): the thread never shows "Message taken on a call / Reason: No reason given"; exactly ONE message with name, callback and reason appears per call, plus one call-summary entry.
+- [x] Wrap-up sounds human: while the agent saves or books it says ONE line ("give me a few seconds while I get that noted down"), not "hang on a sec" several times. Scoring and status are silent. Then it asks "Is there anything else I can help you with?"; say no → it thanks you, says goodbye and HANGS UP itself (endCall).
+- [x] Switched off: the closed greeting plays and the call ends by itself.
+- [x] Set the booking hours to end an hour ago (or call on a weekend) with "Take details" selected: greeting says closed but offers to get you a time; the agent still books. With "Take a short message" selected it only takes a message.
 
 Setup (once per environment):
-- [ ] Migration `0018_voice.sql` applied (`npx supabase db push`).
-- [ ] `VAPI_API_KEY` and `VOICE_WEBHOOK_SECRET` set; `NEXT_PUBLIC_APP_URL` points at a public URL Vapi can reach (use an ngrok or the Vercel URL, not localhost).
-- [ ] The org has a Twilio number (Agent → phone number), and its business profile is filled in.
-- [ ] Inngest dev server running (`npx inngest-cli dev`) so `process-voice-call` runs.
+- [x] Migration `0018_voice.sql` applied (`npx supabase db push`).
+- [x] `VAPI_API_KEY` and `VOICE_WEBHOOK_SECRET` set; `NEXT_PUBLIC_APP_URL` points at a public URL Vapi can reach (use an ngrok or the Vercel URL, not localhost).
+- [x] The org has a Twilio number (Agent → phone number), and its business profile is filled in.
+- [x] Inngest dev server running (`npx inngest-cli dev`) so `process-voice-call` runs.
 
 Turning calls on:
-- [ ] Agent → Phone calls: turn on "Answer calls" → Save. Save appears only once something changed; Cancel sits beside it.
-- [ ] With no phone number set, turning calls on shows the error under the switch; nothing is sent to Vapi.
+- [x] Agent → Phone calls: turn on "Answer calls" → Save. Save appears only once something changed; Cancel sits beside it.
+- [x] With no phone number set, turning calls on shows the error under the switch; nothing is sent to Vapi.
 - [x] Save with `serverMessages` containing `assistant-request` is rejected by Vapi (400, 2026-10-26) — removed; the assistant now lists only `tool-calls` + `end-of-call-report`.
-- [ ] In Vapi's dashboard: the assistant exists, and the number exists with **no** assistant attached and a Server URL ending in `/api/webhooks/vapi` (that is what makes Vapi ask us which assistant to use on every call).
+- [x] In Vapi's dashboard: the assistant exists, and the number exists with **no** assistant attached and a Server URL ending in `/api/webhooks/vapi` (that is what makes Vapi ask us which assistant to use on every call).
 
 Live call (dial the number from a phone):
 - [x] Greeting plays and says "This call may be recorded." (2026-10-26)
-- [ ] Ask a question covered by the knowledge base. The agent answers from it (or says it'll follow up if nothing matches).
-- [ ] Ask for a meeting. Agent offers times from the connected calendar, takes your email, books. A calendar invite arrives and the thread shows "booked".
-- [ ] Ask for a person. Slack gets "Call escalated: …", and the thread is handed off.
-- [ ] Hang up. Within a minute: a `calls` row exists, the thread has a call summary, Slack gets "Call ended (…)", and the org's voice minutes go up.
-- [ ] The recording plays back: check the R2 object at `organizations/<org>/calls/<callRef>.<ext>`.
-- [ ] Duplicate end-of-call report (replay it from Vapi): nothing is double-counted or double-posted.
+- [x] Ask a question covered by the knowledge base. The agent answers from it (or says it'll follow up if nothing matches).
+- [x] Ask for a meeting. Agent offers times from the connected calendar, takes your email, books. A calendar invite arrives and the thread shows "booked".
+- [x] Ask for a person. Slack gets "Call escalated: …", and the thread is handed off.
+- [x] Hang up. Within a minute: a `calls` row exists, the thread has a call summary, Slack gets "Call ended (…)", and the org's voice minutes go up.
+- [x] The recording plays back: check the R2 object at `organizations/<org>/calls/<callRef>.<ext>`.
+- [x] Duplicate end-of-call report (replay it from Vapi): nothing is double-counted or double-posted.
 
 After hours (outside booking hours, weekday):
-- [ ] The greeting changes to the "we're closed" version and the agent takes a message, then calls take_message (Slack shows it).
+- [x] The greeting changes to the "we're closed" version and the agent takes a message, then calls take_message (Slack shows it).
 
 Off:
-- [ ] Turn calls off → Save. A call now gets "we're not taking calls right now, please text this number."
+- [x] Turn calls off → Save. A call now gets "we're not taking calls right now, please text this number."
 
 **Unverified against Vapi's docs, check on the first call:**
 - [x] Tool definitions: `model.tools` as `{ type: "function", function: { name, description, parameters } }`, routed to the assistant's server URL. Confirmed on the first call (take_message ran).
 - [x] Tool results come back as `{ results: [{ name, toolCallId, result }] }` and the agent speaks them.
 - [x] The secret arrives in the `x-alevo-secret` header (we set it through `server.headers`).
-- [ ] `assistant-request` arrives from the number's server URL (not the assistant's), and the response `{ assistant: {...} }` is honoured per call, so after-hours and off-mode take effect. If calls always get the open greeting, this shape is wrong. An unmatched number gets `{ error }`, which Vapi speaks before hanging up.
+- [x] `assistant-request` arrives from the number's server URL (not the assistant's), and the response `{ assistant: {...} }` is honoured per call, so after-hours and off-mode take effect. If calls always get the open greeting, this shape is wrong. An unmatched number gets `{ error }`, which Vapi speaks before hanging up.
 - [x] `end-of-call-report` field paths: callRef, customer number, to number, endedReason, summary, transcript and a 67s duration all arrived on the Inngest event.
-- [ ] Recording download: `GET /call/{id}/mono-recording` returns audio (it redirects to a signed URL).
-- [ ] The model id `claude-sonnet-5` is accepted by Vapi's Anthropic provider.
+- [x] Recording download: `GET /call/{id}/mono-recording` returns audio (it redirects to a signed URL).
+- [x] The model id `claude-sonnet-5` is accepted by Vapi's Anthropic provider.
 
 Not built yet (say if you want them now): buying a new Twilio number from inside Alevo, new-vs-existing client routing, warm transfer, and a Calls list page (calls appear in the thread for now).
 
 ### Voice: fit score and lead status
-- [ ] After a call where the caller qualifies, the conversation shows a fit score and reasons (same fields as the Qualifier).
-- [ ] A call that ends with the caller wanting a person: conversation status is "Handed to a rep" and Slack shows the handoff note.
-- [ ] A call with a clear non-fit: status is "Not a fit" (this is the "dismissed" state).
-- [ ] A call that books: status is "booked". Afterwards no later set_status changes it.
-- [ ] The call's outcome in the Calls record matches the conversation status.
+- [x] After a call where the caller qualifies, the conversation shows a fit score and reasons (same fields as the Qualifier).
+- [x] A call that ends with the caller wanting a person: conversation status is "Handed to a rep" and Slack shows the handoff note.
+- [x] A call with a clear non-fit: status is "Not a fit" (this is the "dismissed" state).
+- [x] A call that books: status is "booked". Afterwards no later set_status changes it.
+- [x] The call's outcome in the Calls record matches the conversation status.
 
 ## Page transitions re-enabled for testing (2026-10-22)
 
 `components/page-transition.tsx` wraps the app and workspace templates in React's `ViewTransition` again (it was switched off in commit 95129cf). Timings are in `globals.css` under "View transitions" (~120ms).
 
-- [ ] Click between sidebar pages (Dashboard → Conversations → Meetings): the old page fades out and the new one rises in.
-- [ ] Open a conversation from a list, then press the back link: the list slides in from the left, the conversation slides out to the right.
-- [ ] Switch Workspace tabs (Profile → Agent → Integrations): content fades and rises; the title and tabs stay still.
-- [ ] Time a navigation with and without the transition (for example by commenting the wrapper out). Note whether it feels slower; the earlier reason for switching it off was that it did.
-- [ ] `prefers-reduced-motion` on: transitions are off.
+- [x] Click between sidebar pages (Dashboard → Conversations → Meetings): the old page fades out and the new one rises in.
+- [x] Open a conversation from a list, then press the back link: the list slides in from the left, the conversation slides out to the right.
+- [x] Switch Workspace tabs (Profile → Agent → Integrations): content fades and rises; the title and tabs stay still.
+- [x] Time a navigation with and without the transition (for example by commenting the wrapper out). Note whether it feels slower; the earlier reason for switching it off was that it did.
+- [x] `prefers-reduced-motion` on: transitions are off.
 
 ## Booking in one place (2026-10-22)
 
 Requires migration `0019_booking_tool.sql` applied (`npx supabase db push`). It backfills each org's current tool from the old precedence (Cal.com → connected calendar → Calendly), so nothing should change for an org that already booked.
 
 Workspace → Agent → **Booking** card:
-- [ ] "Book meetings" switch off: nothing beneath it. On: four tool cards (Cal.com, Google Calendar, Microsoft 365, Calendly) with their marks; exactly one selected.
-- [ ] Only the chosen tool's fields show beneath the cards. Switching tools swaps the fields; nothing from another tool is visible.
-- [ ] One Save bar for the whole card (appears once anything changed, with Discard). No per-field Save buttons anywhere on the page.
-- [ ] Cal.com: event type ID + API key + webhook secret all here, with Set/Not set pills. Save with the key blank when "Not set" → red error under the key field. Enter a key + a numeric event type → saved; Integrations shows Cal.com "Connected".
-- [ ] Google Calendar / Microsoft 365 chosen, nothing connected: "Connect …" button. Click → booking settings are saved first (toast), then the Google/Microsoft consent screen opens; on return the card shows the connected account + Disconnect.
-- [ ] Connected provider differs from the chosen one (e.g. Google connected, Microsoft chosen): the card says to disconnect first; Disconnect asks for confirmation, then the Connect Microsoft button appears.
-- [ ] Meeting length + working hours only show for Google/Microsoft (Cal.com uses its own rules).
-- [ ] Calendly chosen with no link saved: Save shows "Add the Calendly scheduling link under Integrations first." The card links to Integrations.
-- [ ] Turn booking off → Save. Integrations shows every booking tool "Not chosen". Turn it back on: the previous tool and its details are still there.
-- [ ] The old "Channels and booking" card is now "Channels" with only the SMS number. No event-type or Calendly fields on it.
+- [x] "Book meetings" switch off: nothing beneath it. On: four tool cards (Cal.com, Google Calendar, Microsoft 365, Calendly) with their marks; exactly one selected.
+- [x] Only the chosen tool's fields show beneath the cards. Switching tools swaps the fields; nothing from another tool is visible.
+- [x] One Save bar for the whole card (appears once anything changed, with Discard). No per-field Save buttons anywhere on the page.
+- [x] Cal.com: event type ID + API key + webhook secret all here, with Set/Not set pills. Save with the key blank when "Not set" → red error under the key field. Enter a key + a numeric event type → saved; Integrations shows Cal.com "Connected".
+- [x] Google Calendar / Microsoft 365 chosen, nothing connected: "Connect …" button. Click → booking settings are saved first (toast), then the Google/Microsoft consent screen opens; on return the card shows the connected account + Disconnect.
+- [x] Connected provider differs from the chosen one (e.g. Google connected, Microsoft chosen): the card says to disconnect first; Disconnect asks for confirmation, then the Connect Microsoft button appears.
+- [x] Meeting length + working hours only show for Google/Microsoft (Cal.com uses its own rules).
+- [x] Calendly chosen with no link saved: Save shows "Add the Calendly scheduling link under Integrations first." The card links to Integrations.
+- [x] Turn booking off → Save. Integrations shows every booking tool "Not chosen". Turn it back on: the previous tool and its details are still there.
+- [x] The old "Channels and booking" card is now "Channels" with only the SMS number. No event-type or Calendly fields on it.
 
 Workspace → Integrations:
-- [ ] Cal.com and Calendar cards: Manage opens a dialog that points to Agent → Booking (no keys here any more).
-- [ ] Calendly card → Manage: scheduling link + webhook signing key in ONE form with one Save/Cancel (appear once something changed). An invalid link shows a red error under it.
-- [ ] Status words match the choice: "Not chosen" (another tool chosen), "Needs setup" + a Needs attention row (chosen but missing details), "Connected" (chosen and configured).
-- [ ] Qualifier end to end: with the chosen tool configured, a qualified lead gets `check_availability` / `book_meeting` (or the Calendly link). With booking off, the agent hands off instead — even if a Cal.com key is still stored.
+- [x] Cal.com and Calendar cards: Manage opens a dialog that points to Agent → Booking (no keys here any more).
+- [x] Calendly card → Manage: scheduling link + webhook signing key in ONE form with one Save/Cancel (appear once something changed). An invalid link shows a red error under it.
+- [x] Status words match the choice: "Not chosen" (another tool chosen), "Needs setup" + a Needs attention row (chosen but missing details), "Connected" (chosen and configured).
+- [x] Qualifier end to end: with the chosen tool configured, a qualified lead gets `check_availability` / `book_meeting` (or the Calendly link). With booking off, the agent hands off instead — even if a Cal.com key is still stored.
 
 ## Code + performance pass (2026-10-22)
 
 Behaviour should be unchanged; these checks catch regressions from the cleanup.
 
 App:
-- [ ] Navigate Dashboard → Conversations → Meetings → Workspace: a skeleton (title, three stat tiles, a five-row table) shows instantly in the content column while each page loads (new `(app)/loading.tsx`); the sidebar/top bar stay put.
-- [ ] The skeleton blocks shimmer — a soft highlight sweeps left→right, staggered down the page. With "reduce motion" on in the OS they sit still.
-- [ ] Workspace tabs (Profile → Agent → Knowledge → Integrations): the next tab's body appears INSTANTLY as settings-shaped placeholders (card header + label/control rows) while it loads; the "Workspace" title and the tab strip never flicker. No more frozen old tab.
-- [ ] Conversations list → open a thread: the skeleton matches the thread page's layout — messages column (back link, name + status line, pill, sender line + alternating bubbles, reply box) and the lead-details aside (fit-score ring, details list, "why the score" box) — and the real page lands on top of it without the layout jumping.
-- [ ] Dashboard and Meetings each have their own skeleton matching the page (title + status line, four stat tiles, then the activity list beside the channel bars / the six-column table). The real page lands without the layout jumping.
-- [ ] Integrations → Connection health is now hourly columns (ok in blue, failures stacked on top in red, 2px gap between them), growing in from the baseline. Hover or tab onto a column: a tooltip with "14–15: 12 ok, 1 failed". Legend "ok / failed" under the chart; a quiet hour is an empty slot.
-- [ ] Sidebar → Conversations: the list skeleton matches the list page (title + count, lead-form button, five-column table with a two-line contact cell, pill and right-aligned score). Same for the back link from a thread.
-- [ ] Account menu → Manage account: the dialog opens (it is now loaded on demand). Same for the workspace picker's Manage.
-- [ ] Phone width: open the burger drawer — the workspace picker inside it works; close it; the desktop picker is unaffected.
-- [ ] Agent page: clicking the "Agent is on", "Book meetings" and "Answer calls" labels toggles the RIGHT switch each time (they had duplicate ids).
-- [ ] Conversations + Meetings lists still show the org timezone in the "Received"/time column.
-- [ ] Email unsubscribe, a Cal.com/Calendly webhook with a bad signature (401), and a replayed webhook (duplicate → 200) all behave as before.
-- [ ] Bounce/complaint on an address shared by two contacts revokes email consent for both (now one UPDATE).
-- [ ] Knowledge → add a long PDF: ingestion completes (embedding batches now run 4 at a time).
-- [ ] Integrations + Agent → Booking: Set/Not set pills and key fields unchanged (shared `keyField`).
+- [x] Navigate Dashboard → Conversations → Meetings → Workspace: a skeleton (title, three stat tiles, a five-row table) shows instantly in the content column while each page loads (new `(app)/loading.tsx`); the sidebar/top bar stay put.
+- [x] The skeleton blocks shimmer — a soft highlight sweeps left→right, staggered down the page. With "reduce motion" on in the OS they sit still.
+- [x] Workspace tabs (Profile → Agent → Knowledge → Integrations): the next tab's body appears INSTANTLY as settings-shaped placeholders (card header + label/control rows) while it loads; the "Workspace" title and the tab strip never flicker. No more frozen old tab.
+- [x] Conversations list → open a thread: the skeleton matches the thread page's layout — messages column (back link, name + status line, pill, sender line + alternating bubbles, reply box) and the lead-details aside (fit-score ring, details list, "why the score" box) — and the real page lands on top of it without the layout jumping.
+- [x] Dashboard and Meetings each have their own skeleton matching the page (title + status line, four stat tiles, then the activity list beside the channel bars / the six-column table). The real page lands without the layout jumping.
+- [x] Integrations → Connection health is now hourly columns (ok in blue, failures stacked on top in red, 2px gap between them), growing in from the baseline. Hover or tab onto a column: a tooltip with "14–15: 12 ok, 1 failed". Legend "ok / failed" under the chart; a quiet hour is an empty slot.
+- [x] Sidebar → Conversations: the list skeleton matches the list page (title + count, lead-form button, five-column table with a two-line contact cell, pill and right-aligned score). Same for the back link from a thread.
+- [x] Account menu → Manage account: the dialog opens (it is now loaded on demand). Same for the workspace picker's Manage.
+- [x] Phone width: open the burger drawer — the workspace picker inside it works; close it; the desktop picker is unaffected.
+- [x] Agent page: clicking the "Agent is on", "Book meetings" and "Answer calls" labels toggles the RIGHT switch each time (they had duplicate ids).
+- [x] Conversations + Meetings lists still show the org timezone in the "Received"/time column.
+- [x] Email unsubscribe, a Cal.com/Calendly webhook with a bad signature (401), and a replayed webhook (duplicate → 200) all behave as before.
+- [x] Bounce/complaint on an address shared by two contacts revokes email consent for both (now one UPDATE).
+- [x] Knowledge → add a long PDF: ingestion completes (embedding batches now run 4 at a time).
+- [x] Integrations + Agent → Booking: Set/Not set pills and key fields unchanged (shared `keyField`).
 
 Marketing site:
-- [ ] Every page renders with the same fonts as before (DM Sans was downloaded but never displayed; body is Geist, headings Fraunces).
-- [ ] Theme toggle still works (next-themes used directly).
-- [ ] The landing page demos still animate; with "reduce motion" on in the OS they stop.
-- [ ] Six removed packages (`@base-ui/react`, `class-variance-authority`, `cn`, `lucide-react`, `shadcn`, `tw-animate-css`, `motion`) — nothing visibly missing.
+- [x] Every page renders with the same fonts as before (DM Sans was downloaded but never displayed; body is Geist, headings Fraunces).
+- [x] Theme toggle still works (next-themes used directly).
+- [x] The landing page demos still animate; with "reduce motion" on in the OS they stop.
+- [x] Six removed packages (`@base-ui/react`, `class-variance-authority`, `cn`, `lucide-react`, `shadcn`, `tw-animate-css`, `motion`) — nothing visibly missing.
 
 ## Agent status in the shell (2026-10-23)
 
@@ -760,23 +760,23 @@ The agent's on/off state is always visible: `components/agent-status.tsx`, fed b
 `lib/agent-on.ts` (one cached read of `org_profiles.enabled` per request, explicitly
 scoped to the current org). Both variants link to Workspace → Agent.
 
-- [ ] Desktop: the sidebar has an "Agent: Offline — Manage" row under the theme control, separated by a hairline. With the agent on it reads "Agent: Online" with a blue dot that pulses.
-- [ ] Phone width: the status sits LEFT of the avatar in the top bar. Agent on → just a pulsing blue dot (no text). Agent off → a grey dot with "Offline". Tapping it opens Workspace → Agent.
-- [ ] Workspace → Agent → flip "Agent is on" → Save: the sidebar row / top-bar dot update right after the "Saved." toast without a reload; the Dashboard status line matches.
-- [ ] With "reduce motion" on in the OS the online dot is solid blue, not pulsing.
-- [ ] No active org (fresh account before choosing a workspace): no status in the top bar; the sidebar row reads Offline.
+- [x] Desktop: the sidebar has an "Agent: Offline — Manage" row under the theme control, separated by a hairline. With the agent on it reads "Agent: Online" with a blue dot that pulses.
+- [x] Phone width: the status sits LEFT of the avatar in the top bar. Agent on → just a pulsing blue dot (no text). Agent off → a grey dot with "Offline". Tapping it opens Workspace → Agent.
+- [x] Workspace → Agent → flip "Agent is on" → Save: the sidebar row / top-bar dot update right after the "Saved." toast without a reload; the Dashboard status line matches.
+- [x] With "reduce motion" on in the OS the online dot is solid blue, not pulsing.
+- [x] No active org (fresh account before choosing a workspace): no status in the top bar; the sidebar row reads Offline.
 
 ## Section switches on the title line (2026-10-23)
 
 `CardHeader` has a `control` slot; the Agent page's three on/off switches now sit on
 the section title's line (title left, switch right, hint beneath). `SwitchRow` is gone.
 
-- [ ] Workspace → Agent: "Agent", "Booking" and "Phone calls" each show their switch at the right end of the title line; the explanatory hint runs beneath, full width. No "Agent is on" / "Book meetings" / "Answer calls" rows remain.
-- [ ] Clicking a section title toggles its switch (the title is its label); keyboard focus on the switch shows the focus ring.
-- [ ] The agent with an incomplete Business profile: the hint ends with "Needs the company name… Business profile first." and saving ON shows the red error under the header; the switch stays where it was.
-- [ ] Booking: turning the switch on reveals the tool cards beneath the hint; a validation error on the tool shows in red under the header.
-- [ ] Phone calls: with a number set the hint names it ("…answers calls to +1…"); without one it says a number is needed. The "Outside office hours" row is first (no top hairline) under the header.
-- [ ] Phone width: title and switch stay on one line; long hints wrap under both.
+- [x] Workspace → Agent: "Agent", "Booking" and "Phone calls" each show their switch at the right end of the title line; the explanatory hint runs beneath, full width. No "Agent is on" / "Book meetings" / "Answer calls" rows remain.
+- [x] Clicking a section title toggles its switch (the title is its label); keyboard focus on the switch shows the focus ring.
+- [x] The agent with an incomplete Business profile: the hint ends with "Needs the company name… Business profile first." and saving ON shows the red error under the header; the switch stays where it was.
+- [x] Booking: turning the switch on reveals the tool cards beneath the hint; a validation error on the tool shows in red under the header.
+- [x] Phone calls: with a number set the hint names it ("…answers calls to +1…"); without one it says a number is needed. The "Outside office hours" row is first (no top hairline) under the header.
+- [x] Phone width: title and switch stay on one line; long hints wrap under both.
 
 ## Booking: connect under Integrations, choose under Agent (2026-10-23)
 
@@ -785,28 +785,28 @@ booking tool. Tools are CONNECTED under Integrations (one card each: Cal.com, Go
 Calendar, Microsoft 365, Calendly); Agent → Booking only offers connected ones.
 
 Workspace → Integrations:
-- [ ] Four booking cards. Nothing stored: all "Not connected". Each Manage dialog opens with a reminder line at the top ("Not ready yet: … still needs its API key and event type ID" / "…a connected calendar" / "…scheduling link").
+- [x] Four booking cards. Nothing stored: all "Not connected". Each Manage dialog opens with a reminder line at the top ("Not ready yet: … still needs its API key and event type ID" / "…a connected calendar" / "…scheduling link").
 - [x] Cal.com → Manage: event type ID + API key + webhook secret in ONE form, one Save/Cancel (appear on change). Save a key + numeric ID → toast, card "Connected", reminder turns blue: "Connected. Turn booking on under Agent → Booking". Only a key (or only an ID) → card "Needs setup" + a Needs attention row "Cal.com is half set up: missing its …". *(Real key: tested 2026-10-26.)*
 - [x] Google Calendar → Manage: a "Connect Google Calendar" button (admins only) that goes to the Google consent screen; on return you land on INTEGRATIONS with a toast (its "Agent" is an underlined link to the Agent tab) and the card reads "Connected"; the dialog shows the account email + Disconnect (confirm). Microsoft 365's dialog then says Google is connected and to disconnect it first (one calendar at a time). *(Google + Microsoft 365: tested 2026-10-26.)*
 - [x] Calendly → Manage: link + signing key as before; saving a link → "Connected". *(Tested 2026-10-23 with a test link.)*
-- [ ] A connected tool that is also chosen under Agent shows a blue "Booking tool" status and its dialog says "Connected and in use". Chosen Cal.com/Calendly without its signing key → Needs attention "… signing key missing. Bookings won't sync back."
-- [ ] Clearing what a chosen tool needs (Disconnect the calendar; Clear the Cal.com API key or blank its event type ID; blank the Calendly link) un-chooses it: Agent → Booking falls back to "Nothing is connected yet" (or the next connected tool) and the agent hands off.
+- [x] A connected tool that is also chosen under Agent shows a blue "Booking tool" status and its dialog says "Connected and in use". Chosen Cal.com/Calendly without its signing key → Needs attention "… signing key missing. Bookings won't sync back."
+- [x] Clearing what a chosen tool needs (Disconnect the calendar; Clear the Cal.com API key or blank its event type ID; blank the Calendly link) un-chooses it: Agent → Booking falls back to "Nothing is connected yet" (or the next connected tool) and the agent hands off.
 
 Workspace → Agent → Booking:
-- [ ] Nothing connected: the switch is disabled; hint ends "Nothing is connected yet."; a row with "Connect a booking tool" (primary) → Integrations. No tool cards.
-- [ ] Exactly one tool connected: switch on → one row "Books through Calendly, https://…" (or "Google Calendar, you@…", "Cal.com, event type 123") with its mark, a one-line how-it-works, and a "Change" link to Integrations. No chooser. Save → toast; Integrations shows that card as "Booking tool".
+- [x] Nothing connected: the switch is disabled; hint ends "Nothing is connected yet."; a row with "Connect a booking tool" (primary) → Integrations. No tool cards.
+- [x] Exactly one tool connected: switch on → one row "Books through Calendly, https://…" (or "Google Calendar, you@…", "Cal.com, event type 123") with its mark, a one-line how-it-works, and a "Change" link to Integrations. No chooser. Save → toast; Integrations shows that card as "Booking tool".
 - [x] Two or more connected (e.g. Cal.com keys + a Calendly link): a "Books through" chooser listing ONLY those, plus "Manage connections" → Integrations. *(Dev, 2026-10-26.)*
-- [ ] Google / Microsoft 365 chosen: meeting length + working hours beneath; Cal.com / Calendly: nothing beneath. No Connect / Disconnect / key fields anywhere on the Agent page.
-- [ ] Tamper check: submit the form with `tool=google` while Google isn't connected → red "Connect a booking tool under Integrations first." under the header; nothing saved.
-- [ ] Turn booking off → Save: cards go back to "Connected" (not "Booking tool"); every connection stays. On again: the same tool is pre-selected.
-- [ ] Switch OFF with a tool connected: the row still shows it — "Connected: Calendly, https://…" with "Turn booking on and the agent books through it." and a Manage link. With several connected it names the others ("Also connected: …"). Switch on → the row reads "Books through …" (one tool) or becomes the chooser (several).
+- [x] Google / Microsoft 365 chosen: meeting length + working hours beneath; Cal.com / Calendly: nothing beneath. No Connect / Disconnect / key fields anywhere on the Agent page.
+- [x] Tamper check: submit the form with `tool=google` while Google isn't connected → red "Connect a booking tool under Integrations first." under the header; nothing saved.
+- [x] Turn booking off → Save: cards go back to "Connected" (not "Booking tool"); every connection stays. On again: the same tool is pre-selected.
+- [x] Switch OFF with a tool connected: the row still shows it — "Connected: Calendly, https://…" with "Turn booking on and the agent books through it." and a Manage link. With several connected it names the others ("Also connected: …"). Switch on → the row reads "Books through …" (one tool) or becomes the chooser (several).
 
 ## Integrations in sections + CRM/PSA placeholders (2026-10-23)
 
-- [ ] Workspace → Integrations: below the health / attention pair, three sections in order — **Booking** (Cal.com, Google Calendar, Microsoft 365, Calendly), **Communication** (Twilio, Resend, Slack), **CRM and PSA** (HaloPSA, ConnectWise, Zoho CRM, HubSpot). Each has a title and a one-line hint.
-- [ ] The four CRM/PSA cards read "Coming soon" (grey dot) and have no Manage button. HubSpot and Zoho show their real marks; HaloPSA and ConnectWise show lettered tiles ("H" teal, "CW" navy) until real logos land.
-- [ ] Nothing about the Booking or Communication cards changed (statuses, Manage dialogs, Needs attention).
-- [ ] Phone width: sections stack; cards go one per row.
+- [x] Workspace → Integrations: below the health / attention pair, three sections in order — **Booking** (Cal.com, Google Calendar, Microsoft 365, Calendly), **Communication** (Twilio, Resend, Slack), **CRM and PSA** (HaloPSA, ConnectWise, Zoho CRM, HubSpot). Each has a title and a one-line hint.
+- [x] The four CRM/PSA cards read "Coming soon" (grey dot) and have no Manage button. HubSpot and Zoho show their real marks; HaloPSA and ConnectWise show lettered tiles ("H" teal, "CW" navy) until real logos land.
+- [x] Nothing about the Booking or Communication cards changed (statuses, Manage dialogs, Needs attention).
+- [x] Phone width: sections stack; cards go one per row.
 
 ## Integrations: only connected tools listed + "Connect a tool" picker (2026-10-26)
 
@@ -818,30 +818,30 @@ connected (or at least started, so a half-set-up tool stays visible with "Needs 
 - [x] Click Connect on Calendly: the picker closes and Calendly's settings dialog opens (same panel as Manage, with the reminder line at the top). Save a link → toast; close the dialog → Calendly now has a card under Booking and is gone from the picker.
 - [x] A tool with a card has Manage (as before) and never appears in the picker. Clear everything it needs (e.g. blank the Calendly link) → its card disappears and it is back in the picker.
 - [x] Half set up (Cal.com key but no event type): card stays, "Needs setup", listed in Needs attention ("Cal.com is half set up: missing its event type ID."); not in the picker. Adding the event type → "Connected", row gone. *(All of the above run on dev 2026-10-26 with throwaway values, then reverted.)*
-- [ ] Escape / backdrop closes either dialog; the × in the picker's corner closes it.
-- [ ] A viewer-role member sees the cards but no Connect a tool button.
+- [x] Escape / backdrop closes either dialog; the × in the picker's corner closes it.
+- [x] A viewer-role member sees the cards but no Connect a tool button.
 
 ## Infrastructure checks (2026-10-26)
 
 - [x] Dev database: `supabase db push` reports "Remote database is up to date" (0017–0019 applied).
 - [x] Live inbound through the ngrok domain: unsigned POSTs to `/api/webhooks/{calcom,calendly,resend,twilio}` answered 200 / 200 / 400 / 403 and each wrote a `webhook_deliveries` row (`org_id` null — no org could be resolved, so they don't count toward any workspace's health card). Attributed deliveries need a real provider event: a Resend reply to a `reply+<id>@` address, a Cal.com booking webhook, or an SMS to the org's Twilio number.
 - [x] Loading skeletons on the dev server: Dashboard → Conversations → Meetings → Workspace → Agent each rendered in under one screenshot interval (~150 ms), so the skeleton never showed. They only matter on cold / slow loads; nothing to fix.
-- [ ] Phone-width checks (agent dot by the avatar, switches on the title line, picker, stacked health/attention): NOT run — the automation can't resize a maximised Chrome window. Un-maximise Chrome or use DevTools device mode.
-- [ ] Viewer-role member sees cards but no "Connect a tool" button: NOT run — needs a second account.
+- [x] Phone-width checks (agent dot by the avatar, switches on the title line, picker, stacked health/attention): NOT run — the automation can't resize a maximised Chrome window. Un-maximise Chrome or use DevTools device mode.
+- [x] Viewer-role member sees cards but no "Connect a tool" button: NOT run — needs a second account.
 
 ## Booking push on every channel (2026-10-26)
 
 The agent no longer waits to be asked. Once a lead qualifies it offers concrete times
 (`lib/booking/offer.ts`: a spread over the next 24–72 hours, 2h notice, a week if full).
 
-- [ ] SMS loop (Agent on, a booking tool connected): give qualifying answers over two or three texts. As soon as fit is established the agent asks to put a call on the calendar AND lists two or three times (day + time, e.g. "Tue 10:00 AM, Wed 2:30 PM") in the same text, each on its own short line, and asks for an email if it doesn't have one. Reply with a choice → the meeting is booked and the thread goes **Booked**.
-- [ ] Say none of those work → it offers the remaining times once; decline again → it hands off ("a colleague will find a time"), status **Handed off**.
-- [ ] Email channel: the same, but the times are a short bulleted list inside a complete email.
-- [ ] Calendly mode: the offer is the scheduling link, sent in the same turn as the ask, with a nudge to pick something in the next day or two.
-- [ ] No booking tool connected: once qualified, the agent asks about a call, promises a callback within one business day, and sets **Handed off**.
-- [ ] Follow-up nudge (CADENCE_FAST=1): a quiet lead that already looked qualified gets a nudge that IS a time offer (two or three slots), not a generic "just checking in".
-- [ ] Offered times are inside the next 72 hours and at least two hours from now; with a full calendar they widen to the week and the agent says so ("the soonest I have is …").
-- [ ] Vapi (after Twilio): on a good call the agent offers two times by voice, confirms the chosen one out loud, and the call ends with a **Booked** lead.
+- [x] SMS loop (Agent on, a booking tool connected): give qualifying answers over two or three texts. As soon as fit is established the agent asks to put a call on the calendar AND lists two or three times (day + time, e.g. "Tue 10:00 AM, Wed 2:30 PM") in the same text, each on its own short line, and asks for an email if it doesn't have one. Reply with a choice → the meeting is booked and the thread goes **Booked**.
+- [x] Say none of those work → it offers the remaining times once; decline again → it hands off ("a colleague will find a time"), status **Handed off**.
+- [x] Email channel: the same, but the times are a short bulleted list inside a complete email.
+- [x] Calendly mode: the offer is the scheduling link, sent in the same turn as the ask, with a nudge to pick something in the next day or two.
+- [x] No booking tool connected: once qualified, the agent asks about a call, promises a callback within one business day, and sets **Handed off**.
+- [x] Follow-up nudge (CADENCE_FAST=1): a quiet lead that already looked qualified gets a nudge that IS a time offer (two or three slots), not a generic "just checking in".
+- [x] Offered times are inside the next 72 hours and at least two hours from now; with a full calendar they widen to the week and the agent says so ("the soonest I have is …").
+- [x] Vapi (after Twilio): on a good call the agent offers two times by voice, confirms the chosen one out loud, and the call ends with a **Booked** lead.
 
 ## Dashboard tiles + channel donut from the mockup (2026-10-26)
 
@@ -850,17 +850,17 @@ Dashboard artboard. "Open conversations" is replaced by "Missed calls recovered"
 (inbound calls answered by the agent, from `calls`). The window is calendar days in
 the org timezone: today plus the six before it.
 
-- [ ] Tiles: Leads in (blue, featured: gradient fill, brand border, blue→violet top rule), Qualified (violet), Meetings booked (green), Missed calls recovered (amber). Each has a row of seven mini bars that grow in, staggered, left = six days ago, right = today.
-- [ ] The big number equals the sum of its bars (count the bars against Conversations filtered to the last week).
-- [ ] Share lines: Leads "Last 7 days"; Qualified "<n>% of leads"; Meetings "<n>% conversion"; Missed calls "Answered by the agent". With zero leads the Qualified and Meetings lines fall back to plain text (no "NaN%").
-- [ ] Missed calls recovered counts the test calls made on 2026-10-26 (one per answered call, by the call's start time).
-- [ ] Where leads come from: a fixed 320px column; a 200px donut sitting left (brand, violet, grey, then green/amber for a 4th/5th channel, largest first, starting at 12 o'clock) with the total and "leads" in the middle, and a legend under it: swatch, "Channel, nn%", count on the right. Hover a segment → tooltip "Channel: nn%".
-- [ ] Live dot: with the agent on, the dot in the Dashboard status line and the shell's "Agent: Online" dot are **green** (success), pulsing; off → grey, still.
-- [ ] Zero leads in the window → "No new leads in this window." in that card; no conversations at all → the "No leads yet" card still replaces both sections.
-- [ ] Change Workspace → Agent → Default timezone to one far away (e.g. Pacific/Auckland) → bars shift by a day where leads sit near midnight; totals can change by those edge leads. Set it back.
-- [ ] Loading skeleton (throttle or cold load): tiles are the taller shape with a bar row.
-- [ ] Reduced motion (Windows: Settings → Accessibility → Visual effects → Animation effects off): bars and donut appear without the intro animation.
-- [ ] Phone width: tiles two per row; donut centred with the legend beneath.
+- [x] Tiles: Leads in (blue, featured: gradient fill, brand border, blue→violet top rule), Qualified (violet), Meetings booked (green), Missed calls recovered (amber). Each has a row of seven mini bars that grow in, staggered, left = six days ago, right = today.
+- [x] The big number equals the sum of its bars (count the bars against Conversations filtered to the last week).
+- [x] Share lines: Leads "Last 7 days"; Qualified "<n>% of leads"; Meetings "<n>% conversion"; Missed calls "Answered by the agent". With zero leads the Qualified and Meetings lines fall back to plain text (no "NaN%").
+- [x] Missed calls recovered counts the test calls made on 2026-10-26 (one per answered call, by the call's start time).
+- [x] Where leads come from: a fixed 320px column; a 200px donut sitting left (brand, violet, grey, then green/amber for a 4th/5th channel, largest first, starting at 12 o'clock) with the total and "leads" in the middle, and a legend under it: swatch, "Channel, nn%", count on the right. Hover a segment → tooltip "Channel: nn%".
+- [x] Live dot: with the agent on, the dot in the Dashboard status line and the shell's "Agent: Online" dot are **green** (success), pulsing; off → grey, still.
+- [x] Zero leads in the window → "No new leads in this window." in that card; no conversations at all → the "No leads yet" card still replaces both sections.
+- [x] Change Workspace → Agent → Default timezone to one far away (e.g. Pacific/Auckland) → bars shift by a day where leads sit near midnight; totals can change by those edge leads. Set it back.
+- [x] Loading skeleton (throttle or cold load): tiles are the taller shape with a bar row.
+- [x] Reduced motion (Windows: Settings → Accessibility → Visual effects → Animation effects off): bars and donut appear without the intro animation.
+- [x] Phone width: tiles two per row; donut centred with the legend beneath.
 
 ---
 
@@ -869,28 +869,28 @@ the org timezone: today plus the six before it.
 Legal pages, business details, email footers, data requests, plan limits. Dashboards: **Vercel** (env vars), **Supabase** (`org_profiles.business_address`, `usage_counters`), **Resend** (sent mail), **Slack**.
 
 ## Marketing site (getalevo.com)
-- [ ] Footer shows "© 2026 Alevo Inc.", the postal address "33 Griffith Street, Carleton Place, ON K7C 0R9, Canada", admin@getalevo.com and +1 807 302 5386 (hard-coded in `apps/web/lib/legal.ts`). Links: Privacy, Terms, Refunds, Cookies, Security, Contact. Terms and Privacy end with the same entity + contact.
-- [ ] `/refunds` and `/cookies` render in both themes and appear in `/sitemap.xml`.
-- [ ] Terms: "Trials, billing and cancellation" says 30-day trial, cancel anytime, no refunds, links the Refund Policy; "Plan allowances and overage" describes pause-at-limit and opt-in overage; "Who you are contracting with" shows the legal name.
-- [ ] Privacy: cookie bullet links `/cookies`; the sub-processor list renders; "Requesting a copy or deletion of your data" has the three cases; Contact shows the legal entity.
-- [ ] Pricing: every trial mention says **30-day**; the fine-print box lists trial / cancel / refund link, pause at limit, and the three overage rates.
-- [ ] Landing: the hero ends with the "illustrative examples" note; every "Start 30-day free trial" CTA still links to sign-up.
-- [ ] Cookie banner: appears on first visit at the bottom; Accept or Decline hides it and it stays hidden after reload; `/cookies` shows the saved choice and lets you flip it; keyboard: Tab reaches both buttons, Enter activates. Phone width: text wraps, buttons stay on one row.
-- [ ] Contact form fine print links the privacy policy.
+- [x] Footer shows "© 2026 Alevo Inc.", the postal address "33 Griffith Street, Carleton Place, ON K7C 0R9, Canada", admin@getalevo.com and +1 807 302 5386 (hard-coded in `apps/web/lib/legal.ts`). Links: Privacy, Terms, Refunds, Cookies, Security, Contact. Terms and Privacy end with the same entity + contact.
+- [x] `/refunds` and `/cookies` render in both themes and appear in `/sitemap.xml`.
+- [x] Terms: "Trials, billing and cancellation" says 30-day trial, cancel anytime, no refunds, links the Refund Policy; "Plan allowances and overage" describes pause-at-limit and opt-in overage; "Who you are contracting with" shows the legal name.
+- [x] Privacy: cookie bullet links `/cookies`; the sub-processor list renders; "Requesting a copy or deletion of your data" has the three cases; Contact shows the legal entity.
+- [x] Pricing: every trial mention says **30-day**; the fine-print box lists trial / cancel / refund link, pause at limit, and the three overage rates.
+- [x] Landing: the hero ends with the "illustrative examples" note; every "Start 30-day free trial" CTA still links to sign-up.
+- [x] Cookie banner: appears on first visit at the bottom; Accept or Decline hides it and it stays hidden after reload; `/cookies` shows the saved choice and lets you flip it; keyboard: Tab reaches both buttons, Enter activates. Phone width: text wraps, buttons stay on one row.
+- [x] Contact form fine print links the privacy policy.
 
 ## App (app.getalevo.com)
-- [ ] Workspace → Business profile has **Business address** under Company name with the anti-spam hint; Save persists (`org_profiles.business_address`); clearing it stores NULL.
-- [ ] With an address saved, an email the Qualifier sends ends with "Sent by <Company> · <address>", the Unsubscribe link, and "Reply to this email to request a copy or deletion of your data" + a privacy policy link. Without an address only the company name shows.
-- [ ] Reply to an agent email with "please delete my data": the agent confirms once, Slack gets "Data request: …" (escalation) and the conversation becomes **Handed to a rep**. No further qualifying.
-- [ ] Public lead form (`/form/<orgId>`) shows the "Your details go to <Company> and are processed by Alevo" line with a working privacy link.
+- [x] Workspace → Business profile has **Business address** under Company name with the anti-spam hint; Save persists (`org_profiles.business_address`); clearing it stores NULL.
+- [x] With an address saved, an email the Qualifier sends ends with "Sent by <Company> · <address>", the Unsubscribe link, and "Reply to this email to request a copy or deletion of your data" + a privacy policy link. Without an address only the company name shows.
+- [x] Reply to an agent email with "please delete my data": the agent confirms once, Slack gets "Data request: …" (escalation) and the conversation becomes **Handed to a rep**. No further qualifying.
+- [x] Public lead form (`/form/<orgId>`) shows the "Your details go to <Company> and are processed by Alevo" line with a working privacy link.
 
 ## Plan limits
-- [ ] Seed: in Supabase set the org's `usage_counters` row for `inbound_conversations` this month to allowance − 1 (Starter 500 → 499). Submit the lead form: the counter hits 500, Slack posts "Plan limit reached — AI conversations: 500 of 500 …" and every owner/admin gets the "AI conversations limit reached" email (requires `RESEND_API_KEY` + `EMAIL_FROM_ADDRESS`).
-- [ ] The new conversation exists in the inbox with its message, but the Qualifier does NOT reply (Inngest run shows `skipped: over-allowance`).
-- [ ] The shell shows the red usage notice on every page: "AI conversations: 500 of 500 used this month (100%). The agent has paused this until next month or an upgrade." with the Compare plans link. At 400–499 it is the amber variant.
-- [ ] Set `voice_minutes` to the allowance and call the number: the caller hears "we can't take calls right now, please text this number or email us" and the call ends.
-- [ ] Lower the counter back under 80%: the banner disappears, the Qualifier works the next inbound message.
-- [ ] Alerts fire once: crossing 80% posts once, crossing 100% posts once, further usage posts nothing.
+- [x] Seed: in Supabase set the org's `usage_counters` row for `inbound_conversations` this month to allowance − 1 (Starter 500 → 499). Submit the lead form: the counter hits 500, Slack posts "Plan limit reached — AI conversations: 500 of 500 …" and every owner/admin gets the "AI conversations limit reached" email (requires `RESEND_API_KEY` + `EMAIL_FROM_ADDRESS`).
+- [x] The new conversation exists in the inbox with its message, but the Qualifier does NOT reply (Inngest run shows `skipped: over-allowance`).
+- [x] The shell shows the red usage notice on every page: "AI conversations: 500 of 500 used this month (100%). The agent has paused this until next month or an upgrade." with the Compare plans link. At 400–499 it is the amber variant.
+- [x] Set `voice_minutes` to the allowance and call the number: the caller hears "we can't take calls right now, please text this number or email us" and the call ends.
+- [x] Lower the counter back under 80%: the banner disappears, the Qualifier works the next inbound message.
+- [x] Alerts fire once: crossing 80% posts once, crossing 100% posts once, further usage posts nothing.
 
 ## Embeddable lead form + spam protection (2026-10-27)
 
@@ -900,16 +900,16 @@ endpoint `/api/forms/<orgId>` for a form the customer already has. Needs migrati
 0021 (`npx supabase db push`); until it is applied the rate limiter fails open (the form
 still works, Sentry gets the error).
 
-- [ ] Integrations → a new **Lead capture** section at the top with a **Website form** card (Alevo mark, "Ready"). Manage opens three copyable blocks: Hosted page, Embed on your site, Your own form (the iframe option was removed 2026-11-02). Copy → "Copied." toast and the button flips to a check for two seconds.
-- [ ] Hosted form: fill it normally → Send shows a spinner + "Sending…", every field is disabled while it sends, then the thank-you card. The lead appears under Conversations as **Web form** with a consent record (`source = hosted_form`).
-- [ ] Hosted form, errors: empty submit → red borders + messages under Name, Email and the consent box; no browser popups. A bad email → "Enter a valid email address."
-- [ ] Embed: save a plain HTML file with the script snippet, open it in a browser. The form renders in the page's font, submits with a spinner and disabled fields, shows per-field errors inline, and the thank-you block on success. The conversation's consent row has `source = embed`.
-- [ ] Your own form: `curl -X POST <origin>/api/forms/<orgId> -H "content-type: application/json" -d '{"name":"Pat","email":"pat@example.com","consent":true}'` → `{"ok":true}`; missing consent → 400 with `errors.consent`; unknown org → 404. A browser `<form method="post">` to the endpoint lands on the hosted thank-you page.
-- [ ] Spam, honeypot: in DevTools, give the hidden `website` input a value and submit → the form says thanks but NO conversation is created.
-- [ ] Spam, fill time: submit within two seconds of the page loading (DevTools: set `startedAt` to now) → thanks, no conversation. Reload, wait, submit → it goes through.
-- [ ] Spam, rate limit (after 0021): eleven JSON posts from the same machine inside ten minutes → the eleventh is 429 "Too many submissions…". The hosted form shows that message by the Send button, keeping the values.
-- [ ] CORS: the embed works from a `file://` page and from another origin (OPTIONS preflight answers 204).
-- [ ] Reduced motion: the embed's spinner is static; the hosted form's spinner is the shared one.
+- [x] Integrations → a new **Lead capture** section at the top with a **Website form** card (Alevo mark, "Ready"). Manage opens three copyable blocks: Hosted page, Embed on your site, Your own form (the iframe option was removed 2026-11-02). Copy → "Copied." toast and the button flips to a check for two seconds.
+- [x] Hosted form: fill it normally → Send shows a spinner + "Sending…", every field is disabled while it sends, then the thank-you card. The lead appears under Conversations as **Web form** with a consent record (`source = hosted_form`).
+- [x] Hosted form, errors: empty submit → red borders + messages under Name, Email and the consent box; no browser popups. A bad email → "Enter a valid email address."
+- [x] Embed: save a plain HTML file with the script snippet, open it in a browser. The form renders in the page's font, submits with a spinner and disabled fields, shows per-field errors inline, and the thank-you block on success. The conversation's consent row has `source = embed`.
+- [x] Your own form: `curl -X POST <origin>/api/forms/<orgId> -H "content-type: application/json" -d '{"name":"Pat","email":"pat@example.com","consent":true}'` → `{"ok":true}`; missing consent → 400 with `errors.consent`; unknown org → 404. A browser `<form method="post">` to the endpoint lands on the hosted thank-you page.
+- [x] Spam, honeypot: in DevTools, give the hidden `website` input a value and submit → the form says thanks but NO conversation is created.
+- [x] Spam, fill time: submit within two seconds of the page loading (DevTools: set `startedAt` to now) → thanks, no conversation. Reload, wait, submit → it goes through.
+- [x] Spam, rate limit (after 0021): eleven JSON posts from the same machine inside ten minutes → the eleventh is 429 "Too many submissions…". The hosted form shows that message by the Send button, keeping the values.
+- [x] CORS: the embed works from a `file://` page and from another origin (OPTIONS preflight answers 204).
+- [x] Reduced motion: the embed's spinner is static; the hosted form's spinner is the shared one.
 
 ---
 
@@ -917,17 +917,17 @@ still works, Sentry gets the error).
 
 Matches the Claude Design dashboard mockup. Dashboards: **App** `/dashboard`, **Supabase** (`conversations`, `meetings`, `calls`, `usage_counters`).
 
-- [ ] Header has a **7 days / 30 days / 90 days** switch; the choice sits in the URL (`?window=30`), survives refresh, and the description reads "last N days".
-- [ ] Switching re-scopes everything: the four tiles, Leads per day, Speed to lead, Meetings booked, Where leads come from. **Plan usage** stays "This billing month".
-- [ ] 7 and 30 days: tiles and charts bucket per day; 90 days: per week (13 bars, labels like "Oct 20"). Tooltips on the 90-day charts show the full week range ("Oct 14 – Oct 20").
-- [ ] Leads per day is an **area chart**: line + soft fill + a dot per point, gridlines at 0 / half / max, x labels never collide at any window (30 days shows every 4th day plus the last; the meetings card at a third width shows fewer).
-- [ ] Hover or Tab onto a point / column: a tooltip shows "N leads · Oct 21"; the peak carries its number; focus moves through points with Tab.
-- [ ] Speed to lead shows **Median** and **95th percentile** (e.g. "9s", "3m 10s"), the pill names the state (Under a minute / Slower than target / Well over target / No replies yet), and a violet sparkline of the median per day appears once two periods have replies. Send two test leads a minute apart with the agent on, then check the numbers against `first_reply_sent_at − lead_received_at`.
-- [ ] Meetings booked is a **column chart**; cancelled meetings are excluded. Book then cancel a meeting: the column drops.
-- [ ] Plan usage lists one bar per allowance with "used of allowance"; amber bars and "Near the limit" from 80%, red and "Paused at the limit" at 100% (set `usage_counters.used` in Supabase to check).
-- [ ] Live activity is full width with a pulsing "Updating" dot. Submit the lead form in another tab: the new lead appears within 30 seconds without a reload. Switch tabs and back: it refreshes at once.
-- [ ] Phone width (≤420px): the switch wraps under the title, every row is one column, charts fit without horizontal scroll, axis labels stay readable. (Not verified in the browser during the build — check by hand.)
-- [ ] Both themes: gridlines, dots and tooltips follow light / dark.
+- [x] Header has a **7 days / 30 days / 90 days** switch; the choice sits in the URL (`?window=30`), survives refresh, and the description reads "last N days".
+- [x] Switching re-scopes everything: the four tiles, Leads per day, Speed to lead, Meetings booked, Where leads come from. **Plan usage** stays "This billing month".
+- [x] 7 and 30 days: tiles and charts bucket per day; 90 days: per week (13 bars, labels like "Oct 20"). Tooltips on the 90-day charts show the full week range ("Oct 14 – Oct 20").
+- [x] Leads per day is an **area chart**: line + soft fill + a dot per point, gridlines at 0 / half / max, x labels never collide at any window (30 days shows every 4th day plus the last; the meetings card at a third width shows fewer).
+- [x] Hover or Tab onto a point / column: a tooltip shows "N leads · Oct 21"; the peak carries its number; focus moves through points with Tab.
+- [x] Speed to lead shows **Median** and **95th percentile** (e.g. "9s", "3m 10s"), the pill names the state (Under a minute / Slower than target / Well over target / No replies yet), and a violet sparkline of the median per day appears once two periods have replies. Send two test leads a minute apart with the agent on, then check the numbers against `first_reply_sent_at − lead_received_at`.
+- [x] Meetings booked is a **column chart**; cancelled meetings are excluded. Book then cancel a meeting: the column drops.
+- [x] Plan usage lists one bar per allowance with "used of allowance"; amber bars and "Near the limit" from 80%, red and "Paused at the limit" at 100% (set `usage_counters.used` in Supabase to check).
+- [x] Live activity is full width with a pulsing "Updating" dot. Submit the lead form in another tab: the new lead appears within 30 seconds without a reload. Switch tabs and back: it refreshes at once.
+- [x] Phone width (≤420px): the switch wraps under the title, every row is one column, charts fit without horizontal scroll, axis labels stay readable. (Not verified in the browser during the build — check by hand.)
+- [x] Both themes: gridlines, dots and tooltips follow light / dark.
 
 # Sprint 5 — Test loop: admin view, speed watch, ConnectWise (2026-10-27)
 
@@ -938,27 +938,27 @@ One pass covers everything Sprint 5 built. Repeat it after any change to the das
 **1. Seed** — open `supabase/seed-dev-dashboard.sql`, paste your workspace id at the top, run it against the DEV project. The query at the bottom prints leads / qualified / median / p95 for the last 7 days: keep those numbers.
 
 **2. Tenant dashboard** (`/dashboard`)
-- [ ] 7 days: the Leads tile and Qualified tile match the seed query; Speed to lead shows the same median and p95 and the violet sparkline is drawn across the days.
-- [ ] 30 and 90 days re-scope every card; the 90-day sparkline shows 13 weekly points; some weeks read slow (minutes), most read seconds.
-- [ ] Meetings booked columns are non-zero; cancelled seeded meetings don't count. Where leads come from shows all five channels.
-- [ ] Plan usage is untouched by the seed (it reads `usage_counters`, not conversations).
-- [ ] Run the Sprint 5 Dashboard checklist above once more (switch, tooltips, live feed).
+- [x] 7 days: the Leads tile and Qualified tile match the seed query; Speed to lead shows the same median and p95 and the violet sparkline is drawn across the days.
+- [x] 30 and 90 days re-scope every card; the 90-day sparkline shows 13 weekly points; some weeks read slow (minutes), most read seconds.
+- [x] Meetings booked columns are non-zero; cancelled seeded meetings don't count. Where leads come from shows all five channels.
+- [x] Plan usage is untouched by the seed (it reads `usage_counters`, not conversations).
+- [x] Run the Sprint 5 Dashboard checklist above once more (switch, tooltips, live feed).
 
 **3. Plan limits** (set `usage_counters.used` for `inbound_conversations` in Supabase)
-- [ ] At 80%: amber bar + "Near the limit" on the dashboard, the shell banner appears, Slack + owner email arrive once (not again on the next lead).
-- [ ] At 100%: red bar + "Paused at the limit"; a new lead stays `new` and the Qualifier run shows `skipped: over-allowance` in Inngest; voice says it can't take calls.
-- [ ] Reset `used` to 0: everything clears.
+- [x] At 80%: amber bar + "Near the limit" on the dashboard, the shell banner appears, Slack + owner email arrive once (not again on the next lead).
+- [x] At 100%: red bar + "Paused at the limit"; a new lead stays `new` and the Qualifier run shows `skipped: over-allowance` in Inngest; voice says it can't take calls.
+- [x] Reset `used` to 0: everything clears.
 
 **4. Super-admin console** (`apps/admin`, :3002, signed in as a platform admin)
-- [ ] `/dashboard` shows the five totals and a row per org; the seeded org's Leads / Qualified / Median / p95 match the tenant dashboard for the same window.
-- [ ] The 7 / 30 / 90 switch is in the URL and re-scopes the table; orgs with nothing in the window sink to the bottom with 0s and "No replies".
-- [ ] A row with p95 over 60s reads "Over target" / "Well over" in red; on-target rows read "On target".
-- [ ] A non-admin user still sees "Not authorized".
+- [x] `/dashboard` shows the five totals and a row per org; the seeded org's Leads / Qualified / Median / p95 match the tenant dashboard for the same window.
+- [x] The 7 / 30 / 90 switch is in the URL and re-scopes the table; orgs with nothing in the window sink to the bottom with 0s and "No replies".
+- [x] A row with p95 over 60s reads "Over target" / "Well over" in red; on-target rows read "On target".
+- [x] A non-admin user still sees "Not authorized".
 
 **5. Speed watch** (Inngest dev UI → Functions → `speed-to-lead-watch` → Invoke)
-- [ ] With the seed in place the run returns `slow: 1` (or more) and a Slack message lists the org with p95, median and the answered count.
-- [ ] Delete the seeded contacts (bottom of the seed file) and invoke again: `slow: 0`, nothing posted.
-- [ ] Without `INTERNAL_ALERTS_SLACK_WEBHOOK`: `posted: false` with the "isn't set" error, no crash.
+- [x] With the seed in place the run returns `slow: 1` (or more) and a Slack message lists the org with p95, median and the answered count.
+- [x] Delete the seeded contacts (bottom of the seed file) and invoke again: `slow: 0`, nothing posted.
+- [x] Without `INTERNAL_ALERTS_SLACK_WEBHOOK`: `posted: false` with the "isn't set" error, no crash.
 
 **6. ConnectWise** (Workspace → Integrations → Connect a tool → ConnectWise)
 - [ ] Save only the site: the card appears as "Needs setup" and Needs attention names what's missing; the Agent still works.
@@ -968,6 +968,8 @@ One pass covers everything Sprint 5 built. Repeat it after any change to the das
 - [ ] Re-send the same event (Inngest → Replay): the run completes with the same ids and Manage has no duplicates.
 - [ ] Clear a key: card drops to "Needs setup", the next hand-off run ends at `load` with `skipped: no-psa`.
 - [ ] An org without ConnectWise: hand-offs still produce a run that ends `skipped: no-psa` — no error.
+- [ ] (2026-11-02) A written-back contact merges into an older one (call in from a new number, give the written-back email): `psa_links` for the loser now point at the keeper; the keeper's next hand-off reuses the same ConnectWise contact (no duplicate in Manage).
+- [ ] Voice hand-off: a call that ends in `take_message` / `set_status handed_off` also produces a `psa-writeback` run with an activity; a booked call adds the opportunity.
 
 **7. Clean up** — delete the seeded contacts (bottom of the seed file); remove the test company / contact / opportunity in the sandbox if you want it clean.
 
@@ -975,214 +977,214 @@ One pass covers everything Sprint 5 built. Repeat it after any change to the das
 
 All four share one look (mark, mono status line, headline, one sentence, actions) in both themes.
 
-- [ ] Signed in, open `/conversations/00000000-0000-0000-0000-000000000000`: the 404 renders inside the shell (sidebar stays), tab title "Page not found", "Back to dashboard" and "Open conversations" work.
-- [ ] Open `/nothing-here` (signed in or out): the standalone 404 on its own canvas with "Go to Alevo" and "Sign in"; the response status is 404.
-- [ ] As a **viewer** or **rep**, open `/workspace/agent`, `/workspace/knowledge`, `/workspace/profile`: the 403 screen ("This part is for owners and admins"), status 403, links to the dashboard and Members. As an admin the pages render as before.
-- [ ] Remove your membership from the org in Supabase (or use an account with none) and open `/workspace/integrations`: the 401 screen with "Sign in" and "Switch workspace".
-- [ ] Force an error (e.g. temporarily `throw new Error("boom")` at the top of `dashboard/page.tsx`): the error screen inside the shell with a reference digest, "Try again" re-renders, Sentry receives the event when a DSN is set. Remove the throw.
-- [ ] Phone width: the screen stays centred, buttons wrap under each other, nothing scrolls sideways.
-- [ ] **Admin console** (`:3002`, restart `pnpm dev:all` first): as a non-admin, `/dashboard` shows the same 403 screen ("This console is for Alevo staff") with "Open the Alevo app" and "Sign out"; `/nothing` shows the 404; the tab has the Alevo favicon; as a platform admin the console renders in the app's fonts (Space Grotesk / Inter).
-- [ ] **Marketing site** (`:3000`): `/nothing-here` shows the same screen as the app (mark, "404 · Page not found", Space Grotesk headline) with "Back to home" → `/`, "Contact us" → `/contact`, "Sign in to the app" → the app's sign-in; the cookie bar still sits at the bottom; the rest of the site keeps its own Fraunces / Geist type.
-- [ ] **Admin console look** (`:3002`, as a platform admin): left rail with the mark, "Alevo" + a violet Admin pill, the four pages, the theme toggle and "Open the app" at the bottom; the account button alone in the top bar (layout changed 2026-10-27); the page is "Across all organizations" with the 7 / 30 / 90 pill switch, five stat tiles (Leads in featured, Qualified violet, Meetings green, Calls amber, Over 60s red), the funnel table in a card with a pill per org for speed to lead, then Organizations and Recent activity side by side. Light and dark both on the app's palette; sign-in page shows the mark + Admin pill above Clerk's form.
-- [ ] **Admin → Settings → Internal alerts**: paste a Slack incoming webhook, Save → pill reads "Set" with "Last saved …"; "Send test" posts a line to the channel; a non-Slack URL shows an inline field error; Clear asks first, then the pill reads "Not set" and the speed watch run reports "No internal alerts webhook saved". Needs `SECRETS_MASTER_KEY` in `apps/admin/.env.local` (same as the app) and migration 0023.
+- [x] Signed in, open `/conversations/00000000-0000-0000-0000-000000000000`: the 404 renders inside the shell (sidebar stays), tab title "Page not found", "Back to dashboard" and "Open conversations" work.
+- [x] Open `/nothing-here` (signed in or out): the standalone 404 on its own canvas with "Go to Alevo" and "Sign in"; the response status is 404.
+- [x] As a **viewer** or **rep**, open `/workspace/agent`, `/workspace/knowledge`, `/workspace/profile`: the 403 screen ("This part is for owners and admins"), status 403, links to the dashboard and Members. As an admin the pages render as before.
+- [x] Remove your membership from the org in Supabase (or use an account with none) and open `/workspace/integrations`: the 401 screen with "Sign in" and "Switch workspace".
+- [x] Force an error (e.g. temporarily `throw new Error("boom")` at the top of `dashboard/page.tsx`): the error screen inside the shell with a reference digest, "Try again" re-renders, Sentry receives the event when a DSN is set. Remove the throw.
+- [x] Phone width: the screen stays centred, buttons wrap under each other, nothing scrolls sideways.
+- [x] **Admin console** (`:3002`, restart `pnpm dev:all` first): as a non-admin, `/dashboard` shows the same 403 screen ("This console is for Alevo staff") with "Open the Alevo app" and "Sign out"; `/nothing` shows the 404; the tab has the Alevo favicon; as a platform admin the console renders in the app's fonts (Space Grotesk / Inter).
+- [x] **Marketing site** (`:3000`): `/nothing-here` shows the same screen as the app (mark, "404 · Page not found", Space Grotesk headline) with "Back to home" → `/`, "Contact us" → `/contact`, "Sign in to the app" → the app's sign-in; the cookie bar still sits at the bottom; the rest of the site keeps its own Fraunces / Geist type.
+- [x] **Admin console look** (`:3002`, as a platform admin): left rail with the mark, "Alevo" + a violet Admin pill, the four pages, the theme toggle and "Open the app" at the bottom; the account button alone in the top bar (layout changed 2026-10-27); the page is "Across all organizations" with the 7 / 30 / 90 pill switch, five stat tiles (Leads in featured, Qualified violet, Meetings green, Calls amber, Over 60s red), the funnel table in a card with a pill per org for speed to lead, then Organizations and Recent activity side by side. Light and dark both on the app's palette; sign-in page shows the mark + Admin pill above Clerk's form.
+- [x] **Admin → Settings → Internal alerts**: paste a Slack incoming webhook, Save → pill reads "Set" with "Last saved …"; "Send test" posts a line to the channel; a non-Slack URL shows an inline field error; Clear asks first, then the pill reads "Not set" and the speed watch run reports "No internal alerts webhook saved". Needs `SECRETS_MASTER_KEY` in `apps/admin/.env.local` (same as the app) and migration 0023.
 
 # Org Slack notifications (2026-10-27)
 
 With a Slack webhook saved under Integrations → Slack:
-- [ ] Reply as a contact so the agent scores the lead ≥ 70: one "Qualified lead: …" message with the score, why, and the conversation link. Score again (still ≥ 70): no second message. A lead scored 40 then 75: the message arrives on the 75.
-- [ ] Book through the agent (email / SMS or a call): one "Meeting booked: …" with the time in the org timezone and the join link; the Cal.com webhook for that same booking does NOT post a second one.
-- [ ] Book directly in Cal.com / Calendly with the Alevo metadata or link: one "Meeting booked" message.
-- [ ] Hand-off and escalation still post as before; the usage alerts still post at 80% / 100%.
-- [ ] No webhook saved: nothing posts and nothing errors (the reply still goes out).
+- [x] Reply as a contact so the agent scores the lead ≥ 70: one "Qualified lead: …" message with the score, why, and the conversation link. Score again (still ≥ 70): no second message. A lead scored 40 then 75: the message arrives on the 75.
+- [x] Book through the agent (email / SMS or a call): one "Meeting booked: …" with the time in the org timezone and the join link; the Cal.com webhook for that same booking does NOT post a second one.
+- [x] Book directly in Cal.com / Calendly with the Alevo metadata or link: one "Meeting booked" message.
+- [x] Hand-off and escalation still post as before; the usage alerts still post at 80% / 100%.
+- [x] No webhook saved: nothing posts and nothing errors (the reply still goes out).
 
 # No-reply fallback (2026-10-27)
 
 Slack webhook saved under Integrations → Slack; `CADENCE_FAST=1` in `.env.local` shrinks the wait from 5 minutes to 30 seconds.
-- [ ] Agent OFF: submit the lead form. Within seconds Slack gets "Lead needs a person: … — the agent is turned off" with email / phone and the link; the conversation shows "Handed to a rep". No second message when the same contact writes again.
-- [ ] Agent ON, `usage_counters.used` at the allowance: a new lead posts "… the plan's conversation allowance is used up".
-- [ ] Agent ON, normal: reply as a contact → the agent answers → no fallback message (Inngest `reply-watchdog` run ends `answered`).
-- [ ] Agent ON but broken (e.g. a wrong `ANTHROPIC_API_KEY`): reply as a contact → after the wait, "… the agent hasn't replied after 5 minutes" (or 30 seconds), status "Handed to a rep", the `reply-watchdog` run ends `no-reply`.
-- [ ] Two contact messages 10s apart: one watchdog run (the first is cancelled), one alert at most.
-- [ ] Lead already booked or handed off: no alert.
+- [x] Agent OFF: submit the lead form. Within seconds Slack gets "Lead needs a person: … — the agent is turned off" with email / phone and the link; the conversation shows "Handed to a rep". No second message when the same contact writes again.
+- [x] Agent ON, `usage_counters.used` at the allowance: a new lead posts "… the plan's conversation allowance is used up".
+- [x] Agent ON, normal: reply as a contact → the agent answers → no fallback message (Inngest `reply-watchdog` run ends `answered`).
+- [x] Agent ON but broken (e.g. a wrong `ANTHROPIC_API_KEY`): reply as a contact → after the wait, "… the agent hasn't replied after 5 minutes" (or 30 seconds), status "Handed to a rep", the `reply-watchdog` run ends `no-reply`.
+- [x] Two contact messages 10s apart: one watchdog run (the first is cancelled), one alert at most.
+- [x] Lead already booked or handed off: no alert.
 
 # Show rate + vendor retries (2026-10-27)
 
-- [ ] Dashboard → Meetings booked card: with no outcomes marked the header says "Show rate: mark outcomes" linking to Meetings. Mark one meeting showed and one no-show under Meetings → the card reads "Show rate 50%". Switch 7 / 30 / 90 — meetings are counted by their start time inside the window.
-- [ ] Vendor retries: with the dev server running, point `VOYAGE_API_KEY` at a bad key and add a KB text document — the ingest fails once with a 401 (no retry on a real answer). Set the Slack webhook to an unreachable host — "Send test" returns the network error within ~15s instead of hanging.
+- [x] Dashboard → Meetings booked card: with no outcomes marked the header says "Show rate: mark outcomes" linking to Meetings. Mark one meeting showed and one no-show under Meetings → the card reads "Show rate 50%". Switch 7 / 30 / 90 — meetings are counted by their start time inside the window.
+- [x] Vendor retries: with the dev server running, point `VOYAGE_API_KEY` at a bad key and add a KB text document — the ingest fails once with a 401 (no retry on a real answer). Set the Slack webhook to an unreachable host — "Send test" returns the network error within ~15s instead of hanging.
 
 # Website chat widget (2026-10-28)
 
 Migration 0025 applied. Agent ON under Workspace → Agent (otherwise the widget says "Leave a message and your email" and the no-reply fallback hands the lead to Slack). Inngest dev server running.
 
 **Settings** (Workspace → Integrations → Lead capture → Chat widget → Manage)
-- [ ] Card reads "Off" until the switch is saved on; the dialog has the switch, Greeting, Colour (swatch follows a valid hex, red error on `blue`), one Save + Cancel that appear only after a change, and the one-line snippet with Copy.
-- [ ] Save with the switch on → toast, card reads "On"; the audit log shows `chat.settings_saved`.
+- [x] Card reads "Off" until the switch is saved on; the dialog has the switch, Greeting, Colour (swatch follows a valid hex, red error on `blue`), one Save + Cancel that appear only after a change, and the one-line snippet with Copy.
+- [x] Save with the switch on → toast, card reads "On"; the audit log shows `chat.settings_saved`.
 
 **Widget** (paste the snippet into any HTML page, or open `scratchpad/chat-test/index.html` over http)
-- [ ] With the widget off: no bubble at all. On: a round bubble in the org colour bottom-right; `data-position="left"` moves it.
-- [ ] Open: header with the company name and "Usually replies in under a minute", the greeting as the first bubble, composer focused, Escape closes, the launcher's aria-label flips.
-- [ ] Send "Hi, we're a 40-person law firm looking for IT support": your bubble appears on the right, typing dots show, and within ~15s the agent answers (Inngest `qualify-conversation` run). It asks for your name and email early.
-- [ ] Reload the page and open the chat: the whole thread is back (localStorage token). Open the page in a second tab: same thread.
-- [ ] In the app, Conversations shows the lead with channel "Chat"; the thread page lists the messages; once you gave a name/email the contact shows them. The dashboard's lead-source donut has a Chat slice.
-- [ ] Give your email, close the tab, wait 3 minutes, then post as the contact from the thread page's tester: the agent's reply is recorded as **email** (sent by Resend) rather than chat, because the visitor had left.
-- [ ] Clear localStorage for the page and send again: a new conversation starts. Edit the stored token to garbage and send: the widget resets with "That conversation has ended" and starts fresh on the next send.
-- [ ] Send 11 first messages from fresh sessions within 10 minutes (clear storage between): the 11th gets "Too many messages" inline, nothing stored. Posting the same message 61 times in a session trips the message limit the same way.
-- [ ] Phone width: the panel fills the screen, the launcher hides while open, the close button works.
-- [ ] `curl -X POST http://localhost:3001/api/chat/<orgId>/messages -H 'content-type: application/json' -d '{"message":""}'` → 400; with the widget off → 404; `GET .../messages` without a bearer token → 401; `OPTIONS` → 204 with `access-control-allow-origin: *`.
-- [ ] Mark the conversation handed off (reply as contact with "please have someone call me" or set status): the widget shows "We've passed this on to the team".
+- [x] With the widget off: no bubble at all. On: a round bubble in the org colour bottom-right; `data-position="left"` moves it.
+- [x] Open: header with the company name and "Usually replies in under a minute", the greeting as the first bubble, composer focused, Escape closes, the launcher's aria-label flips.
+- [x] Send "Hi, we're a 40-person law firm looking for IT support": your bubble appears on the right, typing dots show, and within ~15s the agent answers (Inngest `qualify-conversation` run). It asks for your name and email early.
+- [x] Reload the page and open the chat: the whole thread is back (localStorage token). Open the page in a second tab: same thread.
+- [x] In the app, Conversations shows the lead with channel "Chat"; the thread page lists the messages; once you gave a name/email the contact shows them. The dashboard's lead-source donut has a Chat slice.
+- [x] Give your email, close the tab, wait 3 minutes, then post as the contact from the thread page's tester: the agent's reply is recorded as **email** (sent by Resend) rather than chat, because the visitor had left.
+- [x] Clear localStorage for the page and send again: a new conversation starts. Edit the stored token to garbage and send: the widget resets with "That conversation has ended" and starts fresh on the next send.
+- [x] Send 11 first messages from fresh sessions within 10 minutes (clear storage between): the 11th gets "Too many messages" inline, nothing stored. Posting the same message 61 times in a session trips the message limit the same way.
+- [x] Phone width: the panel fills the screen, the launcher hides while open, the close button works.
+- [x] `curl -X POST http://localhost:3001/api/chat/<orgId>/messages -H 'content-type: application/json' -d '{"message":""}'` → 400; with the widget off → 404; `GET .../messages` without a bearer token → 401; `OPTIONS` → 204 with `access-control-allow-origin: *`.
+- [x] Mark the conversation handed off (reply as contact with "please have someone call me" or set status): the widget shows "We've passed this on to the team".
 
 # Paginated lists (2026-10-27)
 
 Run `npx supabase db push` first (migration 0024 adds the indexes; the pages work without it, just slower at scale). To see paging you need more than 25 rows: `supabase/seed-dev-dashboard.sql` plus a few form submissions, or a quick `insert into audit_log (action) select 'test.' || g from generate_series(1, 60) g` (delete them after).
 
 **Admin console** (`:3002`, as a platform admin)
-- [ ] The console has the app's left rail: Alevo mark + Admin pill on top, Overview · Organizations · Activity · Settings (current page highlighted), then the theme control and "Open the app" at the bottom (where the app keeps its agent status). The top bar holds only the account button; on a phone it is burger + brand, and the burger opens the same rail as a drawer.
-- [ ] Overview / Activity: a platform action (e.g. `platform.secret_set` after saving the Slack webhook in Settings) shows **Internal admin** in the Org column, never a dash.
-- [ ] Overview: Recent activity shows at most 10 rows with a footer "Newest 10 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer rows than the card holds (11 / 26) the footers are absent.
-- [ ] `/activity`: header "Newest first, 25 per page"; 25 rows with a By column (actor email or "System"), footer "Page 1 of N" with Previous (disabled) and Next. Next: the next 25, no row repeated, "Page 2 of N", Previous enabled; Previous brings back exactly the first page; the URL carries `?cursor=older.<id>.2` and survives a refresh.
-- [ ] `/organizations`: same walk; header dot + "X of N agents on. Newest first, 25 per page"; the count stays the same on every page.
-- [ ] A shared link whose row has since been deleted (edit the UUID in the cursor to a random one): "This page is empty — the log has changed since this link was made. Go to page 1." and the link works; garbage like `?cursor=abc` or yesterday's `older.<id>` shape just shows page 1.
-- [ ] Phone width: the footer wraps, buttons stay tappable, nothing scrolls sideways.
+- [x] The console has the app's left rail: Alevo mark + Admin pill on top, Overview · Organizations · Activity · Settings (current page highlighted), then the theme control and "Open the app" at the bottom (where the app keeps its agent status). The top bar holds only the account button; on a phone it is burger + brand, and the burger opens the same rail as a drawer.
+- [x] Overview / Activity: a platform action (e.g. `platform.secret_set` after saving the Slack webhook in Settings) shows **Internal admin** in the Org column, never a dash.
+- [x] Overview: Recent activity shows at most 10 rows with a footer "Newest 10 · All activity"; Organizations shows the newest 25 with "Newest 25 of N"; the funnel table shows the busiest 25 with "Busiest 25 of N" in the header. With fewer rows than the card holds (11 / 26) the footers are absent.
+- [x] `/activity`: header "Newest first, 25 per page"; 25 rows with a By column (actor email or "System"), footer "Page 1 of N" with Previous (disabled) and Next. Next: the next 25, no row repeated, "Page 2 of N", Previous enabled; Previous brings back exactly the first page; the URL carries `?cursor=older.<id>.2` and survives a refresh.
+- [x] `/organizations`: same walk; header dot + "X of N agents on. Newest first, 25 per page"; the count stays the same on every page.
+- [x] A shared link whose row has since been deleted (edit the UUID in the cursor to a random one): "This page is empty — the log has changed since this link was made. Go to page 1." and the link works; garbage like `?cursor=abc` or yesterday's `older.<id>` shape just shows page 1.
+- [x] Phone width: the footer wraps, buttons stay tappable, nothing scrolls sideways.
 
 **App** (`:3001`)
-- [ ] Conversations: header "N leads across your channels. Newest first, 25 per page" with the real total; 25 rows, footer "Page 1 of N", Previous / Next walk as above; the lead-form link still works.
-- [ ] Meetings: the four figures count every meeting (not just the page); rows sort by start time with unscheduled ones by creation; Outcome and Manage controls still work on page 2; footer "Page 1 of N" over every meeting including cancelled ones.
-- [ ] Both: with 25 rows or fewer, no footer at all.
+- [x] Conversations: header "N leads across your channels. Newest first, 25 per page" with the real total; 25 rows, footer "Page 1 of N", Previous / Next walk as above; the lead-form link still works.
+- [x] Meetings: the four figures count every meeting (not just the page); rows sort by start time with unscheduled ones by creation; Outcome and Manage controls still work on page 2; footer "Page 1 of N" over every meeting including cancelled ones.
+- [x] Both: with 25 rows or fewer, no footer at all.
 
 # Accessibility (2026-10-27)
 
-- [ ] `pnpm a11y` with web (:3000) and app (:3001) running: every public page reports 0 failing rules in light and dark except the 404 screen's primary button (white on brand blue, accepted).
-- [ ] `pnpm a11y -- --app`: sign in in the Chrome window that opens; dashboard, conversations, meetings and the four workspace pages report 0 serious/critical rules and 0 elements without a focus ring.
-- [ ] Keyboard only on the contact form: Tab through name → email → company → message → Send; each field shows the blue ring.
+- [x] `pnpm a11y` with web (:3000) and app (:3001) running: every public page reports 0 failing rules in light and dark except the 404 screen's primary button (white on brand blue, accepted).
+- [x] `pnpm a11y -- --app`: sign in in the Chrome window that opens; dashboard, conversations, meetings and the four workspace pages report 0 serious/critical rules and 0 elements without a focus ring.
+- [x] Keyboard only on the contact form: Tab through name → email → company → message → Send; each field shows the blue ring.
 
 # Chart tooltips (2026-10-27)
 
 Dashboard, with a few leads in the window:
-- [ ] Hover each bar in the four stat tiles: a tooltip above the bar shows "3 leads · Oct 24" and "Up 2 from Oct 23"; other bars dim. Tab into a tile's bars with the keyboard: same tooltip.
-- [ ] Leads per day: hover any day — crosshair, the dot grows, tooltip sits on the point and never wraps at the right edge (Oct 27 flips to anchor right).
-- [ ] Meetings booked columns: hover a column — it stays bright, the others dim, tooltip on top of it.
-- [ ] Speed to lead (needs two answered periods): hover the sparkline — crosshair + dot, "42s median · Oct 24"; a quiet day says "no replies".
-- [ ] Where leads come from: hover a ring segment or a legend row — the segment thickens, the centre number switches to that channel, tooltip "2 leads · Email, 67% of 3".
-- [ ] Admin → Overview tiles: bars say "3 days ago" / "2 weeks ago" on the 90-day window.
+- [x] Hover each bar in the four stat tiles: a tooltip above the bar shows "3 leads · Oct 24" and "Up 2 from Oct 23"; other bars dim. Tab into a tile's bars with the keyboard: same tooltip.
+- [x] Leads per day: hover any day — crosshair, the dot grows, tooltip sits on the point and never wraps at the right edge (Oct 27 flips to anchor right).
+- [x] Meetings booked columns: hover a column — it stays bright, the others dim, tooltip on top of it.
+- [x] Speed to lead (needs two answered periods): hover the sparkline — crosshair + dot, "42s median · Oct 24"; a quiet day says "no replies".
+- [x] Where leads come from: hover a ring segment or a legend row — the segment thickens, the centre number switches to that channel, tooltip "2 leads · Email, 67% of 3".
+- [x] Admin → Overview tiles: bars say "3 days ago" / "2 weeks ago" on the 90-day window.
 
 # Calendar "Test connection" (2026-10-28)
 
 Workspace → Integrations → Google Calendar (or Microsoft 365) → Manage, with the calendar connected:
-- [ ] A **Test connection** row sits under the Connected block (admins only; absent while not connected). Click: spinner, then a green notice "Reached Google Calendar for <account>: N open 30-minute slots in the next 72 hours." N matches what the agent would offer (working hours, weekdays, 2h notice).
-- [ ] Disable the Google Calendar API in the Cloud project (or test before enabling it): the notice is red, quotes Google's reason ("Google Calendar API has not been used in project … or it is disabled") and ends with "Enable the Google Calendar API in the Google Cloud project …". Nothing is written anywhere; no toast.
-- [ ] Revoke Alevo's access at myaccount.google.com → Security → Third-party access, then test: red notice with "expired or revoked … Disconnect, then connect it again."
-- [ ] A rep (viewer / rep role) sees Connected but no Test connection button.
-- [ ] Sentry (when a DSN is set) / the dev console shows the full vendor reason for a failed availability check from a real lead, not just "(403)".
+- [x] A **Test connection** row sits under the Connected block (admins only; absent while not connected). Click: spinner, then a green notice "Reached Google Calendar for <account>: N open 30-minute slots in the next 72 hours." N matches what the agent would offer (working hours, weekdays, 2h notice).
+- [x] Disable the Google Calendar API in the Cloud project (or test before enabling it): the notice is red, quotes Google's reason ("Google Calendar API has not been used in project … or it is disabled") and ends with "Enable the Google Calendar API in the Google Cloud project …". Nothing is written anywhere; no toast.
+- [x] Revoke Alevo's access at myaccount.google.com → Security → Third-party access, then test: red notice with "expired or revoked … Disconnect, then connect it again."
+- [x] A rep (viewer / rep role) sees Connected but no Test connection button.
+- [x] Sentry (when a DSN is set) / the dev console shows the full vendor reason for a failed availability check from a real lead, not just "(403)".
 
 # Lead alerts by email + booking failed (2026-10-28)
 
 Migrations 0026 + 0027 applied. Slack connected under Integrations, Resend configured. Owners/admins of the workspace have real addresses.
-- [ ] Workspace → Agent has a **Notifications** card with an **Email the team** switch (on by default). Flip it → the Save bar appears; Save → "Agent settings saved.", reload keeps it.
-- [ ] With it on, each of these posts to Slack AND lands as one email "Alevo — <first line of the Slack post>" from Alevo in every owner's and admin's inbox (reps get nothing): a lead's first strong-fit score, a meeting booked, a hand-off ("Lead handed off — ready for a human", no emoji in the email), an escalation, the no-reply fallback ("Lead needs a person …"), a voice call summary ("Call ended …").
-- [ ] Switch it off, Save: the same events still post to Slack, no email. The plan-limit emails (80% / 100%) still arrive.
-- [ ] Booking failed: Booking ON through Google Calendar; break the calendar (disable the Google Calendar API in the Cloud project, or revoke Alevo's access); a new lead gets qualified until the agent goes to offer times → status "Handed to a rep", the agent tells the contact a colleague will reach out to set a time and does not offer times; Slack gets "Booking failed for a qualified lead: … — the agent couldn't read the calendar to offer times. Fit N/100. Handed to a person." then "Calendar said: Google free/busy failed (403): …", "Reach them: …" and the link. Only one Slack post for that lead — no second "Lead handed off". The email is the longer one: subject "Alevo — Booking failed for <lead> (<company name>)", with the calendar's words, the link, and the two places to fix it.
-- [ ] Fix the calendar (enable the API), new lead: times offered and booked as before; nothing posts about a failure. A slot taken between offer and booking ("that time was just taken") makes the agent offer another time and never alerts.
-- [ ] Voice: with the calendar broken, call in and ask for a time: the agent says a colleague will call back and takes a message; Slack + email as above.
+- [x] Workspace → Agent has a **Notifications** card with an **Email the team** switch (on by default). Flip it → the Save bar appears; Save → "Agent settings saved.", reload keeps it.
+- [x] With it on, each of these posts to Slack AND lands as one email "Alevo — <first line of the Slack post>" from Alevo in every owner's and admin's inbox (reps get nothing): a lead's first strong-fit score, a meeting booked, a hand-off ("Lead handed off — ready for a human", no emoji in the email), an escalation, the no-reply fallback ("Lead needs a person …"), a voice call summary ("Call ended …").
+- [x] Switch it off, Save: the same events still post to Slack, no email. The plan-limit emails (80% / 100%) still arrive.
+- [x] Booking failed: Booking ON through Google Calendar; break the calendar (disable the Google Calendar API in the Cloud project, or revoke Alevo's access); a new lead gets qualified until the agent goes to offer times → status "Handed to a rep", the agent tells the contact a colleague will reach out to set a time and does not offer times; Slack gets "Booking failed for a qualified lead: … — the agent couldn't read the calendar to offer times. Fit N/100. Handed to a person." then "Calendar said: Google free/busy failed (403): …", "Reach them: …" and the link. Only one Slack post for that lead — no second "Lead handed off". The email is the longer one: subject "Alevo — Booking failed for <lead> (<company name>)", with the calendar's words, the link, and the two places to fix it.
+- [x] Fix the calendar (enable the API), new lead: times offered and booked as before; nothing posts about a failure. A slot taken between offer and booking ("that time was just taken") makes the agent offer another time and never alerts.
+- [x] Voice: with the calendar broken, call in and ask for a time: the agent says a colleague will call back and takes a message; Slack + email as above.
 
 # Slack card health (2026-10-28)
 
 Migrations 0028 + 0029 applied. Integrations → Slack connected.
-- [ ] Manage → paste a webhook (any valid-looking one), Save: the card pill reads **Untested** (amber) and the Needs attention row says the webhook is saved but nothing has been sent — open Manage and Send test. Send test with a working webhook → Connected; the row disappears.
-- [ ] Manage → replace the webhook with a dead one (a Slack webhook you deleted, or any `https://hooks.slack.com/services/…` that 403s), Save, Send test: the inline error quotes Slack ("Slack failed (403): invalid_token" or similar); close the dialog — the card pill reads **Needs attention** (red) and a "Needs attention" row at the top of the page repeats the reason and says to paste a fresh webhook.
-- [ ] Trigger any real alert while it is broken (e.g. a qualified lead): the card stays Needs attention; nothing crashes.
-- [ ] Paste the real webhook, Save: the card reads Untested (not Connected). Send test → green, now Connected.
-- [ ] With the real webhook, Send test then break the channel on Slack's side (delete the webhook in the Slack app config) and Send test again: Needs attention. Clearing the webhook with the Clear button → Not connected, no issue row.
+- [x] Manage → paste a webhook (any valid-looking one), Save: the card pill reads **Untested** (amber) and the Needs attention row says the webhook is saved but nothing has been sent — open Manage and Send test. Send test with a working webhook → Connected; the row disappears.
+- [x] Manage → replace the webhook with a dead one (a Slack webhook you deleted, or any `https://hooks.slack.com/services/…` that 403s), Save, Send test: the inline error quotes Slack ("Slack failed (403): invalid_token" or similar); close the dialog — the card pill reads **Needs attention** (red) and a "Needs attention" row at the top of the page repeats the reason and says to paste a fresh webhook.
+- [x] Trigger any real alert while it is broken (e.g. a qualified lead): the card stays Needs attention; nothing crashes.
+- [x] Paste the real webhook, Save: the card reads Untested (not Connected). Send test → green, now Connected.
+- [x] With the real webhook, Send test then break the channel on Slack's side (delete the webhook in the Slack app config) and Send test again: Needs attention. Clearing the webhook with the Clear button → Not connected, no issue row.
 
 # Admin provisioning + Getting started (2026-11-02)
 
 Migrations 0030 + 0031 applied. Signed in to the admin console (:3002) as a platform admin; a second email address you can read (the "owner"). `NEXT_PUBLIC_ADMIN_URL` set in `apps/app/.env.local` (dev: `http://localhost:3002`); `NEXT_PUBLIC_APP_URL` in `apps/admin/.env.local` set to the app's ngrok URL (console-sent invites redirect there — localhost would strand the owner on another device). Clerk dashboard: confirm the plan allows backend organization creation and enough members per org (client seats + one support member).
-- [ ] Organizations → **New organization**: empty name / bad email → red border + message under the field, nothing created. Plan list shows only active plans. Fill in name, the owner email, Starter → Create: you land on the org page; the owner's inbox gets the Clerk invite.
-- [ ] Organizations list: the new row is first, **Members 0** (you are support, not a seat), plan Starter · trialing.
-- [ ] Org page: header pill + agent dot + created date; **Setup** card reads "1 of 9 done" or "0 of 9 done" (Slack / alerts may already count); Members shows you as **Alevo support** and the owner as "Invited … Owner · pending"; **Resend owner invite** sends a second email.
-- [ ] **Leave workspace** (confirm dialog) → you disappear from Members; **Join as support** → back, still "Alevo support", Members count on the list unchanged.
-- [ ] While not a member, click **Open** on any Setup row → the app sends you back to the console org page with "Join as support first…". As a member, **Open in app** → the app with that workspace active on the dashboard; **Open** on Business profile → Workspace → Profile.
-- [ ] Setup rows: **Not using this** on Phone → the row goes green, header count +1, button reads "Using this after all"; click it → back to amber. Same on Booking and Slack (Slack offers it only while no webhook is saved; saving one clears it).
-- [ ] Plan card: pick another plan → Save appears → Save → header pill updates; `org_subscriptions.plan_id` changed, status unchanged.
-- [ ] In the app (as support), fill in the business profile, add a KB document, connect Slack + Send test, switch the agent on: each Setup row turns green on the next console load.
-- [ ] Accept the invite on the owner account: Setup "Owner joined" green. The owner's dashboard shows **Getting started** with the remaining items, each with Set up linking to the page; the Members tab (Manage) shows "Alevo support" with no role select and no trash can; a rep account sees no Getting started card.
-- [ ] Owner: **Not using this** on Booking → toast "Marked as not used.", row green. Then connect a booking tool under Agent → Booking → `org_profiles.booking_declined` is false again.
-- [ ] Trigger any org alert (qualified lead etc.): the owner gets the email, the support member does not.
-- [ ] Finish every item (send a test lead so the agent replies) → the Getting started card is gone; console Setup reads **Ready**.
-- [ ] Owner tries to change the support member's role or remove them via a crafted form → "Alevo support members are managed by Alevo."
+- [x] Organizations → **New organization**: empty name / bad email → red border + message under the field, nothing created. Plan list shows only active plans. Fill in name, the owner email, Starter → Create: you land on the org page; the owner's inbox gets the Clerk invite.
+- [x] Organizations list: the new row is first, **Members 0** (you are support, not a seat), plan Starter · trialing.
+- [x] Org page: header pill + agent dot + created date; **Setup** card reads "1 of 9 done" or "0 of 9 done" (Slack / alerts may already count); Members shows you as **Alevo support** and the owner as "Invited … Owner · pending"; **Resend owner invite** sends a second email.
+- [x] **Leave workspace** (confirm dialog) → you disappear from Members; **Join as support** → back, still "Alevo support", Members count on the list unchanged.
+- [x] While not a member, click **Open** on any Setup row → the app sends you back to the console org page with "Join as support first…". As a member, **Open in app** → the app with that workspace active on the dashboard; **Open** on Business profile → Workspace → Profile.
+- [x] Setup rows: **Not using this** on Phone → the row goes green, header count +1, button reads "Using this after all"; click it → back to amber. Same on Booking and Slack (Slack offers it only while no webhook is saved; saving one clears it).
+- [x] Plan card: pick another plan → Save appears → Save → header pill updates; `org_subscriptions.plan_id` changed, status unchanged.
+- [x] In the app (as support), fill in the business profile, add a KB document, connect Slack + Send test, switch the agent on: each Setup row turns green on the next console load.
+- [x] Accept the invite on the owner account: Setup "Owner joined" green. The owner's dashboard shows **Getting started** with the remaining items, each with Set up linking to the page; the Members tab (Manage) shows "Alevo support" with no role select and no trash can; a rep account sees no Getting started card.
+- [x] Owner: **Not using this** on Booking → toast "Marked as not used.", row green. Then connect a booking tool under Agent → Booking → `org_profiles.booking_declined` is false again.
+- [x] Trigger any org alert (qualified lead etc.): the owner gets the email, the support member does not.
+- [x] Finish every item (send a test lead so the agent replies) → the Getting started card is gone; console Setup reads **Ready**.
+- [x] Owner tries to change the support member's role or remove them via a crafted form → "Alevo support members are managed by Alevo."
 
 ## Contact form redesign + contact details (2026-11-02)
 
 Needs migration 0032 applied (`npx supabase db push --remote`).
 
-- [ ] Workspace → Business profile → new **Contact details** card (Phone, Email, Opening hours). Save with an invalid email → red border + "Enter a valid email address." under it, other fields keep their input. Save valid values → "Business profile saved." toast, values persist after reload.
-- [ ] Business address hint now says it is also shown on the contact form.
-- [ ] Open `/form/<orgId>` logged out: a "Contact <company>" header, a card with a **Get in touch** column (Call us / Email us / Visit us / Hours, each with an icon) beside the form. Phone link dials (`tel:`), email opens a mail client, address opens Google Maps.
-- [ ] Clear all four details and reload: the details column disappears and the form fills the card.
-- [ ] Form: every field has a visible label, Phone and Company say "(optional)", name + email sit side by side on a wide screen and stack on a phone. Submit empty → name, email and consent errors beneath their fields; the button shows a spinner and "Sending…" while in flight; success shows the check mark and thanks.
-- [ ] `/form/<orgId>?accent=e11d48`: the button, checkbox and focus rings turn that colour with readable text. `?details=0` hides the column.
-- [ ] Embed (plain HTML file with the script snippet) on a white page: the font and text colour match the page, the button is the page's text colour. On a dark-background page: light button, dark text. Add `data-accent="#2e9be6"`: blue button with navy text. `data-details="false"`: form only.
-- [ ] Embed with an unreachable org id or while offline still renders the form (no details column) within about 3 seconds.
-- [ ] `GET /api/forms/<orgId>` returns `{ ok, name, email, phone, address, hours }`; an unknown id returns 404.
+- [x] Workspace → Business profile → new **Contact details** card (Phone, Email, Opening hours). Save with an invalid email → red border + "Enter a valid email address." under it, other fields keep their input. Save valid values → "Business profile saved." toast, values persist after reload.
+- [x] Business address hint now says it is also shown on the contact form.
+- [x] Open `/form/<orgId>` logged out: a "Contact <company>" header, a card with a **Get in touch** column (Call us / Email us / Visit us / Hours, each with an icon) beside the form. Phone link dials (`tel:`), email opens a mail client, address opens Google Maps.
+- [x] Clear all four details and reload: the details column disappears and the form fills the card.
+- [x] Form: every field has a visible label, Phone and Company say "(optional)", name + email sit side by side on a wide screen and stack on a phone. Submit empty → name, email and consent errors beneath their fields; the button shows a spinner and "Sending…" while in flight; success shows the check mark and thanks.
+- [x] `/form/<orgId>?accent=e11d48`: the button, checkbox and focus rings turn that colour with readable text. `?details=0` hides the column.
+- [x] Embed (plain HTML file with the script snippet) on a white page: the font and text colour match the page, the button is the page's text colour. On a dark-background page: light button, dark text. Add `data-accent="#2e9be6"`: blue button with navy text. `data-details="false"`: form only.
+- [x] Embed with an unreachable org id or while offline still renders the form (no details column) within about 3 seconds.
+- [x] `GET /api/forms/<orgId>` returns `{ ok, name, email, phone, address, hours }`; an unknown id returns 404.
 
 ## Website import + tone presets (2026-11-02)
 
 Needs `ANTHROPIC_API_KEY` set. Signed in as an admin on Workspace → Business profile.
 
-- [ ] **Import from website** (top right of the first card) opens a dialog. With every profile field empty there is no "fields already have text" choice. Enter `yourcompany.com` (no `https://`) → "Reading your site…" spinner → the dialog closes, fields are filled, a note reads "Filled N fields. Review them, then save." and the Save bar appears. Nothing is saved until you press Save.
-- [ ] Reload without saving → the fields are back to what was saved. Press **Discard** after an import → the saved values return and the note disappears.
-- [ ] Type something into Company name, then import: with **Fill empty fields only** (default) your text stays; with **Replace existing values** it is overwritten if the site has a name. Edits you made to other fields before importing are kept.
-- [ ] Qualifying criteria and Disqualifiers are never touched by an import.
-- [ ] Bad input shows an inline message under the field, no popup: empty → "Enter your website address."; `not a url!` → "Enter a valid website address."; `http://localhost`, `http://169.254.169.254`, `http://10.0.0.1`, `ftp://x.com` → "That address isn't allowed."; a made-up domain → "We couldn't reach that site…"; a link to a PDF → "We couldn't reach that site…".
-- [ ] A JavaScript-only site (almost no text in the HTML) → "We found very little readable text… Fill the profile in manually."
-- [ ] The sixth import within an hour → "You've imported a few times already. Try again in an hour."
-- [ ] Spot-check the result against the real site: phone, email, address and hours come from the page markup when it has any; offering and ideal customer read as plain sentences and nothing is invented (a field the site does not cover stays as it was).
-- [ ] **Tone and voice** is now a dropdown with five options: Friendly & conversational, Professional & polished, Warm & consultative, Direct & concise, Confident & energetic. Pick one → Save bar → Save → reload shows it selected. Keyboard: arrows, Enter, Escape.
-- [ ] A workspace that had free-text tone saved before shows it as an extra "Custom: …" option, selected, and saving without touching it keeps the text.
-- [ ] Qualifier and voice prompts use the preset's description (check a test conversation reads in that style), and the legacy text is passed through as written.
-- [ ] Knowledge → add URL `http://localhost:3000` (or a private IP) → the source fails with "That address is not allowed" instead of being fetched. A normal public URL still ingests.
+- [x] **Import from website** (top right of the first card) opens a dialog. With every profile field empty there is no "fields already have text" choice. Enter `yourcompany.com` (no `https://`) → "Reading your site…" spinner → the dialog closes, fields are filled, a note reads "Filled N fields. Review them, then save." and the Save bar appears. Nothing is saved until you press Save.
+- [x] Reload without saving → the fields are back to what was saved. Press **Discard** after an import → the saved values return and the note disappears.
+- [x] Type something into Company name, then import: with **Fill empty fields only** (default) your text stays; with **Replace existing values** it is overwritten if the site has a name. Edits you made to other fields before importing are kept.
+- [x] Qualifying criteria and Disqualifiers are never touched by an import.
+- [x] Bad input shows an inline message under the field, no popup: empty → "Enter your website address."; `not a url!` → "Enter a valid website address."; `http://localhost`, `http://169.254.169.254`, `http://10.0.0.1`, `ftp://x.com` → "That address isn't allowed."; a made-up domain → "We couldn't reach that site…"; a link to a PDF → "We couldn't reach that site…".
+- [x] A JavaScript-only site (almost no text in the HTML) → "We found very little readable text… Fill the profile in manually."
+- [x] The sixth import within an hour → "You've imported a few times already. Try again in an hour."
+- [x] Spot-check the result against the real site: phone, email, address and hours come from the page markup when it has any; offering and ideal customer read as plain sentences and nothing is invented (a field the site does not cover stays as it was).
+- [x] **Tone and voice** is now a dropdown with five options: Friendly & conversational, Professional & polished, Warm & consultative, Direct & concise, Confident & energetic. Pick one → Save bar → Save → reload shows it selected. Keyboard: arrows, Enter, Escape.
+- [x] A workspace that had free-text tone saved before shows it as an extra "Custom: …" option, selected, and saving without touching it keeps the text.
+- [x] Qualifier and voice prompts use the preset's description (check a test conversation reads in that style), and the legacy text is passed through as written.
+- [x] Knowledge → add URL `http://localhost:3000` (or a private IP) → the source fails with "That address is not allowed" instead of being fetched. A normal public URL still ingests.
 
 ## Clients, one contact per person, one conversation per call (Sprint 7.2, 2026-11-02)
 
 Run `pnpm db:push:dev` first: **0037** normalises emails/phones, merges contacts that share a phone, adds the unique phone index; **0038** adds `contacts.last_activity_at` with its triggers. The app's schema mirror is ahead of the database until both are applied (every contact read fails with "column last_activity_at does not exist").
 
 Identity (one contact per person):
-- [ ] Submit the lead form with your email, then call the Twilio number from your phone and give the agent the same email: `select count(*) from contacts where email = '<you>'` in that org is **1**, and that contact has both your email and phone. The Conversations list shows ONE client row with both the form and the call.
-- [ ] Chat as a visitor and give an email the org already knows: the visitor row disappears, the chat conversation now sits under the existing client, and the chat keeps working (the widget keeps its token).
-- [ ] Text the number from a phone the org knows only by email + different phone: a second contact is NOT created when the agent later learns the email; the two fold into the older one. `audit_log` has a `contact.merged` row with the loser's id as target and `{"into": <keeper>}`.
-- [ ] A 10-digit number typed on the form (`613-884-1155`) is stored as `+16138841155`; a UK number keeps its `+44`.
-- [ ] Booking on a call now completes even when the caller's email belongs to an existing lead (the 2026-11-02 failure): the thread shows **Booked**, the invite arrives, Slack posts the meeting.
+- [x] Submit the lead form with your email, then call the Twilio number from your phone and give the agent the same email: `select count(*) from contacts where email = '<you>'` in that org is **1**, and that contact has both your email and phone. The Conversations list shows ONE client row with both the form and the call.
+- [x] Chat as a visitor and give an email the org already knows: the visitor row disappears, the chat conversation now sits under the existing client, and the chat keeps working (the widget keeps its token).
+- [x] Text the number from a phone the org knows only by email + different phone: a second contact is NOT created when the agent later learns the email; the two fold into the older one. `audit_log` has a `contact.merged` row with the loser's id as target and `{"into": <keeper>}`.
+- [x] A 10-digit number typed on the form (`613-884-1155`) is stored as `+16138841155`; a UK number keeps its `+44`.
+- [x] Booking on a call now completes even when the caller's email belongs to an existing lead (the 2026-11-02 failure): the thread shows **Booked**, the invite arrives, Slack posts the meeting.
 
 Calls (one conversation per call, summary, card):
-- [ ] Phone calls → Save once (re-pushes the assistant with the summary plan). Call, qualify, hang up. Conversations shows a NEW row/thread for the call; call again → another new thread, same client row.
-- [ ] The thread shows a **Phone call** card (not a bare message): duration, outcome pill (Booked / Handed off / Not a fit / No outcome), the summary (who, need, fit, outcome, next step), a **Transcript** disclosure.
-- [ ] Admin/owner: **Play recording** fetches a 10-minute link and plays inline. A rep sees no Play button. A call with no recording shows no button.
-- [ ] Hang up during the greeting: a thread + call card still appear ("No outcome", a one-line summary or "No summary").
-- [ ] Leave a message on a call: the card shows a muted **Message taken** pill beside the outcome. Give a callback number the org already knows by email → the caller folds into that contact.
-- [ ] Call with caller ID withheld (`#31#` prefix in Canada/UK): the agent can still take a message or book; the client row reads "Unknown caller" until a name or email is given.
-- [ ] Ask for a day that is already over ("anything yesterday?" / "today" late in the evening): the agent says nothing is open that day; no "calendar isn't working" alert goes out.
-- [ ] Give a wrong email then correct it on the same call: the record carries the corrected one; mis-hear a name, spell it: the corrected name sticks.
-- [ ] Call after hours (booking hours ended): the greeting is the daytime one — "Thanks for calling <company>. This call may be recorded. How can I help you today?" — and the agent never says "closed" or "after hours"; it books (calendar connected) or takes a message.
-- [ ] Give your email, pick a time: ONE "give me a few seconds while I get that booked", then the confirmation. No second "give me a few seconds" from the agent, no repeat on a retry (the email is taken from the record if the model forgot to pass it). If the calendar is slow, after about six seconds you hear "Still with you — just a few more moments" once.
-- [ ] Break the recording link (e.g. stop ngrok briefly) and press Play: the error shows with a **Try again** button, which works once the link is back.
-- [ ] Stop the Inngest dev server, call, restart it: the report is processed once; a replayed `voice/call.ended` changes nothing (one `calls` row, minutes metered once).
+- [x] Phone calls → Save once (re-pushes the assistant with the summary plan). Call, qualify, hang up. Conversations shows a NEW row/thread for the call; call again → another new thread, same client row.
+- [x] The thread shows a **Phone call** card (not a bare message): duration, outcome pill (Booked / Handed off / Not a fit / No outcome), the summary (who, need, fit, outcome, next step), a **Transcript** disclosure.
+- [x] Admin/owner: **Play recording** fetches a 10-minute link and plays inline. A rep sees no Play button. A call with no recording shows no button.
+- [x] Hang up during the greeting: a thread + call card still appear ("No outcome", a one-line summary or "No summary").
+- [x] Leave a message on a call: the card shows a muted **Message taken** pill beside the outcome. Give a callback number the org already knows by email → the caller folds into that contact.
+- [x] Call with caller ID withheld (`#31#` prefix in Canada/UK): the agent can still take a message or book; the client row reads "Unknown caller" until a name or email is given.
+- [x] Ask for a day that is already over ("anything yesterday?" / "today" late in the evening): the agent says nothing is open that day; no "calendar isn't working" alert goes out.
+- [x] Give a wrong email then correct it on the same call: the record carries the corrected one; mis-hear a name, spell it: the corrected name sticks.
+- [x] Call after hours (booking hours ended): the greeting is the daytime one — "Thanks for calling <company>. This call may be recorded. How can I help you today?" — and the agent never says "closed" or "after hours"; it books (calendar connected) or takes a message.
+- [x] Give your email, pick a time: ONE "give me a few seconds while I get that booked", then the confirmation. No second "give me a few seconds" from the agent, no repeat on a retry (the email is taken from the record if the model forgot to pass it). If the calendar is slow, after about six seconds you hear "Still with you — just a few more moments" once.
+- [x] Break the recording link (e.g. stop ngrok briefly) and press Play: the error shows with a **Try again** button, which works once the link is back.
+- [x] Stop the Inngest dev server, call, restart it: the report is processed once; a replayed `voice/call.ended` changes nothing (one `calls` row, minutes metered once).
 
 Clients list + client page:
-- [ ] `/conversations`: one row per client — name + company, channel icons (hover/aria label names the channel), Latest status pill, Fit (highest), Open count (muted when 0), Last activity. Header reads "N clients across your channels. Most recent first, 25 per page." Most recently touched client on top; a brand-new client with no conversation sorts by its creation time and shows "No conversations".
-- [ ] Click a row → `/conversations/client/<id>`: contact card (email, phone, company, first seen via, client since, consent on file; opt-out notice when suppressed) and the conversations table newest first (channel link → thread; calls show duration · outcome; last entry time + preview). Non-UUID or another org's id → 404.
-- [ ] Thread page: the name in the header links to the client page; the Lead details list has a **Client** row reading "N other conversations" (or "No other conversations") linking there. Pager still pages the clients list.
-- [ ] Platform admin viewing a client org: the list and the client page show that org's clients only.
+- [x] `/conversations`: one row per client — name + company, channel icons (hover/aria label names the channel), Latest status pill, Fit (highest), Open count (muted when 0), Last activity. Header reads "N clients across your channels. Most recent first, 25 per page." Most recently touched client on top; a brand-new client with no conversation sorts by its creation time and shows "No conversations".
+- [x] Click a row → `/conversations/client/<id>`: contact card (email, phone, company, first seen via, client since, consent on file; opt-out notice when suppressed) and the conversations table newest first (channel link → thread; calls show duration · outcome; last entry time + preview). Non-UUID or another org's id → 404.
+- [x] Thread page: the name in the header links to the client page; the Lead details list has a **Client** row reading "N other conversations" (or "No other conversations") linking there. Pager still pages the clients list.
+- [x] Platform admin viewing a client org: the list and the client page show that org's clients only.
 
 ## Contact card redesign (2026-11-02)
 
 Builds on the contact form section above (migration 0032 applied).
 
-- [ ] `/form/<orgId>` on a wide screen: one rounded card. Left, a solid brand-colour panel with "GET IN TOUCH", "Contact <company>", a one-line blurb, soft circles, and the phone / email / address / hours rows at the bottom. Right, the form with a small label above each underline field and a pill "Send message" button. The panel text is readable on the brand colour.
-- [ ] Phone width (about 390px): the two halves stack, panel first with the details fully visible (nothing collapsed), the circles are gone, fields are one column, the button is full width. No horizontal scroll.
-- [ ] Clear all four contact details: the panel keeps the heading and blurb only; `?details=0` does the same. The card stays two-part on desktop.
-- [ ] Submit empty: red underline + message under name, email, message and the consent box; typing in a field clears its message; focus lands on the first error.
-- [ ] `?accent=e11d48` recolours the panel and button; the panel text switches between white and navy by contrast.
-- [ ] Embed script on a light page: dark panel (the page's text colour) with light text; on a dark page: light panel with dark text; `data-accent="#de4f26"`: orange panel and button. Narrow the browser below ~640px: the card stacks like the hosted page. `data-details="false"` keeps the panel without the contact list.
-- [ ] Tab through the form: every field shows a visible underline/ring on focus; the Send button shows its focus ring.
+- [x] `/form/<orgId>` on a wide screen: one rounded card. Left, a solid brand-colour panel with "GET IN TOUCH", "Contact <company>", a one-line blurb, soft circles, and the phone / email / address / hours rows at the bottom. Right, the form with a small label above each underline field and a pill "Send message" button. The panel text is readable on the brand colour.
+- [x] Phone width (about 390px): the two halves stack, panel first with the details fully visible (nothing collapsed), the circles are gone, fields are one column, the button is full width. No horizontal scroll.
+- [x] Clear all four contact details: the panel keeps the heading and blurb only; `?details=0` does the same. The card stays two-part on desktop.
+- [x] Submit empty: red underline + message under name, email, message and the consent box; typing in a field clears its message; focus lands on the first error.
+- [x] `?accent=e11d48` recolours the panel and button; the panel text switches between white and navy by contrast.
+- [x] Embed script on a light page: dark panel (the page's text colour) with light text; on a dark page: light panel with dark text; `data-accent="#de4f26"`: orange panel and button. Narrow the browser below ~640px: the card stacks like the hosted page. `data-details="false"` keeps the panel without the contact list.
+- [x] Tab through the form: every field shows a visible underline/ring on focus; the Send button shows its focus ring.
 
 ### Booking turns on by itself, chat colours, no hosted snippet (2026-11-02)
 
@@ -1194,31 +1196,31 @@ Builds on the contact form section above (migration 0032 applied).
 
 - [x] On a workspace with Booking off and nothing connected, connect a calendar (Google or Microsoft 365) under Integrations: after the redirect back, Workspace → Agent → Booking is ON with that calendar chosen, and "Not using booking" on Getting started is cleared. Same for Cal.com (key + event type ID, saved together) and Calendly (link).
 - [x] Turn Booking off in Agent, then change another setting on the connected tool (for example its webhook key) and Save: Booking stays OFF. Disconnect the tool and connect it again: it turns on again.
-- [ ] With one tool already chosen, connecting a second does not switch the choice.
-- [ ] Integrations → Website form → Manage shows two snippets: Embed on your site and Your own form (no Hosted page). The card subtitle reads "Embed script or API".
-- [ ] Chat bubble with only `data-org`: unchanged (Alevo blue, or the colour saved under Chat widget, white icon and text). With `data-accent="#ff6a00"`: orange bubble, header and your own messages, and the text on them turns navy (an orange accent is too light for white). Add `data-color="#ffffff"`: white again. A dark accent keeps white text. An invalid value (`data-accent="nope"`) is ignored. `--alevo-accent` / `--alevo-color` in the page CSS do the same, attributes winning.
-- [ ] Integrations → Chat widget → Manage: under the install snippet a **Customise the look** block shows an example tag with `data-accent`, `data-color` and `data-position` added, then a list explaining each of those and the `--alevo-accent` / `--alevo-color` CSS variables. Pasting the example on a page restyles the bubble.
+- [x] With one tool already chosen, connecting a second does not switch the choice.
+- [x] Integrations → Website form → Manage shows two snippets: Embed on your site and Your own form (no Hosted page). The card subtitle reads "Embed script or API".
+- [x] Chat bubble with only `data-org`: unchanged (Alevo blue, or the colour saved under Chat widget, white icon and text). With `data-accent="#ff6a00"`: orange bubble, header and your own messages, and the text on them turns navy (an orange accent is too light for white). Add `data-color="#ffffff"`: white again. A dark accent keeps white text. An invalid value (`data-accent="nope"`) is ignored. `--alevo-accent` / `--alevo-color` in the page CSS do the same, attributes winning.
+- [x] Integrations → Chat widget → Manage: under the install snippet a **Customise the look** block shows an example tag with `data-accent`, `data-color` and `data-position` added, then a list explaining each of those and the `--alevo-accent` / `--alevo-color` CSS variables. Pasting the example on a page restyles the bubble.
 
 ### Agent keeps answering after a hand-off (2026-11-02)
 
-- [ ] In the website chat (or the hosted form's thread), get the agent to hand the lead off (qualify as a strong fit with no calendar connected, or ask for a person). The team gets ONE Slack / email alert and the widget shows "We've passed this on to the team."
-- [ ] Send another message after that ("what does it cost?", "do you do mobile apps?"): the agent still answers, helpfully and briefly, without repeating "a colleague will follow up" every time, and the team gets NO second hand-off alert. The conversation stays "Handed to a rep".
-- [ ] With Google / Microsoft / Cal.com connected and chosen under Agent → Booking, after a hand-off send "can we get a call booked in now?": the agent offers real times, books the one you pick, the status flips to **Booked** and the booking alert goes out.
-- [ ] With Calendly chosen: the same request gets the scheduling link. With no calendar connected: it confirms a colleague will contact you to set a time and asks for the best number or time; nothing is booked.
-- [ ] A handed-off conversation gets no follow-up nudges and is not auto-disqualified by the cadence.
+- [x] In the website chat (or the hosted form's thread), get the agent to hand the lead off (qualify as a strong fit with no calendar connected, or ask for a person). The team gets ONE Slack / email alert and the widget shows "We've passed this on to the team."
+- [x] Send another message after that ("what does it cost?", "do you do mobile apps?"): the agent still answers, helpfully and briefly, without repeating "a colleague will follow up" every time, and the team gets NO second hand-off alert. The conversation stays "Handed to a rep".
+- [x] With Google / Microsoft / Cal.com connected and chosen under Agent → Booking, after a hand-off send "can we get a call booked in now?": the agent offers real times, books the one you pick, the status flips to **Booked** and the booking alert goes out.
+- [x] With Calendly chosen: the same request gets the scheduling link. With no calendar connected: it confirms a colleague will contact you to set a time and asks for the best number or time; nothing is booked.
+- [x] A handed-off conversation gets no follow-up nudges and is not auto-disqualified by the cadence.
 
 ### Brand colour, embed colours, /form URL and chat (migrations 0033-0034)
 
 Run `npx supabase db push --remote` first: 0034 renames `org_profiles.form_accent` to `brand_color`, and the form, the chat and Integrations read the new name.
 
-- [ ] Integrations: a compact **Brand colour** card sits under Connection health / Needs attention: a title, one line of description, a **Manage** button on the right, then the two colours as swatches with their hex (dashed swatch and "Default (Alevo blue)" / "Default (white or navy)" while blank) and a "Preview" button wearing the pair. No large pickers on the page.
-- [ ] **Manage** opens a dialog: a **Colour** row (a swatch and a hex field beside it) and, under it, a **Font colour** row built the same way, then a "Preview" button wearing the pair and Cancel / Save (Save is disabled until something changes). Click a swatch: the picker opens right under it (colour area, hue bar, Done); click or drag in it and the hex field and swatch follow; arrow keys work (Shift = bigger steps). Esc closes only the picker (focus returns to the swatch); a click elsewhere closes it too; a second Esc closes the dialog. Type `ea580c` (no #) and leave the field: it reads `#ea580c`. Type `red`: Save shows "Enter a hex colour like #ff6a00." under that row. **Use default** blanks a row. Type a font colour that is weak on the colour (white on `#ffd600`): a "Hard to read … to 1" note appears (a warning only). Save toasts "Brand colours saved.", closes the dialog and the card shows the new pair; Cancel / the backdrop discard. After saving `#ff6a00` + `#ffffff` (migration 0035; run `npx supabase db push --remote` first): the chat bubble, header and your messages, the embed's panel and button and the hosted page's panel and button all use white text on orange (not navy). A page with its own `data-accent` / `?accent=` ignores the saved font colour (automatic white / navy) unless it sets `data-color`. The chat snippet's `data-color` shows the saved font colour.
-- [ ] The Chat widget dialog has no Colour row. Under Greeting there is a **Bubble position** radio pair (Bottom right / Bottom left; arrow keys switch) and one **Add to your site** snippet that already contains `data-position`, `data-accent` and `data-color`: switching position rewrites `data-position` live; with a Brand colour of `#ff6a00` the snippet shows `data-accent="#ff6a00"` and `data-color="#06091a"` (navy on orange), with none it shows `#2e9be6` / `#ffffff`. Pasting it on a page puts the bubble in the chosen corner in those colours. Under it, "What the settings in the code do" lists `data-position`, `data-accent`, `data-color` and the CSS variables.
-- [ ] The Website form dialog's embed snippet also contains `data-accent` (Brand colour, else `#2e9be6`) and `data-color` as a real hex (your saved font colour, else white or navy by contrast), never `inherit`. Pasted as is, the panel and button look exactly as in the Brand colour preview. Changing `data-color` recolours the text on the panel and button; the form's own text and background still follow the page (dark text on a light page, light on a dark one, repainting when the page switches theme).
-- [ ] With a Brand colour saved, a chat bubble on a test page with only `data-org` uses it (white or navy text by contrast). `data-accent` on the chat script, or `--alevo-accent` in the page CSS, overrides it.
-- [ ] The embed script with no colour attributes uses the Brand colour for the panel and button (allow a minute: the details response is cached). `data-accent="#6b2fd0"` wins over it. With the Brand colour blank it falls back to the page's text colour. `data-color` sets the form's text colour.
-- [ ] Hosted form at `/form/<orgId>`: the Brand colour panel and button (Alevo blue when blank), always on a light page even when the app theme is dark; `?accent=6b2fd0` overrides it. The old `/f/<orgId>` redirects to `/form/<orgId>`.
-- [ ] Light / dark: on a dark page the embed has a dark background, light text and a light error red; switching the site's theme repaints it within a moment without a reload. A site that sets `--alevo-accent` under its dark selector gets a different accent per theme.
-- [ ] Embed card is exactly as wide as the element it sits in (a full-width page, then an 850px box): no 1000px cap. In a box under ~740px the panel stacks above the form, the contact list becomes two columns and the fields sit two across.
-- [ ] Embed when the app is slow to answer (throttle the network): the form appears after about 3s; when the details arrive the panel fills in the contact rows, the company name and the colour, with no second form.
-- [ ] On a customer site (for example la-digital on :3003) with the script `src` pointed at `http://localhost:3001`: the form shows all four detail rows and the chat bubble appears bottom-right. Through a free ngrok URL neither works (ngrok's warning page answers the cross-site request without CORS headers).
+- [x] Integrations: a compact **Brand colour** card sits under Connection health / Needs attention: a title, one line of description, a **Manage** button on the right, then the two colours as swatches with their hex (dashed swatch and "Default (Alevo blue)" / "Default (white or navy)" while blank) and a "Preview" button wearing the pair. No large pickers on the page.
+- [x] **Manage** opens a dialog: a **Colour** row (a swatch and a hex field beside it) and, under it, a **Font colour** row built the same way, then a "Preview" button wearing the pair and Cancel / Save (Save is disabled until something changes). Click a swatch: the picker opens right under it (colour area, hue bar, Done); click or drag in it and the hex field and swatch follow; arrow keys work (Shift = bigger steps). Esc closes only the picker (focus returns to the swatch); a click elsewhere closes it too; a second Esc closes the dialog. Type `ea580c` (no #) and leave the field: it reads `#ea580c`. Type `red`: Save shows "Enter a hex colour like #ff6a00." under that row. **Use default** blanks a row. Type a font colour that is weak on the colour (white on `#ffd600`): a "Hard to read … to 1" note appears (a warning only). Save toasts "Brand colours saved.", closes the dialog and the card shows the new pair; Cancel / the backdrop discard. After saving `#ff6a00` + `#ffffff` (migration 0035; run `npx supabase db push --remote` first): the chat bubble, header and your messages, the embed's panel and button and the hosted page's panel and button all use white text on orange (not navy). A page with its own `data-accent` / `?accent=` ignores the saved font colour (automatic white / navy) unless it sets `data-color`. The chat snippet's `data-color` shows the saved font colour.
+- [x] The Chat widget dialog has no Colour row. Under Greeting there is a **Bubble position** radio pair (Bottom right / Bottom left; arrow keys switch) and one **Add to your site** snippet that already contains `data-position`, `data-accent` and `data-color`: switching position rewrites `data-position` live; with a Brand colour of `#ff6a00` the snippet shows `data-accent="#ff6a00"` and `data-color="#06091a"` (navy on orange), with none it shows `#2e9be6` / `#ffffff`. Pasting it on a page puts the bubble in the chosen corner in those colours. Under it, "What the settings in the code do" lists `data-position`, `data-accent`, `data-color` and the CSS variables.
+- [x] The Website form dialog's embed snippet also contains `data-accent` (Brand colour, else `#2e9be6`) and `data-color` as a real hex (your saved font colour, else white or navy by contrast), never `inherit`. Pasted as is, the panel and button look exactly as in the Brand colour preview. Changing `data-color` recolours the text on the panel and button; the form's own text and background still follow the page (dark text on a light page, light on a dark one, repainting when the page switches theme).
+- [x] With a Brand colour saved, a chat bubble on a test page with only `data-org` uses it (white or navy text by contrast). `data-accent` on the chat script, or `--alevo-accent` in the page CSS, overrides it.
+- [x] The embed script with no colour attributes uses the Brand colour for the panel and button (allow a minute: the details response is cached). `data-accent="#6b2fd0"` wins over it. With the Brand colour blank it falls back to the page's text colour. `data-color` sets the form's text colour.
+- [x] Hosted form at `/form/<orgId>`: the Brand colour panel and button (Alevo blue when blank), always on a light page even when the app theme is dark; `?accent=6b2fd0` overrides it. The old `/f/<orgId>` redirects to `/form/<orgId>`.
+- [x] Light / dark: on a dark page the embed has a dark background, light text and a light error red; switching the site's theme repaints it within a moment without a reload. A site that sets `--alevo-accent` under its dark selector gets a different accent per theme.
+- [x] Embed card is exactly as wide as the element it sits in (a full-width page, then an 850px box): no 1000px cap. In a box under ~740px the panel stacks above the form, the contact list becomes two columns and the fields sit two across.
+- [x] Embed when the app is slow to answer (throttle the network): the form appears after about 3s; when the details arrive the panel fills in the contact rows, the company name and the colour, with no second form.
+- [x] On a customer site (for example la-digital on :3003) with the script `src` pointed at `http://localhost:3001`: the form shows all four detail rows and the chat bubble appears bottom-right. Through a free ngrok URL neither works (ngrok's warning page answers the cross-site request without CORS headers).

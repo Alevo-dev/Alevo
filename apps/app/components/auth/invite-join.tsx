@@ -101,13 +101,23 @@ export function InviteJoin({ invite }: { invite: Invite }) {
   }
 
   /**
-   * Google for a new invitee: a normal Google sign-up (the ticket can't ride
-   * along), landing on the workspace step, where the pending invitation for
-   * that email is listed to accept. Clerk matches invitations by email.
+   * Google for a new invitee: redeem the ticket FIRST so the sign-up carries the
+   * invitation — the Clerk instance is invite-only, and a plain Google sign-up
+   * is refused with "sign-ups are currently restricted" (org invitations only
+   * count through the ticket). `sso()` continues the sign-up the ticket opened
+   * (it PATCHes when one exists) rather than starting a new one; Google then
+   * supplies the name and stands in for the password.
    */
   async function joinWithGoogle() {
     setGooglePending(true);
     setLocal({});
+    const created = await signUp.create({ strategy: "ticket", ticket: invite.ticket });
+    if (created.error) return setGooglePending(false);
+    if (signUp.status === "complete") {
+      // Nothing left to collect: the ticket alone made the account.
+      await signUp.finalize();
+      return router.push(await enterInvitedWorkspace(clerk));
+    }
     const { error } = await signUp.sso({
       strategy: "oauth_google",
       redirectUrl: "/onboarding/choose-organization",
