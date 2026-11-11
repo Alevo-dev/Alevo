@@ -52,3 +52,7 @@ skills-lock.json
 
 # accessibility scan browser profile (pnpm a11y -- --app)
 .a11y-profile/
+
+# graphify knowledge graph (rebuilt locally by its git hooks; graph.json is rewritten whole each build)
+graphify-out/
+.gitattributes
