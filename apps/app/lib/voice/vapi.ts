@@ -56,20 +56,28 @@ export async function importTwilioNumber(params: {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   if (!sid || !token) throw new Error("Twilio is not configured (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)");
-  return json(
-    await vapi("/phone-number", {
-      method: "POST",
-      body: {
-        provider: "twilio",
-        number: params.number,
-        twilioAccountSid: sid,
-        twilioAuthToken: token,
-        name: params.name,
-        server: { url: params.serverUrl, headers: { [params.secretHeader]: params.secret } },
-      },
-    }),
-    "import phone number",
-  );
+  const res = await vapi("/phone-number", {
+    method: "POST",
+    body: {
+      provider: "twilio",
+      number: params.number,
+      twilioAccountSid: sid,
+      twilioAuthToken: token,
+      name: params.name,
+      server: { url: params.serverUrl, headers: { [params.secretHeader]: params.secret } },
+    },
+  });
+  if (res.status === 400) {
+    // Vapi keeps one record per Twilio number. If a previous org (or an earlier
+    // import) already created it, adopt that record: calls route by the dialled
+    // number, so the record is shared. Re-assert our routing on it.
+    const existing = /Existing Phone Number ([0-9a-f-]{36})/i.exec(await res.clone().text().catch(() => ""))?.[1];
+    if (existing) {
+      await detachAssistantFromNumber({ phoneNumberId: existing, ...params });
+      return { id: existing };
+    }
+  }
+  return json(res, "import phone number");
 }
 
 /**

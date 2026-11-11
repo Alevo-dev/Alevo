@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
+import { orgProfiles, pgErrorCode, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
 
@@ -103,6 +103,10 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
     revalidatePath("/workspace/agent");
     return { ok: true, values };
   } catch (error) {
+    // The number is unique across orgs (inbound SMS routes by it): 23505 = taken.
+    if (values.smsFromNumber && pgErrorCode(error) === "23505") {
+      return { errors: { smsFromNumber: "That number is already used by another organization." }, values };
+    }
     return { error: safeErrorMessage(error, "Something went wrong"), values };
   }
 }

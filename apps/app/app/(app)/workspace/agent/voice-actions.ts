@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
+import { orgProfiles, recordAudit, safeErrorMessage, withService } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { buildAssistantBody, VOICE_SECRET_HEADER, voiceServerUrl } from "@/lib/voice/assistant";
 import { bookingLinked } from "@/lib/voice/schedule";
@@ -98,6 +98,17 @@ export async function saveVoiceSettings(_prev: VoiceState, formData: FormData): 
         })
         .where(eq(orgProfiles.orgId, org.id)),
     );
+
+    // The webhook finds the org by this id, so it can belong to one org only.
+    // An org that gave the number up (its old record was adopted above) lets go.
+    if (values.enabled && vapiPhoneNumberId) {
+      await withService((tx) =>
+        tx
+          .update(orgProfiles)
+          .set({ vapiPhoneNumberId: null, voiceEnabled: false, updatedAt: new Date() })
+          .where(and(eq(orgProfiles.vapiPhoneNumberId, vapiPhoneNumberId), ne(orgProfiles.orgId, org.id))),
+      );
+    }
 
     const me = await getCurrentUser();
     await recordAudit({
