@@ -15,7 +15,20 @@ export type WatchdogResult = { alerted: boolean; reason: string };
  * closed in the meantime are left alone.
  */
 export async function checkUnanswered(orgId: string, conversationId: string): Promise<WatchdogResult> {
-  const row = await withService(async (tx) => {
+  const row = await loadAnswerState(orgId, conversationId);
+
+  if (!row) return { alerted: false, reason: "not-found" };
+  if (row.status !== "new" && row.status !== "active") return { alerted: false, reason: `status:${row.status}` };
+  if (isAnswered(row.lastInbound, row.lastOutbound)) return { alerted: false, reason: "answered" };
+
+  const alerted = await notifyUnansweredLead(orgId, conversationId, "no-reply", NO_REPLY_LABEL);
+  return { alerted, reason: alerted ? "no-reply" : "already-handled" };
+}
+
+
+/** The conversation's status and when the contact last wrote / the agent last replied; null if it is gone. */
+export async function loadAnswerState(orgId: string, conversationId: string) {
+  return withService(async (tx) => {
     const [conv] = await tx
       .select({ status: conversations.status })
       .from(conversations)
@@ -31,13 +44,6 @@ export async function checkUnanswered(orgId: string, conversationId: string): Pr
       .where(and(eq(messages.conversationId, conversationId), eq(messages.orgId, orgId), inArray(messages.direction, ["inbound", "outbound"])));
     return { status: conv.status, lastInbound: toDate(times?.lastInbound), lastOutbound: toDate(times?.lastOutbound) };
   });
-
-  if (!row) return { alerted: false, reason: "not-found" };
-  if (row.status !== "new" && row.status !== "active") return { alerted: false, reason: `status:${row.status}` };
-  if (isAnswered(row.lastInbound, row.lastOutbound)) return { alerted: false, reason: "answered" };
-
-  const alerted = await notifyUnansweredLead(orgId, conversationId, "no-reply", NO_REPLY_LABEL);
-  return { alerted, reason: alerted ? "no-reply" : "already-handled" };
 }
 
 function toDate(v: Date | string | null | undefined): Date | null {

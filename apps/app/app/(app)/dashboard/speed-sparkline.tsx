@@ -31,6 +31,7 @@ export function SpeedSparkline({ points }: { points: SpeedPoint[] }) {
   const x = (i: number) => (i * W) / (n - 1);
   const y = (s: number) => 4 + (H - 8) - (s / max) * (H - 8);
   const band = W / (n - 1);
+  const dotR = Math.min(2, Math.max(1, band / 5)); // shrinks as buckets crowd
   // Solid segments join neighbouring buckets that both had replies; a dashed
   // one bridges a quiet stretch so the eye can still follow the trend.
   const dots = points.flatMap((p, i) => (p.seconds == null ? [] : [{ i, cx: x(i), cy: y(p.seconds) }]));
@@ -73,10 +74,10 @@ export function SpeedSparkline({ points }: { points: SpeedPoint[] }) {
           />
         )}
         {dots.map((d) => (
-          <circle key={d.i} cx={d.cx} cy={d.cy} r="2.5" fill="var(--color-violet)" />
+          <circle key={d.i} cx={d.cx} cy={d.cy} r={dotR} fill="var(--color-violet)" />
         ))}
         {current?.seconds != null && active != null && (
-          <circle cx={x(active)} cy={y(current.seconds)} r="4" fill="var(--color-surface)" stroke="var(--color-violet)" strokeWidth="2" />
+          <circle cx={x(active)} cy={y(current.seconds)} r={dotR + 1.5} fill="var(--color-surface)" stroke="var(--color-violet)" strokeWidth="2" />
         )}
         {points.map((p, i) => (
           <rect

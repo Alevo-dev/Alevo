@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq, sql, type SQLWrapper } from "drizzle-orm";
-import { calls, contacts, conversations, isReady, loadReadinessFacts, meetings, readiness } from "@alevo/db";
+import { calls, contacts, conversations, countsTowardSpeed, isReady, loadReadinessFacts, meetings, readiness } from "@alevo/db";
 import { getCurrentOrg, getCurrentRole, withOrg } from "@alevo/auth";
 import { getAgentOn } from "@/lib/agent-on";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill, StatusDot } from "@/components/ui/pill";
 import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow, showRatePct } from "@/lib/dashboard/window";
@@ -70,6 +71,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const answered = and(
     inOrg(conversations.orgId),
     sql`${conversations.firstReplySentAt} is not null`,
+    // Leads the agent could not work (off, paused, unsubscribed) are not its wait.
+    countsTowardSpeed,
     sql`${conversations.createdAt} >= ${windowStart}`,
   );
 
@@ -77,7 +80,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [org, role] = await Promise.all([getCurrentOrg(), getCurrentRole()]);
   const showSetup = org && (role === "admin" || role === "owner");
 
-  const [facts, [clock], convDaily, meetingDaily, [outcomes], callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn] =
+  const [facts, [clock], convDaily, meetingDaily, [outcomes], callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn, [skipped], [failed]] =
     await Promise.all([
       showSetup ? loadReadinessFacts(org.id) : null,
       withOrg((tx) => tx.select({ today: sql<string>`${today}::text` }).from(sql`(select 1) as t`)),
@@ -167,6 +170,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       ),
       getCurrentUsage(),
       getAgentOn(),
+      // Leads left out of speed to lead: the agent could not work them.
+      withOrg((tx) =>
+        tx
+          .select({ n: count })
+          .from(conversations)
+          .where(and(inOrg(conversations.orgId), sql`${conversations.agentSkipped} is not null`, sql`${conversations.createdAt} >= ${windowStart}`)),
+      ),
+      // Replies the agent wrote that never reached the contact; cleared when a later one does.
+      withOrg((tx) =>
+        tx
+          .select({ n: count })
+          .from(conversations)
+          .where(and(inOrg(conversations.orgId), sql`${conversations.replyFailedAt} is not null`)),
+      ),
     ]);
 
   const series = {
@@ -184,6 +201,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const medianByAgo = new Map(speedDaily.map((r) => [r.ago, r.median]));
   const speedTrend = labels.map((label, i) => ({ label, seconds: medianByAgo.get(buckets - 1 - i) ?? null }));
   const setup = facts ? readiness(facts) : null;
+  const checklist = setup && !isReady(setup) ? setup : null;
 
   return (
     <div className="space-y-6">
@@ -205,18 +223,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         )}
       </PageHeader>
 
-      {setup && !isReady(setup) && <GettingStarted items={setup} />}
+      {/* On wide screens the checklist is a right-hand rail as tall as the figures beside it; the key figures and the leads row sit to its left. */}
+      {(failed?.n ?? 0) > 0 && (
+        <Notice tone="danger">
+          The agent could not complete a reply to {failed!.n} {failed!.n === 1 ? "lead" : "leads"} (a send failed or it hit an error). Open{" "}
+          <Link href="/conversations">conversations</Link> and reach out yourself; each notice clears once a reply goes through.
+        </Notice>
+      )}
 
-      <KpiTiles days={days} labels={labels} period={bucket} {...series} />
+      <div className={checklist ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]" : "space-y-6"}>
+        {checklist && <GettingStarted items={checklist} className="xl:col-start-2 xl:row-start-1" />}
+        <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
+          <KpiTiles days={days} labels={labels} period={bucket} compact={!!checklist} {...series} />
 
-      {/* Row 1 (mockup): leads area chart, 2/3; speed to lead, 1/3. */}
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" aria-label="Leads and response time">
-        <Card>
-          <CardHeader title={`Leads ${per}`} hint={`Last ${days} days`} />
-          <TrendChart points={points(series.leads)} unit="leads" kind="area" tone="brand" />
-        </Card>
-        <SpeedCard p50={speed?.p50 ?? null} p95={speed?.p95 ?? null} replied={speed?.replied ?? 0} trend={speedTrend} per={per} />
-      </section>
+          {/* Row 1 (mockup): leads area chart, 2/3; speed to lead, 1/3. */}
+          <section
+            className={checklist ? "grid gap-6 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"}
+            aria-label="Leads and response time"
+          >
+            <Card>
+              <CardHeader title={`Leads ${per}`} hint={`Last ${days} days`} />
+              <TrendChart points={points(series.leads)} unit="leads" kind="area" tone="brand" />
+            </Card>
+            <SpeedCard p50={speed?.p50 ?? null} p95={speed?.p95 ?? null} replied={speed?.replied ?? 0} excluded={skipped?.n ?? 0} trend={speedTrend} per={per} />
+          </section>
+        </div>
+      </div>
 
       {/* Row 2 (mockup): meetings columns, lead sources, plan usage. */}
       <section className="grid gap-6 lg:grid-cols-3" aria-label="Meetings, sources and usage">

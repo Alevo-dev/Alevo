@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { conversations, isSuppressed, meetings, messages, withService, type Channel } from "@alevo/db";
+import { conversations, isSuppressed, meetings, messages, replyOutcome, withService, type Channel } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
 import { notifyBookingFailed, notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
 import { crossedStrongFit, type BookingFailure } from "@/lib/notifications/lead-messages";
@@ -226,6 +226,8 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
   let channel: Channel = target.channel;
   let providerRef: string | null = null;
   let note = "recorded in-app (no channel configured)";
+  // Set when a send was attempted and failed; shown to the team and cleared by the next good send.
+  let failure: string | null = null;
 
   // Website chat: the visitor reads replies in the widget while they are on
   // the page. Once they have left, the reply falls through to email (when we
@@ -248,6 +250,7 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
     } else {
       Sentry.captureMessage(`Qualifier SMS send failed: ${sent.error}`, "warning");
       note = `recorded, but SMS delivery failed (${sent.error})`;
+      failure = "SMS delivery failed";
     }
   } else if (
     target.contactEmail &&
@@ -288,6 +291,7 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
     } else {
       Sentry.captureMessage(`Qualifier email send failed: ${sent.error}`, "warning");
       note = `recorded, but email delivery failed (${sent.error})`;
+      failure = "Email delivery failed";
     }
   } else if (target.channel === "chat") {
     note = "left in the chat (the visitor has gone and gave no email)";
@@ -307,6 +311,7 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
       .update(conversations)
       .set({
         firstReplySentAt: sql`coalesce(${conversations.firstReplySentAt}, now())`,
+        ...replyOutcome(failure),
         status: sql`case when ${conversations.status} = 'new' then 'active' else ${conversations.status} end`,
         updatedAt: new Date(),
       })

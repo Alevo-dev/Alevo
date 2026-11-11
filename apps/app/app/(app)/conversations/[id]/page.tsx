@@ -50,6 +50,8 @@ export default async function ConversationThread({ params }: { params: Promise<{
         channel: conversations.channel,
         fitScore: conversations.fitScore,
         scoreReasons: conversations.scoreReasons,
+        replyFailedAt: conversations.replyFailedAt,
+        replyError: conversations.replyError,
         createdAt: conversations.createdAt,
         firstName: contacts.firstName,
         lastName: contacts.lastName,
@@ -187,6 +189,14 @@ export default async function ConversationThread({ params }: { params: Promise<{
             </Pill>
           </div>
         </header>
+
+        {conv.replyFailedAt && (
+          <Notice tone="danger">
+            The agent could not complete its last reply
+            {conv.replyError ? ` (${conv.replyError.toLowerCase()})` : ""}. Reach out to this contact yourself; the
+            notice clears once a reply goes through.
+          </Notice>
+        )}
 
         {suppressedReason && (
           <Notice tone="danger">

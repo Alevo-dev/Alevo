@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { countsTowardSpeed } from "./conversation-flags";
 import { calls } from "./schema/calls";
 import { conversations } from "./schema/conversations";
 import { meetings } from "./schema/meetings";
@@ -18,7 +19,7 @@ export type OrgFunnel = {
   qualified: number;
   /** ...of which the agent answered (first reply recorded). */
   replied: number;
-  /** Seconds from lead received to first reply, over answered leads. */
+  /** Seconds from lead received to first reply, over answered leads the agent could work. */
   p50: number | null;
   p95: number | null;
   /** Meetings created in the window that weren't cancelled. */
@@ -45,9 +46,9 @@ export async function funnelByOrg(days: number): Promise<OrgFunnel[]> {
           orgId: conversations.orgId,
           leads: count,
           qualified: sql<number>`count(*) filter (where ${conversations.status} in ('booked','handed_off'))`.mapWith(Number),
-          replied: sql<number>`count(*) filter (where ${conversations.firstReplySentAt} is not null)`.mapWith(Number),
-          p50: sql<number | null>`percentile_cont(0.5) within group (order by ${replySeconds})`.mapWith(toNumber),
-          p95: sql<number | null>`percentile_cont(0.95) within group (order by ${replySeconds})`.mapWith(toNumber),
+          replied: sql<number>`count(*) filter (where ${conversations.firstReplySentAt} is not null and ${countsTowardSpeed})`.mapWith(Number),
+          p50: sql<number | null>`percentile_cont(0.5) within group (order by ${replySeconds}) filter (where ${countsTowardSpeed})`.mapWith(toNumber),
+          p95: sql<number | null>`percentile_cont(0.95) within group (order by ${replySeconds}) filter (where ${countsTowardSpeed})`.mapWith(toNumber),
         })
         .from(conversations)
         .where(sql`${conversations.createdAt} >= ${since}`)

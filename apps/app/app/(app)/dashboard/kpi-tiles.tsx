@@ -23,6 +23,7 @@ export function KpiTiles({
   days,
   labels,
   period,
+  compact = false,
   leads,
   qualified,
   meetings,
@@ -32,6 +33,8 @@ export function KpiTiles({
   /** One per bar, oldest first. */
   labels: string[];
   period: "day" | "week";
+  /** Two across instead of four: for when the tiles share the row with the checklist rail. */
+  compact?: boolean;
   leads: number[];
   qualified: number[];
   meetings: number[];
@@ -42,7 +45,7 @@ export function KpiTiles({
   const meetingsN = sum(meetings);
   return (
     <section
-      className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+      className={compact ? "grid grid-cols-2 gap-4" : "grid grid-cols-2 gap-4 lg:grid-cols-4"}
       aria-label="Key figures"
     >
       <StatTile

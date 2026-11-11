@@ -71,6 +71,11 @@ export const conversations = pgTable(
     assignedTo: uuid("assigned_to").references(() => users.id, { onDelete: "set null" }),
     leadReceivedAt: timestamp("lead_received_at", { withTimezone: true }).notNull().defaultNow(),
     firstReplySentAt: timestamp("first_reply_sent_at", { withTimezone: true }),
+    /** Why the agent could not work this lead; speed to lead leaves it out. Null = it could. */
+    agentSkipped: text("agent_skipped", { enum: ["disabled", "over-allowance", "suppressed"] }),
+    /** The latest reply was written but not delivered; null once one goes through. */
+    replyFailedAt: timestamp("reply_failed_at", { withTimezone: true }),
+    replyError: text("reply_error"),
     ...timestamps,
   },
   (t) => [

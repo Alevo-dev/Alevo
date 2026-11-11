@@ -1,12 +1,13 @@
 import { eq, inArray } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { funnelByOrg, organizations, orgSubscriptions, plans, withService } from "@alevo/db";
+import { funnelByOrg, markAgentSkipped, organizations, orgSubscriptions, plans, withService } from "@alevo/db";
 import { notifyInternal } from "@/lib/alerts/internal";
 import { slowOrgs, speedDigest } from "@/lib/alerts/speed-digest";
 import { ensureActivity, ensureCompany, ensureContact, ensureOpportunity, loadWritebackContext } from "@/lib/psa/writeback";
 import { notifyUnansweredLead } from "@/lib/notifications/lead-events";
 import { NO_REPLY_AFTER } from "@/lib/qualifier/unanswered";
 import { checkUnanswered } from "@/lib/qualifier/watchdog";
+import { flagRunFailure } from "@/lib/qualifier/run-failure";
 import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
 import { FOLLOWUPS } from "@/lib/cadence/schedule";
@@ -102,12 +103,21 @@ export const qualifyConversation = inngest.createFunction(
       // contact opted out of email): a person has to. Alert the org now rather
       // than after the watchdog's wait.
       if (ctx.skip === "disabled" || ctx.skip === "over-allowance" || ctx.skip === "suppressed") {
+        // Not the agent's wait: speed to lead leaves this lead out.
+        await markAgentSkipped(orgId, conversationId, ctx.skip);
         await notifyUnansweredLead(orgId, conversationId, ctx.skip);
       }
       return { ok: true, skipped: ctx.skip };
     }
 
-    const result = await runQualifier(ctx);
+    let result: Awaited<ReturnType<typeof runQualifier>>;
+    try {
+      result = await runQualifier(ctx);
+    } catch (err) {
+      // Flag it on screen (best effort), then rethrow so Inngest retries and Sentry hears about it.
+      await flagRunFailure(orgId, conversationId).catch(() => {});
+      throw err;
+    }
 
     // If the Qualifier replied and the lead is still being worked (not
     // disqualified / handed off), start the follow-up cadence. Fired with a

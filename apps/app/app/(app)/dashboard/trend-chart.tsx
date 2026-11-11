@@ -56,6 +56,8 @@ export function TrendChart({
   // Columns sit in bands; the area chart's points sit on the band edges.
   const band = PLOT_W / Math.max(1, n);
   const barW = Math.min(24, Math.max(4, band * 0.62));
+  // Dots shrink as points crowd (30 days = 30 dots), so neighbours never touch.
+  const dotR = Math.min(2.5, Math.max(1.25, band / 9));
   const cx = (i: number) => (kind === "area" ? PAD.left + (n > 1 ? (i * PLOT_W) / (n - 1) : PLOT_W / 2) : PAD.left + i * band + band / 2);
   const hitX = (i: number) => (kind === "area" ? cx(i) - band / 2 : PAD.left + i * band);
 
@@ -119,8 +121,8 @@ export function TrendChart({
                 />
               )}
               {kind === "area" && (
-                // 8px dot with a 2px surface ring so it reads over the line.
-                <circle cx={cx(i)} cy={y(p.n)} r={active === i ? 5 : 4} fill="var(--color-surface)" stroke={color} strokeWidth="2" />
+                // A dot with a surface fill so it reads over the line; the hovered one grows.
+                <circle cx={cx(i)} cy={y(p.n)} r={active === i ? dotR + 1.5 : dotR} fill="var(--color-surface)" stroke={color} strokeWidth={dotR < 2 ? 1.25 : 1.75} />
               )}
               {/* Hit target: the whole band, keyboard focusable. */}
               <rect

@@ -16,19 +16,23 @@ export type { SpeedPoint };
  * Speed to lead, as in the mockup: the median and the 95th percentile of the
  * first reply over the window, then a violet sparkline of the median per day
  * (or per week; hover a period for its value). Counts only leads that got a
- * reply. The pill names the state against the 60-second target, so it never
- * rests on colour alone.
+ * reply and that the agent could work (leads that arrived while it was off or
+ * paused are noted, not counted). The pill names the state against the
+ * 60-second target, so it never rests on colour alone.
  */
 export function SpeedCard({
   p50,
   p95,
   replied,
+  excluded,
   trend,
   per,
 }: {
   p50: number | null;
   p95: number | null;
   replied: number;
+  /** Leads in the window the agent could not work (off, paused, unsubscribed); not counted above. */
+  excluded: number;
   trend: SpeedPoint[];
   per: string;
 }) {
@@ -50,6 +54,11 @@ export function SpeedCard({
       <p className="mt-2 text-label text-ink-muted">
         Median first reply {per} · {replied} {replied === 1 ? "lead" : "leads"} answered · target 60s
       </p>
+      {excluded > 0 && (
+        <p className="mt-1 text-label text-ink-muted">
+          {excluded} {excluded === 1 ? "lead" : "leads"} not counted: the agent was off, paused or the contact had opted out.
+        </p>
+      )}
     </Card>
   );
 }
