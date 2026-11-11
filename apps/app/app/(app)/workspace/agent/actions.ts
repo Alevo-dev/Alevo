@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import { orgProfiles, recordAudit } from "@alevo/db";
+import { orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
 
@@ -103,7 +103,7 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
     revalidatePath("/workspace/agent");
     return { ok: true, values };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong", values };
+    return { error: safeErrorMessage(error, "Something went wrong"), values };
   }
 }
 

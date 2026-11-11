@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { hitRateLimit, orgProfiles, recordAudit } from "@alevo/db";
+import { hitRateLimit, orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { crawlSite } from "@/lib/profile/crawl";
 import { extractProfile } from "@/lib/profile/extract";
@@ -102,7 +102,7 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     revalidatePath("/workspace/profile");
     return { ok: true, values };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong", values };
+    return { error: safeErrorMessage(error, "Something went wrong"), values };
   }
 }
 
@@ -122,7 +122,7 @@ export async function importFromWebsite(url: string): Promise<ImportResult> {
     orgId = org.id;
     actorUserId = (await getCurrentUser())?.id ?? null;
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Something went wrong" };
+    return { ok: false, error: safeErrorMessage(error, "Something went wrong") };
   }
 
   try {

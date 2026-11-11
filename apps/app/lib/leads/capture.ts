@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { eq } from "drizzle-orm";
-import { consents, conversations, hitRateLimit, messages, organizations, resolveContact, withService } from "@alevo/db";
+import { consents, conversations, hitRateLimit, messages, organizations, resolveContact, withService, safeErrorMessage } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
 import { meterUsage } from "@/lib/usage/limits";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
@@ -123,7 +123,7 @@ export async function captureLead(
     return {
       ok: false,
       status: 500,
-      error: error instanceof Error ? error.message : "Something went wrong",
+      error: safeErrorMessage(error, "Something went wrong"),
     };
   }
 }

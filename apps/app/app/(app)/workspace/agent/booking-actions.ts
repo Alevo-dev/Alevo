@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { listOrgSecretKeys, orgProfiles, recordAudit } from "@alevo/db";
+import { listOrgSecretKeys, orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { eq } from "drizzle-orm";
 import { bookingSnapshot, connectedBookingTools, isBookingTool, type BookingTool } from "@/lib/booking/connected";
@@ -96,6 +96,6 @@ export async function saveBookingSettings(_prev: BookingState, formData: FormDat
     revalidatePath("/workspace/integrations");
     return { ok: true, values };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong", values };
+    return { error: safeErrorMessage(error, "Something went wrong"), values };
   }
 }

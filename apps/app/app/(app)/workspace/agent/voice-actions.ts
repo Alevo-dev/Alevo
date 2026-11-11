@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { orgProfiles, recordAudit } from "@alevo/db";
+import { orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { buildAssistantBody, VOICE_SECRET_HEADER, voiceServerUrl } from "@/lib/voice/assistant";
 import { bookingLinked } from "@/lib/voice/schedule";
@@ -111,6 +111,6 @@ export async function saveVoiceSettings(_prev: VoiceState, formData: FormData): 
     return { ok: true, values };
   } catch (error) {
     Sentry.captureException(error);
-    return { error: error instanceof Error ? error.message : "Something went wrong", values };
+    return { error: safeErrorMessage(error, "Something went wrong"), values };
   }
 }

@@ -1,5 +1,6 @@
 import type { OrgProfile } from "@alevo/db";
 import { toneForPrompt } from "../profile/tone";
+import { fenceKnowledge, UNTRUSTED_INPUT_RULES } from "./guard";
 
 export type ContactInfo = {
   firstName: string | null;
@@ -48,9 +49,7 @@ export function buildSystemPrompt(
 
   // Retrieved knowledge-base passages, if any — authoritative for specifics.
   const kb = knowledge.length
-    ? `\n\nKnowledge base — use these passages to answer specific questions accurately. If they don't cover something, say you'll check rather than inventing an answer:\n${knowledge
-        .map((k, i) => `[${i + 1}] ${k}`)
-        .join("\n\n")}`
+    ? `\n\nKnowledge base: reference passages for answering specific questions accurately. If they don't cover something, say you'll check rather than inventing an answer:\n${fenceKnowledge(knowledge)}`
     : "";
 
   const signoff = profile.signoff?.trim()
@@ -126,6 +125,8 @@ ${styleGuidance} ${signoff}
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
 - If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.${handedOffNote}
+
+${UNTRUSTED_INPUT_RULES}
 
 Decide, act through the tools, then stop.`;
 }

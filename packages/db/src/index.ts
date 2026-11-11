@@ -1,6 +1,8 @@
 export { getDb, type Db, type Tx } from "./client";
 export { withTenant, withService, type TenantClaims } from "./with-tenant";
-export { seal, open, type SealedSecret } from "./crypto";
+export { seal, open, signingKey, type SealedSecret } from "./crypto";
+export { resealSecrets, type ResealReport } from "./reseal";
+export { pgErrorCode, safeErrorMessage } from "./pg-error";
 export {
   setOrgSecret,
   getOrgSecret,

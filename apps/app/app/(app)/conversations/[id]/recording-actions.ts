@@ -1,7 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { calls } from "@alevo/db";
+import { calls, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { presignGetUrl } from "@/lib/r2";
 
@@ -19,6 +19,6 @@ export async function recordingUrl(callId: string): Promise<RecordingResult> {
     if (!row?.key) return { error: "Recording unavailable" };
     return { url: await presignGetUrl(row.key, 600) };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Recording unavailable" };
+    return { error: safeErrorMessage(error, "Recording unavailable") };
   }
 }

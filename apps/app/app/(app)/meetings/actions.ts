@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
-import { conversations, meetings, orgProfiles, type MeetingOutcome } from "@alevo/db";
+import { conversations, meetings, orgProfiles, type MeetingOutcome, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { bookingConfigFromProfile, getBookingAdapter } from "@/lib/booking";
 
@@ -115,6 +115,6 @@ export async function manageMeeting(_prev: ManageState, formData: FormData): Pro
     revalidatePath("/meetings");
     return { ok: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong" };
+    return { error: safeErrorMessage(error, "Something went wrong") };
   }
 }

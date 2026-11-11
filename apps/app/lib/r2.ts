@@ -21,10 +21,16 @@ function r2Config() {
   return { accountId, accessKeyId, secretAccessKey, bucket };
 }
 
-/** A presigned URL the browser can PUT the file to, valid for `expiresIn` seconds. */
+/**
+ * A presigned URL the browser can PUT the file to, valid for `expiresIn` seconds.
+ * aws4fetch leaves content-type and content-length out of the signature unless
+ * told otherwise (`allHeaders`), which would let the URL upload any type and any
+ * size. Signing them pins the upload to exactly what the presign route approved.
+ */
 export async function presignPutUrl(
   key: string,
   contentType: string,
+  sizeBytes: number,
   expiresIn = 300,
 ): Promise<string> {
   const { accountId, accessKeyId, secretAccessKey, bucket } = r2Config();
@@ -35,8 +41,8 @@ export async function presignPutUrl(
     .join("/")}?X-Amz-Expires=${expiresIn}`;
   const signed = await client.sign(endpoint, {
     method: "PUT",
-    headers: { "content-type": contentType },
-    aws: { signQuery: true },
+    headers: { "content-type": contentType, "content-length": String(sizeBytes) },
+    aws: { signQuery: true, allHeaders: true },
   });
   return signed.url;
 }

@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
@@ -9,7 +8,7 @@ import {
   releaseWebhookEvent,
   withService,
 } from "@alevo/db";
-import { safeEqual } from "@/lib/crypto/safe-equal";
+import { verifyCalendlySignature } from "@/lib/webhooks/booking-signature";
 import { requestPsaWriteback } from "@/lib/psa/request";
 import { notifyMeetingBooked } from "@/lib/notifications/lead-events";
 import { trackDeliveries } from "@/lib/webhooks/track";
@@ -19,7 +18,7 @@ import { trackDeliveries } from "@/lib/webhooks/track";
  * Qualifier sends carries `utm_content = conversationId`, which Calendly echoes
  * in `payload.tracking.utm_content`, so we tie the booking to the conversation.
  * Signature: `Calendly-Webhook-Signature: t=…,v1=…`, HMAC-SHA256 of `t.rawBody`
- * with the org's `calendly_webhook_secret` (verified when set; rule 7).
+ * with the org's `calendly_webhook_secret` (required; rule 7).
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -32,23 +31,6 @@ type CalendlyPayload = {
     location?: { join_url?: string };
   };
 };
-
-function verify(raw: string, secret: string, header: string | null): boolean {
-  if (!header) return false;
-  const parts = Object.fromEntries(
-    header.split(",").map((p) => {
-      const [k, v] = p.split("=");
-      return [k?.trim(), v?.trim()];
-    }),
-  );
-  const t = parts.t;
-  const v1 = parts.v1;
-  if (!t || !v1) return false;
-  // Reject stale deliveries (5-minute tolerance).
-  const ts = Number(t);
-  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
-  return safeEqual(v1, createHmac("sha256", secret).update(`${t}.${raw}`, "utf8").digest("hex"));
-}
 
 export const POST = trackDeliveries("calendly", async (req, track) => {
   const raw = await req.text();
@@ -102,8 +84,9 @@ export const POST = trackDeliveries("calendly", async (req, track) => {
   if (!orgId) return new Response("ok (unresolved)", { status: 200 });
   track.setOrg(orgId);
 
+  // Fail closed: no stored signing key means nothing can be verified, so nothing is accepted.
   const secret = await getOrgSecret(orgId, "calendly_webhook_secret").catch(() => null);
-  if (secret && !verify(raw, secret, req.headers.get("calendly-webhook-signature"))) {
+  if (!verifyCalendlySignature(raw, secret, req.headers.get("calendly-webhook-signature"))) {
     return new Response("invalid signature", { status: 401 });
   }
 

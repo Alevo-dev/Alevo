@@ -2,6 +2,7 @@ import "server-only";
 import { appUrl } from "@/lib/app-url";
 import { safeEqual } from "@/lib/crypto/safe-equal";
 import { createHmac } from "node:crypto";
+import { signingKey } from "@alevo/db";
 import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
@@ -14,12 +15,6 @@ import { vendorFetch } from "@/lib/http/vendor-fetch";
 export type CalendarOAuthProvider = "google" | "m365";
 
 const STATE_TTL_MS = 10 * 60 * 1000; // a connect round-trip is seconds; 10 min is generous
-
-function masterKey(): string {
-  const s = process.env.SECRETS_MASTER_KEY;
-  if (!s) throw new Error("SECRETS_MASTER_KEY is not set");
-  return s;
-}
 
 function env(name: string): string {
   const v = process.env[name];
@@ -100,7 +95,7 @@ export function signState(orgId: string, provider: CalendarOAuthProvider, return
   const payload = Buffer.from(
     JSON.stringify({ o: orgId, p: provider, t: Date.now(), r: returnTo }),
   ).toString("base64url");
-  const sig = createHmac("sha256", masterKey()).update(payload).digest("base64url");
+  const sig = createHmac("sha256", signingKey("oauth-state")).update(payload).digest("base64url");
   return `${payload}.${sig}`;
 }
 
@@ -109,7 +104,7 @@ export function verifyState(
 ): { orgId: string; provider: CalendarOAuthProvider; returnTo: string | null } | null {
   const [payload, sig] = state.split(".");
   if (!payload || !sig) return null;
-  const expected = createHmac("sha256", masterKey()).update(payload).digest("base64url");
+  const expected = createHmac("sha256", signingKey("oauth-state")).update(payload).digest("base64url");
   if (!safeEqual(sig, expected)) return null;
   try {
     const obj = JSON.parse(Buffer.from(payload, "base64url").toString()) as {

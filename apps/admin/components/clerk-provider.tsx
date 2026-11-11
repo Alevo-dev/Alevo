@@ -36,12 +36,13 @@ const LIGHT = {
   colorNeutral: "#0b1224",
 };
 
-export function ThemedClerkProvider({ children }: { children: React.ReactNode }) {
+/** `nonce` is the request's CSP nonce, so Clerk's own script tag is allowed to run. */
+export function ThemedClerkProvider({ children, nonce }: { children: React.ReactNode; nonce?: string }) {
   const { resolvedTheme } = useTheme();
   // Before hydration `resolvedTheme` is undefined; dark is the default ground.
   const variables = resolvedTheme === "light" ? LIGHT : DARK;
   return (
-    <ClerkProvider appearance={{ variables }} signInFallbackRedirectUrl="/dashboard">
+    <ClerkProvider nonce={nonce} appearance={{ variables }} signInFallbackRedirectUrl="/dashboard">
       {children}
     </ClerkProvider>
   );

@@ -5,19 +5,20 @@
   "type": "module",
   "description": "Alevo auth module — the ONLY place that imports Clerk (plan.md rule 3).",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./csp": "./src/csp.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@alevo/db": "workspace:*",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.4",
     "server-only": "^0.0.1"
   },
   "peerDependencies": {
     "@clerk/nextjs": "^7",
-    "next": "^16",
+    "next": "^16.4.6",
     "react": ">=19"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { UserButton } from "@clerk/nextjs";
+import { AccountButton } from "@/components/account-button";
 import { authInterrupt, requirePlatformAdmin } from "@alevo/auth";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { Brand } from "@/components/brand";
@@ -30,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <MobileMenu />
             <Brand />
           </div>
-          <UserButton />
+          <AccountButton />
         </header>
         <main className="min-w-0 flex-1 px-4 pb-6 md:px-10 md:pb-8">{children}</main>
       </div>

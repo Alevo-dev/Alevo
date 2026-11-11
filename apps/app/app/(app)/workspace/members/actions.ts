@@ -9,6 +9,7 @@ import {
   recordAudit,
   withService,
   type AppRole,
+  safeErrorMessage,
 } from "@alevo/db";
 import {
   getCurrentOrg,
@@ -47,7 +48,7 @@ async function adminContext() {
 }
 
 function fail(error: unknown): ActionState {
-  return { error: error instanceof Error ? error.message : "Something went wrong" };
+  return { error: safeErrorMessage(error, "Something went wrong") };
 }
 
 export async function inviteMember(

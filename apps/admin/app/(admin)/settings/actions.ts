@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { deletePlatformSecret, getPlatformSecret, recordAudit, setPlatformSecret } from "@alevo/db";
+import { deletePlatformSecret, getPlatformSecret, recordAudit, setPlatformSecret, safeErrorMessage } from "@alevo/db";
 import { requirePlatformAdmin } from "@alevo/auth";
 
 export type SettingsState = { ok?: boolean; error?: string; errors?: { webhook?: string } };
@@ -9,7 +9,7 @@ export type SettingsState = { ok?: boolean; error?: string; errors?: { webhook?:
 const KEY = "internal_alerts_slack_webhook" as const;
 
 function fail(error: unknown): SettingsState {
-  return { error: error instanceof Error ? error.message : "Something went wrong" };
+  return { error: safeErrorMessage(error, "Something went wrong") };
 }
 
 function slackWebhookError(value: string): string | null {

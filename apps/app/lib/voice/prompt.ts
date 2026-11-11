@@ -1,5 +1,6 @@
 import type { OrgProfile } from "@alevo/db";
 import { toneForPrompt } from "@/lib/profile/tone";
+import { UNTRUSTED_INPUT_RULES } from "@/lib/qualifier/guard";
 
 /** open: qualify and book. after_hours: take a message (and book, if a calendar is connected). closed: voice is switched off. */
 export type VoiceMode = "open" | "after_hours" | "closed";
@@ -81,6 +82,8 @@ How to speak on the phone:
 - Before the call ends, set the lead's status with set_status: 'handed_off' when a person must follow up, 'disqualified' when they are not a fit. A successful book_meeting sets 'booked' by itself.
 
 ${modeRules}
+
+${UNTRUSTED_INPUT_RULES}
 
 Decide, act through the tools, and when the conversation is finished wrap up and call endCall.`;
 }

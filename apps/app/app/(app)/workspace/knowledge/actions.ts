@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
-import { files, kbDocuments, withService } from "@alevo/db";
+import { files, kbDocuments, withService, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import * as Sentry from "@sentry/nextjs";
 import { inngest } from "@/lib/inngest/client";
@@ -90,7 +90,7 @@ export async function addDocument(_prev: ActionState, formData: FormData): Promi
     revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong", values };
+    return { error: safeErrorMessage(error, "Something went wrong"), values };
   }
 }
 
@@ -123,7 +123,7 @@ export async function addPdfDocument(params: {
     revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Something went wrong" };
+    return { ok: false, error: safeErrorMessage(error, "Something went wrong") };
   }
 }
 
@@ -144,7 +144,7 @@ export async function reingestDocument(_prev: ActionState, formData: FormData): 
     revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong" };
+    return { error: safeErrorMessage(error, "Something went wrong") };
   }
 }
 
@@ -173,6 +173,6 @@ export async function deleteDocument(_prev: ActionState, formData: FormData): Pr
     revalidatePath("/workspace/knowledge");
     return { ok: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong" };
+    return { error: safeErrorMessage(error, "Something went wrong") };
   }
 }

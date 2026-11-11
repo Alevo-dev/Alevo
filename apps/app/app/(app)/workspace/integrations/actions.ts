@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
-import { deleteOrgSecret, orgProfiles, recordAudit, setSetupDecline } from "@alevo/db";
+import { deleteOrgSecret, orgProfiles, recordAudit, setSetupDecline, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isSecretKey } from "@/lib/secrets-registry";
 import { readSecretFields, storeSecrets, validateSecrets, type SecretErrors } from "@/lib/secrets/save";
@@ -30,7 +30,7 @@ async function adminContext() {
 }
 
 function fail(error: unknown): { error: string } {
-  return { error: error instanceof Error ? error.message : "Something went wrong" };
+  return { error: safeErrorMessage(error, "Something went wrong") };
 }
 
 function revalidateBoth() {
@@ -247,7 +247,7 @@ export async function testCalendar(_prev: CalendarTestState, _formData: FormData
     );
     return { ok: true, detail: calendarTestDetail(label, profile.calendarAccountEmail, slots.length, cfg.lengthMin) };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Something went wrong";
+    const message = safeErrorMessage(error, "Something went wrong");
     const hint = calendarTestHint(message);
     return { error: hint ? `${message} ${hint}` : message };
   }

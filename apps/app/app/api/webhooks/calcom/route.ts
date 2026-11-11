@@ -1,4 +1,3 @@
-import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
@@ -10,7 +9,7 @@ import {
   withService,
   type MeetingStatus,
 } from "@alevo/db";
-import { safeEqual } from "@/lib/crypto/safe-equal";
+import { verifyCalcomSignature } from "@/lib/webhooks/booking-signature";
 import { requestPsaWriteback } from "@/lib/psa/request";
 import { notifyMeetingBooked } from "@/lib/notifications/lead-events";
 import { trackDeliveries } from "@/lib/webhooks/track";
@@ -20,7 +19,7 @@ import { trackDeliveries } from "@/lib/webhooks/track";
  * We set `metadata.alevoOrgId` / `alevoConversationId` when booking, so Alevo
  * bookings resolve directly; others fall back to matching the stored booking
  * uid. Signature: `x-cal-signature-256` = HMAC-SHA256(secret, raw body), using
- * the org's `calcom_webhook_secret` (rule 7). Idempotent per (event, uid).
+ * the org's `calcom_webhook_secret`, required (rule 7). Idempotent per (event, uid).
  */
 type CalPayload = {
   uid?: string;
@@ -29,11 +28,6 @@ type CalPayload = {
   location?: string;
   metadata?: { alevoOrgId?: string; alevoConversationId?: string };
 };
-
-function verify(raw: string, secret: string, signature: string | null): boolean {
-  if (!signature) return false;
-  return safeEqual(signature, createHmac("sha256", secret).update(raw, "utf8").digest("hex"));
-}
 
 export const POST = trackDeliveries("calcom", async (req, track) => {
   const raw = await req.text();
@@ -63,9 +57,9 @@ export const POST = trackDeliveries("calcom", async (req, track) => {
   if (!orgId) return new Response("ok (org unresolved)", { status: 200 });
   track.setOrg(orgId);
 
-  // Verify signature when a secret is configured (else proceed, best-effort MVP).
+  // Fail closed: no stored signing secret means nothing can be verified, so nothing is accepted.
   const secret = await getOrgSecret(orgId, "calcom_webhook_secret").catch(() => null);
-  if (secret && !verify(raw, secret, req.headers.get("x-cal-signature-256"))) {
+  if (!verifyCalcomSignature(raw, secret, req.headers.get("x-cal-signature-256"))) {
     return new Response("invalid signature", { status: 401 });
   }
 

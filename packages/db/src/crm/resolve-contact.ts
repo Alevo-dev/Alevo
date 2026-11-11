@@ -7,6 +7,7 @@ import { meetings } from "../schema/meetings";
 import { psaLinks } from "../schema/psa";
 import { withService } from "../with-tenant";
 import { normalizeEmail, normalizePhone } from "./identity";
+import { pgErrorCode } from "../pg-error";
 
 export type ContactIdentity = { email?: string | null; phone?: string | null };
 export type ContactFields = {
@@ -29,7 +30,7 @@ export function keeperOf(a: Stamp, b: Stamp): "a" | "b" {
 }
 
 /** Unique-violation from a racing insert; the second lookup finds the winner. */
-const isUniqueViolation = (e: unknown) => (e as { code?: string } | null)?.code === "23505";
+const isUniqueViolation = (e: unknown) => pgErrorCode(e) === "23505";
 
 /** Candidates in the org that hold this email or phone (two rows at most). */
 async function candidates(tx: Tx, orgId: string, email: string | null, phone: string | null, include?: string): Promise<Row[]> {

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemedClerkProvider } from "@/components/clerk-provider";
@@ -33,7 +34,10 @@ export const viewport: Viewport = {
   colorScheme: "dark light",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // The proxy puts the CSP nonce on the request. Reading it makes every page render
+  // per request, which a nonce requires (a prerendered page has no request to read).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="en"
@@ -42,8 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full">
         {/* Theme first so Clerk's embedded UI can follow light/dark. */}
-        <ThemeProvider>
-          <ThemedClerkProvider>{children}</ThemedClerkProvider>
+        <ThemeProvider nonce={nonce}>
+          <ThemedClerkProvider nonce={nonce}>{children}</ThemedClerkProvider>
           <AppToaster />
         </ThemeProvider>
       </body>

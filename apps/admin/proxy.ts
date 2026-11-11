@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { cspOptionsFromEnv } from "@alevo/auth/csp";
 
 /**
  * Optimistic gating only (Next 16: proxy is not authz). Real authorization is
@@ -7,11 +8,17 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
  */
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)"]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
+// The CSP (nonce + strict-dynamic) is built by Clerk from our options; see
+// @alevo/auth/csp. Report-only until CSP_ENFORCE=true. Read per request so the
+// switch is an env change, not a deploy of new code.
+export default clerkMiddleware(
+  async (auth, req) => {
+    if (!isPublicRoute(req)) {
+      await auth.protect();
+    }
+  },
+  () => ({ contentSecurityPolicy: cspOptionsFromEnv() }),
+);
 
 export const config = {
   matcher: [

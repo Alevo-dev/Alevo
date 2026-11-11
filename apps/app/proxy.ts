@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { cspOptionsFromEnv } from "@alevo/auth/csp";
 
 /**
  * Next 16 renamed middleware to `proxy`. Per the Next docs, proxy is NOT an
@@ -24,11 +25,17 @@ const isPublicRoute = createRouteMatcher([
   "/api/chat/(.*)", // public website chat (the widget); visitor token + rate limits in code
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
+// The CSP (nonce + strict-dynamic) is built by Clerk from our options; see
+// @alevo/auth/csp. Report-only until CSP_ENFORCE=true. Read per request so the
+// switch is an env change, not a deploy of new code.
+export default clerkMiddleware(
+  async (auth, req) => {
+    if (!isPublicRoute(req)) {
+      await auth.protect();
+    }
+  },
+  () => ({ contentSecurityPolicy: cspOptionsFromEnv() }),
+);
 
 export const config = {
   matcher: [

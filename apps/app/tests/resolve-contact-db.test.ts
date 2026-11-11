@@ -10,6 +10,7 @@ import {
   keeperOf,
   meetings,
   organizations,
+  pgErrorCode,
   psaLinks,
   resolveContact,
   withService,
@@ -154,8 +155,8 @@ describe.skipIf(!HAS_DB)("resolveContact — form touches and the index", () => 
   it("the database refuses a second contact with the same email or phone", async () => {
     const email = `uniq-${stamp}@example.com`;
     await insertContact({ email, phone: "+16135550107" });
-    await expect(insertContact({ email: email.toUpperCase() })).rejects.toMatchObject({ code: "23505" });
-    await expect(insertContact({ phone: "+16135550107" })).rejects.toMatchObject({ code: "23505" });
+    await expect(insertContact({ email: email.toUpperCase() })).rejects.toSatisfy((e: unknown) => pgErrorCode(e) === "23505");
+    await expect(insertContact({ phone: "+16135550107" })).rejects.toSatisfy((e: unknown) => pgErrorCode(e) === "23505");
   });
 
   it("moves the loser's PSA links onto the keeper, dropping one that would duplicate", async () => {

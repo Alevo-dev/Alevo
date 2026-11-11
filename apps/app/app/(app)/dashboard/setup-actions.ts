@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isDeclineKey, recordAudit, setSetupDecline } from "@alevo/db";
+import { isDeclineKey, recordAudit, setSetupDecline, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole } from "@alevo/auth";
 
 export type SetupState = { ok?: boolean; error?: string };
@@ -20,6 +20,6 @@ export async function declineSetupItem(_prev: SetupState, formData: FormData): P
     revalidatePath("/dashboard");
     return { ok: true };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Something went wrong" };
+    return { error: safeErrorMessage(error, "Something went wrong") };
   }
 }

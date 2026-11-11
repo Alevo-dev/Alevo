@@ -9,6 +9,7 @@ import {
   users,
   withService,
   type AppRole,
+  safeErrorMessage,
 } from "@alevo/db";
 import {
   deleteActiveOrg,
@@ -43,7 +44,7 @@ export type OrgActionResult = { ok?: boolean; error?: string };
 export type OrgIdentity = { id: string } | { error: string };
 
 function fail(error: unknown): { error: string } {
-  return { error: error instanceof Error ? error.message : "Something went wrong" };
+  return { error: safeErrorMessage(error, "Something went wrong") };
 }
 
 /**

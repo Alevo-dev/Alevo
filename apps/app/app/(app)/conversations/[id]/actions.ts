@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
-import { conversations, messages } from "@alevo/db";
+import { conversations, messages, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, withOrg } from "@alevo/auth";
 import { inngest } from "@/lib/inngest/client";
 
@@ -71,7 +71,7 @@ export async function replyAsContact(
     return { ok: true };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "Something went wrong",
+      error: safeErrorMessage(error, "Something went wrong"),
       value: body,
     };
   }
