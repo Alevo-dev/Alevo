@@ -1224,3 +1224,19 @@ Run `npx supabase db push --remote` first: 0034 renames `org_profiles.form_accen
 - [x] Embed card is exactly as wide as the element it sits in (a full-width page, then an 850px box): no 1000px cap. In a box under ~740px the panel stacks above the form, the contact list becomes two columns and the fields sit two across.
 - [x] Embed when the app is slow to answer (throttle the network): the form appears after about 3s; when the details arrive the panel fills in the contact rows, the company name and the colour, with no second form.
 - [x] On a customer site (for example la-digital on :3003) with the script `src` pointed at `http://localhost:3001`: the form shows all four detail rows and the chat bubble appears bottom-right. Through a free ngrok URL neither works (ngrok's warning page answers the cross-site request without CORS headers).
+
+### Phone calls in Channels, voice choice and number moves (migration 0041, 2026-11-12)
+
+Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voice_name`, `voice_names`, `last_voice`, `voice_labels`).
+
+- [ ] Workspace → Agent → **Channels** holds the SMS number, **Phone calls**, **Voice** and **Outside office hours**. There is no separate Phone calls card and only one Save bar for the page's Agent form.
+- [ ] With the SMS number empty the Phone calls switch is disabled and the hint says to add a number. Type a number: the switch enables without saving first. Clear the field again: it switches off and disables.
+- [ ] Type a new number, turn Phone calls on, **Save once**: the number is saved and calls are on. In Vapi's dashboard the number exists with no assistant and the Server URL ending in `/api/webhooks/vapi`.
+- [ ] **Voices** lists Savannah, Emma, Clara (female) and Elliot, Nico, Sid (male), each with a switch and a play button. Play plays a short sample, pressing it again stops it, and playing another voice stops the first. Savannah is on for a new org.
+- [ ] Each voice box has a **Name callers hear (optional)** field. Give Savannah "Sophie" and Elliot "Max", turn both on, Save, and call a few times: the greeting is "Thanks for calling <company>, this is Sophie. This call may be recorded…" when Savannah answers and "…this is Max…" when Elliot does. Ask who you are speaking to: it answers with that voice's name. A voice with no name just says "Thanks for calling <company>." with no introduction.
+- [ ] A name with digits or symbols ("Agent 007", "<b>") shows "A voice's name can use letters, spaces, . ' and - only, up to 30 characters." under the list and nothing is saved.
+- [ ] Turn on two or three voices, Save, and call several times: each call uses one of the voices you turned on, never one that is off, and never the same voice as the call just before it (with two on they alternate; with one on it is always that one). The last voice that is on cannot be switched off. Turn all but one off, Save, call: always that voice.
+- [ ] If Vapi refuses (for example a bad key), the number and other settings are still saved and the error appears under the Phone calls switch.
+- [ ] Clear the number with calls on, Save: calls are off. Call the old number: you hear only "This phone is not in service right now." and no conversation is created in any org.
+- [ ] Move a number: clear it from org A and save, set it on org B and turn calls on. A call reaches B's agent and the thread is in B. Org A has calls off and no Vapi number saved.
+- [ ] Put a number that another org already uses: the error under the SMS number reads "That number is already used by another organization."

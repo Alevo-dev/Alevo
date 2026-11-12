@@ -3,11 +3,15 @@ import { vendorFetch } from "@/lib/http/vendor-fetch";
 
 /**
  * Voyage AI embeddings (Anthropic's recommended RAG embeddings). Raw HTTP — no
- * official Node SDK. `voyage-3.5-lite` outputs 1024-dim vectors, matching the
+ * official Node SDK. `voyage-4-lite` is asked for 1024-dim vectors, matching the
  * `vector(1024)` column. Document and query embeddings use different input_type.
+ * Vectors from different models are not comparable, so every stored chunk records
+ * its model (`kb_chunks.embedding_model`) and a model change is a re-embed.
  */
 const VOYAGE_URL = "https://api.voyageai.com/v1/embeddings";
-const MODEL = "voyage-3.5-lite";
+/** The model that makes (and is searched for) every vector. */
+export const EMBEDDING_MODEL = "voyage-4-lite";
+const DIMENSIONS = 1024;
 /** Max inputs per request; we batch larger sets. */
 const BATCH = 96;
 /** Batches in flight at once — enough to overlap network time without tripping rate limits. */
@@ -24,7 +28,7 @@ async function embed(texts: string[], inputType: "document" | "query"): Promise<
   const res = await vendorFetch(VOYAGE_URL, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({ input: texts, model: MODEL, input_type: inputType }),
+    body: JSON.stringify({ input: texts, model: EMBEDDING_MODEL, input_type: inputType, output_dimension: DIMENSIONS }),
   }, { idempotent: true, retries: 3 }); // pure function of its input: safe to replay, and Voyage rate-limits (429)
   if (!res.ok) {
     throw new Error(`Voyage embeddings failed (${res.status}): ${await res.text()}`);

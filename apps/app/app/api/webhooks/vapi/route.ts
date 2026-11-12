@@ -5,6 +5,7 @@ import { inngest, type VoiceCallEndedData } from "@/lib/inngest/client";
 import { safeEqual } from "@/lib/crypto/safe-equal";
 import { buildAssistantBody, VOICE_SECRET_HEADER } from "@/lib/voice/assistant";
 import { callThread } from "@/lib/voice/contact";
+import { numberMatches } from "@/lib/voice/number";
 import { bookingLinked, voiceModeNow } from "@/lib/voice/schedule";
 import { dispatchVoiceTool, type VoiceToolContext } from "@/lib/voice/tools";
 import { overAllowance } from "@/lib/usage/limits";
@@ -36,7 +37,7 @@ function authorized(req: Request): boolean {
 }
 
 /** Resolve the org from the number the caller dialled, or the assistant that answered. */
-async function orgFor(phoneNumberId: string | null, assistantId: string | null) {
+async function orgFor(phoneNumberId: string | null, assistantId: string | null, dialled: string | null) {
   if (!phoneNumberId && !assistantId) return null;
   const [row] = await withService((tx) =>
     tx
@@ -50,6 +51,9 @@ async function orgFor(phoneNumberId: string | null, assistantId: string | null) 
       )
       .limit(1),
   );
+  // The record can outlive the number (it moved to another org, or was cleared):
+  // a call is only this org's while the number dialled is still its saved one.
+  if (row && phoneNumberId && !numberMatches(row.profile.smsFromNumber, dialled)) return null;
   return row ?? null;
 }
 
@@ -81,16 +85,17 @@ export async function POST(req: Request) {
   const call = obj(message.call);
   const phoneNumberId = str(call.phoneNumberId) ?? str(obj(message.phoneNumber).id);
   const assistantId = str(call.assistantId);
+  const dialled = str(obj(message.phoneNumber).number) ?? str(obj(call.phoneNumber).number);
 
   try {
     switch (type) {
       case "assistant-request": {
-        const org = await orgFor(phoneNumberId, assistantId);
+        const org = await orgFor(phoneNumberId, assistantId, dialled);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL;
         const secret = process.env.VOICE_WEBHOOK_SECRET;
         // `error` is spoken to the caller, then Vapi ends the call.
         if (!org || !appUrl || !secret) {
-          return Response.json({ error: "Sorry, this number isn't taking calls right now. Please text it instead." });
+          return Response.json({ error: "This phone is not in service right now." });
         }
         // Voice-minute allowance used up → calls pause until an upgrade (plan.md §6).
         if (await overAllowance(org.profile.orgId, "voice_minutes")) {
@@ -104,11 +109,17 @@ export async function POST(req: Request) {
           appUrl,
           secret,
         });
+        // Remember the voice so the next call skips it (only matters with several voices on).
+        const voice = (assistant.voice as { voiceId: string }).voiceId;
+        if (voice !== org.profile.lastVoice) {
+          // Best-effort: a failed write must not fail the call.
+          await withService((tx) => tx.update(orgProfiles).set({ lastVoice: voice }).where(eq(orgProfiles.orgId, org.profile.orgId))).catch((err) => Sentry.captureException(err));
+        }
         return Response.json({ assistant });
       }
 
       case "tool-calls": {
-        const org = await orgFor(phoneNumberId, assistantId);
+        const org = await orgFor(phoneNumberId, assistantId, dialled);
         const toolCalls = Array.isArray(message.toolCallList)
           ? message.toolCallList
           : Array.isArray(message.toolCalls)
@@ -147,7 +158,7 @@ export async function POST(req: Request) {
       }
 
       case "end-of-call-report": {
-        const org = await orgFor(phoneNumberId, assistantId);
+        const org = await orgFor(phoneNumberId, assistantId, dialled);
         const callRef = str(call.id);
         if (!org || !callRef) return new Response("ok (unmatched)", { status: 200 });
 

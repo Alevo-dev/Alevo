@@ -11,6 +11,7 @@ export function SettingRow({
   hint,
   error,
   end,
+  stacked,
   children,
   className,
 }: {
@@ -20,13 +21,16 @@ export function SettingRow({
   error?: string | null;
   /** Pushes the control to the row's right edge (a switch), instead of the start of the right column. */
   end?: boolean;
+  /** Control below the name and hint, full width, instead of in a right-hand column (a list of options). */
+  stacked?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <div
       className={cx(
-        "grid gap-3 border-t border-hairline py-5 first:border-t-0 first:pt-0 last:pb-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-6",
+        "grid gap-3 border-t border-hairline py-5 first:border-t-0 first:pt-0 last:pb-0",
+        !stacked && "md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-6",
         className,
       )}
     >

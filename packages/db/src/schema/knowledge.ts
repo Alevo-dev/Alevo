@@ -2,7 +2,8 @@
  * Knowledge base — docs + pgvector chunks. Typed mirror of migration 0010.
  *
  * The Qualifier retrieves the nearest chunks for an org and grounds its replies
- * in them. Embeddings are Voyage `voyage-3.5-lite` (1024-dim, cosine).
+ * in them. Embeddings are Voyage (1024-dim, cosine); `embedding_model` records which
+ * model made each vector, because vectors from different models can't be compared.
  */
 import { index, integer, pgEnum, pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
 import { organizations, timestamps } from "./identity";
@@ -42,6 +43,8 @@ export const kbChunks = pgTable(
     chunkIndex: integer("chunk_index").notNull(),
     content: text("content").notNull(),
     embedding: vector("embedding", { dimensions: 1024 }),
+    /** Model that produced `embedding`; retrieval only searches the current one. */
+    embeddingModel: text("embedding_model"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

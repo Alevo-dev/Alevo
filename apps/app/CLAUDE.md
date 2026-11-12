@@ -115,7 +115,8 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   `saveBusinessProfile`), Agent (`agent/`: on/off, follow-up, SMS number →
   `saveAgentSettings`; **Booking** = one switch + the CONNECTED tool the agent books
   through, with only its behaviour settings beneath → `booking-actions.ts`; **Phone
-  calls** → `voice-actions.ts`; enabling the agent requires the profile's three
+  calls**, **Voice** and **Outside office hours** sit in the Channels card under the SMS number and save with the same Save (`lib/voice/apply.ts` runs after the rest is saved);
+  enabling the agent requires the profile's three
   required fields), Knowledge, Integrations (three sections — **Booking**: Cal.com,
   Google Calendar, Microsoft 365, Calendly; **Communication**: Twilio, Resend, Slack;
   **CRM and PSA**: HaloPSA, ConnectWise, Zoho CRM, HubSpot as "Coming soon"
@@ -274,6 +275,11 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
 - **0033–0034** `org_profiles.brand_color` (0033 added it as `form_accent`, 0034 renamed it) — the workspace **Brand colour** (#rrggbb): the default colour of the website form (embed + hosted page) and the chat bubble, chosen with the colour picker in the Brand colour card at the top of Integrations. `chat_accent` is the older chat-only colour, read only while this is blank.
 - **0032** `org_profiles.contact_email` / `contact_phone` / `contact_hours` — the public details beside the contact form (with `business_address`); edited under Workspace → Business profile → Contact details.
 - **0037** contact identity — emails/phones normalised, contacts sharing a phone merged, unique `(org_id, phone)` (email was unique since 0007). **0038** `contacts.last_activity_at` (not null, default now) + `app.touch_contact_activity()` triggers on `messages` / `conversations` / `calls` inserts. See Contacts, clients and calls.
+- **0040** `kb_chunks.embedding_model` — which model made each vector (see Knowledge base).
+- **0044** `org_profiles.voice_labels jsonb` — a name per voice id (`{"Elliot":"Max"}`, set in the Voices boxes under Agent → Channels; letters, spaces and . ' - only, 30 max: `cleanVoiceLabel`). The agent goes by the name of the voice picked for that call: `buildAssistantBody` adds ", this is Max" to the greeting and "Your name is Max." to the prompt (`labelFor`); a voice with no name gives none.
+- **0043** `org_profiles.last_voice` — the voice that answered the last call; the `assistant-request` webhook saves it and `pickVoice` skips it next time whenever another voice is on.
+- **0042** `org_profiles.voice_names text[]` — the voices the org turned on; each call uses one at random (`pickVoice`, per `assistant-request`), empty = Savannah. Replaces 0041's single `voice_name`, which stays unused. Switches + play buttons in `voice-picker.tsx`; at least one stays on.
+- **0041** `org_profiles.voice_name` (superseded by 0042) — the phone agent's voice, one of Vapi's built-in voices (`lib/voice/voices.ts`: Savannah, Emma, Clara, Elliot, Nico, Sid — all Version 2, set as `version: 2` on the assistant voice; null = Savannah). Set under Workspace → Agent → Channels, with a play button (`voice-sample.tsx`) for the 12-second clips in `public/voices/<Id>.mp3`, trimmed from Vapi's own docs samples; `mp3` is excluded from the proxy matcher so they are plain static files.
 - **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
   `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
   `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
@@ -445,6 +451,7 @@ against a live call on 2026-10-26.
   calls Save therefore re-asserts the routing on an existing number
   (`detachAssistantFromNumber`: `assistantId: null` + current server URL/secret).
   Every call is its own conversation (`callThread`, see Contacts, clients and calls).
+- **A number belongs to one org (2026-11-12).** The Vapi record follows the number: changing or clearing the SMS number drops `vapi_phone_number_id` and switches calls off (`saveAgentSettings`); turning calls on adopts Vapi's existing record for that Twilio number if there is one (`importTwilioNumber` reads "Existing Phone Number <id>" from the 400) and `releaseVapiNumber` takes the record away from any other org holding it; the webhook only answers while the number dialled matches the org's saved one (`numberMatches`, `lib/voice/number.ts`). A line that is off, moved or unknown says only "This phone is not in service right now." — never "text this number", because the number may belong to someone else now. The voice is picked per call from `voice_names` (`voiceFor` in `assistant.ts`; Vapi rejects ids that are not built-in).
 - **Mode** = `voiceModeNow(profile)`: weekdays within the booking hours in the org's
   timezone, via `profileTimeZone` (falls back to `DEFAULT_TIMEZONE`, never UTC — a null
   timezone once made 3pm Ottawa read as 7pm UTC = "closed").
@@ -653,14 +660,18 @@ Grounds the Qualifier in each org's own material. `lib/kb/` owns it;
   Inngest function (stepless, idempotent delete-then-insert, per-org concurrency)
   extracts (`lib/kb/extract.ts`: raw text / URL HTML-strip / PDF via `unpdf` from
   an R2 presigned-GET) → chunks (`chunk.ts`, ~1500 chars w/ overlap) → embeds
-  (`embeddings.ts`, **Voyage `voyage-3.5-lite`, 1024-dim**, raw HTTP) → stores
+  (`embeddings.ts`, **Voyage `voyage-4-lite`, 1024-dim**, raw HTTP) → stores
   `kb_chunks`, sets `ready`/`failed`. PDFs reuse the files presign route for upload.
 - **Retrieve:** `retrieve.ts` embeds the latest inbound message as a query and
   pulls top-k chunks by cosine similarity (drizzle `cosineDistance`, hnsw index),
   injected into the Qualifier's system prompt. Best-effort: no `VOYAGE_API_KEY`,
   no KB, or any failure → the Qualifier proceeds ungrounded.
-- **Env:** `VOYAGE_API_KEY`. Embedding dim (1024) is baked into the migration —
-  changing the model/dim means a new migration + re-embed.
+- **Env:** `VOYAGE_API_KEY`. Embedding dim (1024) is baked into the migration.
+- **Model changes (0040):** vectors from different models are not comparable even at the
+  same dimension, so `kb_chunks.embedding_model` records which model made each vector
+  (`EMBEDDING_MODEL` in `embeddings.ts`) and `nearestChunks` only searches that model.
+  To upgrade: change the constant, deploy, then re-run `ingestDocument` for every document
+  (it deletes and re-inserts the chunks); chunks of the old model are ignored until then.
 
 Sprint 2 is channel-complete (form, email, SMS); Sprint 3 Slice 1 adds Cal.com
 booking (above). Coming next: consent capture + meeting outcomes, Google/M365

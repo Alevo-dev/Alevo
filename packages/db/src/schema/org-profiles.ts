@@ -4,7 +4,7 @@
  * One row per org (`org_id` unique → upsert-friendly). Edited by admins in
  * Settings → Qualifier; read by the Qualifier when it reasons over a lead.
  */
-import { boolean, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { organizations, timestamps } from "./identity";
 import { bookingProvider } from "./meetings";
 
@@ -73,6 +73,14 @@ export const orgProfiles = pgTable(
     voiceAfterHours: text("voice_after_hours", { enum: ["voicemail", "take_message"] })
       .notNull()
       .default("voicemail"),
+    /** Superseded by `voiceNames` (migration 0042); no longer read. */
+    voiceName: text("voice_name"),
+    /** Vapi built-in voices the org chose (migration 0042); each call uses one at random, empty = the default. */
+    voiceNames: text("voice_names").array().notNull().default([]),
+    /** The voice that answered the last call (migration 0043); the next call skips it when it can. */
+    lastVoice: text("last_voice"),
+    /** The name given to each voice, by voice id (migration 0044): the agent introduces itself by it. */
+    voiceLabels: jsonb("voice_labels").$type<Record<string, string>>().notNull().default({}),
     vapiAssistantId: text("vapi_assistant_id"),
     vapiPhoneNumberId: text("vapi_phone_number_id"),
     // ConnectWise Manage write-back (migration 0022). The API host, the login

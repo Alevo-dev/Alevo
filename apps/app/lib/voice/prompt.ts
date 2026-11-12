@@ -29,11 +29,12 @@ function section(label: string, value: string | null): string | null {
  * After hours sounds exactly like office hours — a caller is never told "we're
  * closed" (owner, 2026-11-02); only a switched-off line turns them away.
  */
-export function voiceGreeting(company: string, mode: VoiceMode, _afterHoursStyle: AfterHoursStyle, _canBook: boolean): string {
+export function voiceGreeting(company: string, mode: VoiceMode, _afterHoursStyle: AfterHoursStyle, _canBook: boolean, agentName = ""): string {
   if (mode === "closed") {
-    return `Thanks for calling ${company}. We're not taking calls right now, so please text this number and we'll get back to you. Thanks for calling.`;
+    return "This phone is not in service right now.";
   }
-  return `Thanks for calling ${company}. This call may be recorded. How can I help you today?`;
+  const intro = agentName ? `, this is ${agentName}` : "";
+  return `Thanks for calling ${company}${intro}. This call may be recorded. How can I help you today?`;
 }
 
 /**
@@ -41,7 +42,7 @@ export function voiceGreeting(company: string, mode: VoiceMode, _afterHoursStyle
  * but written for a live phone call: short turns, one question at a time, and
  * no reply tool, because the caller hears the model directly.
  */
-export function buildVoicePrompt(profile: OrgProfile, mode: VoiceMode, bookingConnected: boolean): string {
+export function buildVoicePrompt(profile: OrgProfile, mode: VoiceMode, bookingConnected: boolean, agentName = ""): string {
   const company = profile.companyName?.trim() || "our company";
   const context = [
     section("What we offer", profile.offering),
@@ -65,7 +66,9 @@ export function buildVoicePrompt(profile: OrgProfile, mode: VoiceMode, bookingCo
           ? QUALIFY_AND_BOOK
           : `Qualify the caller against the criteria above, one question at a time. Booking is the goal even without a calendar: as soon as the caller is a fit, say a colleague will call back within one business day to set up a time, and call take_message with their name, reason and callback number.`;
 
-  return `You are the phone receptionist and sales development representative for ${company}. You answer inbound calls, find out whether the caller is a good fit, and get the good ones booked onto a call with the team before you hang up.
+  const name = agentName ? ` Your name is ${agentName}. The greeting already says it; use it if the caller asks who they are talking to.` : "";
+
+  return `You are the phone receptionist and sales development representative for ${company}. You answer inbound calls, find out whether the caller is a good fit, and get the good ones booked onto a call with the team before you hang up.${name}
 
 ${context || "(No business profile has been configured yet. Take a message and hand off anything promising.)"}
 

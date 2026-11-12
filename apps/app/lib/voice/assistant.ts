@@ -3,9 +3,11 @@ import type { OrgProfile } from "@alevo/db";
 import { CONTACT_DETAILS_TOOL } from "@/lib/contact-details";
 import { bookingOnCall, buildVoicePrompt, voiceGreeting, type VoiceMode } from "./prompt";
 import { summaryPlanFor } from "./summary-prompt";
+import { labelFor, pickVoice } from "./voices";
 
 /** Header Vapi sends back to our server URL with the shared secret (we set it). */
 export const VOICE_SECRET_HEADER = "x-alevo-secret";
+
 
 /** Where Vapi posts assistant-request, tool-calls and end-of-call-report. */
 export function voiceServerUrl(appUrl: string): string {
@@ -105,20 +107,27 @@ export function buildAssistantBody(args: {
   bookingConnected: boolean;
   appUrl: string;
   secret: string;
+  /** Random source for the voice pick (tests). */
+  random?: () => number;
 }): Record<string, unknown> {
-  const { profile, orgName, mode, bookingConnected, appUrl, secret } = args;
+  const { profile, orgName, mode, bookingConnected, appUrl, secret, random } = args;
   const company = profile.companyName?.trim() || orgName;
   const canBook = bookingOnCall(mode, profile.voiceAfterHours, bookingConnected);
+  // One of the org's chosen voices, at random for this call but never the previous call's;
+  // the agent goes by the name the org gave that voice (none when it has no name).
+  const voiceId = pickVoice(profile.voiceNames, random, profile.lastVoice);
+  const agentName = labelFor(profile.voiceLabels, voiceId);
   return {
     name: `${company} (${mode.replace("_", " ")})`,
-    firstMessage: voiceGreeting(company, mode, profile.voiceAfterHours, canBook),
+    firstMessage: voiceGreeting(company, mode, profile.voiceAfterHours, canBook, agentName),
     firstMessageMode: "assistant-speaks-first",
     // Deepgram's newest model: noticeably better on names and numbers than the default.
     transcriber: { provider: "deepgram", model: "nova-3", language: "en" },
+    voice: { provider: "vapi", voiceId, version: 2 },
     model: {
       provider: "anthropic",
       model: VOICE_MODEL,
-      messages: [{ role: "system", content: buildVoicePrompt(profile, mode, bookingConnected) }],
+      messages: [{ role: "system", content: buildVoicePrompt(profile, mode, bookingConnected, agentName) }],
       tools: tools(canBook),
     },
     server: {

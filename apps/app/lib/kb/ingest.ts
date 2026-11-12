@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { kbChunks, kbDocuments, withService } from "@alevo/db";
-import { embedDocuments } from "./embeddings";
+import { EMBEDDING_MODEL, embedDocuments } from "./embeddings";
 import { chunkText } from "./chunk";
 import { extractPdf, extractUrl } from "./extract";
 
@@ -51,6 +51,7 @@ export async function ingestDocument(orgId: string, documentId: string): Promise
           chunkIndex: i,
           content,
           embedding: vectors[i],
+          embeddingModel: EMBEDDING_MODEL,
         })),
       );
       await tx

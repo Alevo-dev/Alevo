@@ -6,7 +6,7 @@ import { authInterrupt } from "@/lib/auth-interrupts";
 import { bookingSnapshot, connectedBookingTools, isBookingTool } from "@/lib/booking/connected";
 import { AgentForm } from "./agent-ui";
 import { BookingForm } from "./booking-ui";
-import { VoiceForm } from "./voice-ui";
+import { DEFAULT_VOICE, isVoice } from "@/lib/voice/voices";
 import type { AgentValues } from "./actions";
 import type { BookingValues } from "./booking-actions";
 
@@ -36,6 +36,10 @@ export default async function AgentPage() {
     sendWindowEndHour: row?.sendWindowEndHour ?? 20,
     smsFromNumber: row?.smsFromNumber ?? "",
     emailAlerts: row?.emailAlerts ?? true,
+    voiceEnabled: row?.voiceEnabled ?? false,
+    voiceAfterHours: row?.voiceAfterHours ?? "voicemail",
+    voiceLabels: row?.voiceLabels ?? {},
+    voiceNames: row?.voiceNames.some(isVoice) ? row.voiceNames.filter(isVoice) : [DEFAULT_VOICE],
   };
   const profileReady = Boolean(row?.companyName && row.offering && row.idealCustomer);
 
@@ -55,10 +59,6 @@ export default async function AgentPage() {
     <div className="space-y-6">
       <AgentForm initial={initial} profileReady={profileReady} />
       <BookingForm initial={booking} connected={connected} />
-      <VoiceForm
-        initial={{ enabled: row?.voiceEnabled ?? false, afterHours: row?.voiceAfterHours ?? "voicemail" }}
-        phoneNumber={row?.smsFromNumber ?? null}
-      />
     </div>
   );
 }
