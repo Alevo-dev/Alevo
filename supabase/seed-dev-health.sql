@@ -7,14 +7,15 @@
 -- per org, spread across the hours, across the four logged providers, with
 -- about 10% failures — so the hourly line has shape, "Webhooks ok" lands
 -- near 90% and "Failed" near 8. Re-running adds another batch on top.
--- Needs migration 0017 (`npx supabase db push`).
+-- Needs migrations 0017 and 0045 (`npx supabase db push`).
 -- ─────────────────────────────────────────────────────────────────────────
 
-insert into public.webhook_deliveries (org_id, provider, outcome, created_at)
+insert into public.webhook_deliveries (org_id, provider, outcome, direction, created_at)
 select
   o.id,
-  (array['calcom', 'calendly', 'twilio', 'resend'])[1 + floor(random() * 4)],
+  (array['calcom', 'calendly', 'twilio', 'resend', 'vapi', 'slack', 'google'])[1 + floor(random() * 7)],
   case when random() < 0.9 then 'ok' else 'failed' end,
+  (array['inbound', 'outbound'])[1 + floor(random() * 2)],
   now() - random() * interval '24 hours'
 from public.organizations o
 cross join generate_series(1, 80)

@@ -3,11 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Building2, CalendarCheck, LayoutDashboard, MessagesSquare } from "lucide-react";
+import { Menu, X, Building2, CalendarCheck, LayoutDashboard, MessagesSquare, Settings } from "lucide-react";
 import { cx } from "@/lib/cx";
-import { ThemeToggle } from "./theme-toggle";
+import { WorkspaceSubnav } from "./workspace-subnav";
 import { WorkspaceSwitcher } from "./workspace-switcher";
-import type { PlanCard } from "./app-sidebar";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -16,7 +15,7 @@ const NAV = [
   { href: "/workspace/profile", label: "Workspace", icon: Building2, match: "/workspace" },
 ] as const;
 
-export function MobileMenu({ plan }: { plan: PlanCard }) {
+export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -74,35 +73,40 @@ export function MobileMenu({ plan }: { plan: PlanCard }) {
             const base = "match" in item ? item.match : href;
             const active = pathname === base || pathname.startsWith(`${base}/`);
             return (
-              <Link
-                key={href}
-                href={href}
-                onClick={closeMenu}
-                aria-current={active ? "page" : undefined}
-                className={cx(
-                  "flex shrink-0 items-center gap-3 rounded-sm px-3 py-2.5 text-sm no-underline transition-colors",
-                  active
-                    ? "bg-brand-soft font-medium text-ink"
-                    : "font-medium text-ink-muted hover:bg-raised hover:text-ink",
-                )}
-              >
-                <Icon className={cx("size-4", active ? "text-brand" : "text-ink-muted")} strokeWidth={1.75} aria-hidden="true" />
-                {label}
-              </Link>
+              <div key={href}>
+                <Link
+                  href={href}
+                  onClick={closeMenu}
+                  aria-current={active ? "page" : undefined}
+                  className={cx(
+                    "flex shrink-0 items-center gap-3 rounded-sm px-3 py-2.5 text-sm no-underline transition-colors",
+                    active
+                      ? "bg-brand-soft font-medium text-ink"
+                      : "font-medium text-ink-muted hover:bg-raised hover:text-ink",
+                  )}
+                >
+                  <Icon className={cx("size-4", active ? "text-brand" : "text-ink-muted")} strokeWidth={1.75} aria-hidden="true" />
+                  {label}
+                </Link>
+                {active && base === "/workspace" && <WorkspaceSubnav onNavigate={closeMenu} />}
+              </div>
             );
           })}
         </nav>
 
-        {plan && (
-          <div className="rounded-md border border-hairline bg-surface p-4 mx-4 my-4 shrink-0">
-            <div className="text-label text-ink-muted">Plan</div>
-            <div className="mt-1 text-sm font-semibold text-ink">{plan.name}</div>
-            {plan.renews && <div className="mt-3 text-label text-ink-muted">Renews {plan.renews}</div>}
-          </div>
-        )}
-
         <div className="mt-auto border-t border-hairline px-4 py-4 shrink-0">
-          <ThemeToggle />
+          <Link
+            href="/preferences"
+            onClick={closeMenu}
+            aria-current={pathname === "/preferences" ? "page" : undefined}
+            className={cx(
+              "-mx-1 flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium no-underline transition-colors",
+              pathname === "/preferences" ? "bg-brand-soft text-ink" : "text-ink-muted hover:bg-raised hover:text-ink",
+            )}
+          >
+            <Settings className="size-4" strokeWidth={1.75} aria-hidden="true" />
+            Settings
+          </Link>
         </div>
       </div>
     </>

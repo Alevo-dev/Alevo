@@ -130,17 +130,23 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   the lettered-tile fallback for brands Simple Icons doesn't carry). (No Files tab: the `files` table is a storage ledger behind the
   Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
   `/settings/*` redirects (next.config.ts).
-- **Manage workspace dialog:** the workspace picker (`components/workspace-switcher.tsx`)
-  has a **Manage** item opening `components/workspace/organization-dialog.tsx` — a two-pane
-  modal (mirrors the account dialog) with **General** (`general-tab.tsx`: org name/logo via
-  Clerk `organization.update`/`setLogo` — mirrored by the `organization.updated` webhook —
-  a copyable **Workspace ID** row (our uuid via the `loadOrgIdentity` server action, the
-  `data-org` of the form / chat snippets), plus Leave / Delete) and **Members** (`members-tab.tsx`: load via the `loadMembers` server
-  action, search, Members/Invitations sub-tabs, invite + role/remove/revoke reusing
-  `workspace/members/actions.ts`). Leave/Delete run through guarded server actions
-  (`workspace/org-actions.ts` → `leaveActiveOrg`/`deleteActiveOrg`) that sync our DB (delete
-  cascades on the org row, since `organization.deleted` has no webhook). The old
-  `/workspace/members` page now redirects to `/workspace/profile`.
+- **Workspace sub-menu:** the Workspace pages (Profile, Agent, Knowledge, Integrations, Manage, Settings) are a sub-menu under "Workspace" in the side nav (`components/workspace-subnav.tsx`, `WORKSPACE_PAGES`; shown while you are in `/workspace`, also in the phone menu). There is no tab bar on the pages. Add a new Workspace page to `WORKSPACE_PAGES`.
+- **Workspace → Settings** (`/workspace/settings`, admins and owners): the **Tone and sign-off** card (`tone-card.tsx`, its own form + `saveToneAndSignoff`; the Profile form and the website import no longer touch `tone` / `signoff`) and the **Brand colour** card (`brand-colour.tsx`: swatches only, never a button-shaped preview, a gear opens the dialog; `saveBrandColour` stays in `integrations/actions.ts`). Not the same as the sidebar Settings (`/preferences`: theme + plan).
+- **Manage tab** (`/workspace/manage`, the last Workspace tab; the workspace picker has no Manage item any more):
+  **General** (`components/workspace/general-tab.tsx`: org name/logo via Clerk
+  `organization.update`/`setLogo`, mirrored by the `organization.updated` webhook; a copyable
+  **Workspace ID** row, our uuid via `loadOrgIdentity`, the `data-org` of the form / chat snippets;
+  Leave / Delete) and **Members** (`members-tab.tsx`: `loadMembers`, search, Members/Invitations
+  sub-tabs, invite + role/remove/revoke reusing `workspace/members/actions.ts`). Everyone sees the
+  page; the page passes `canEdit` (admin or owner) so viewers and reps get a read-only list
+  (no Invite, role pills not selects, no remove, no Update profile / Delete; Leave stays for all).
+  `loadMembers` lets any member read the list but only admins get pending invites and Clerk ids; every
+  mutating action still enforces its role on the server. Leave/Delete run through guarded server
+  actions (`workspace/org-actions.ts` → `leaveActiveOrg`/`deleteActiveOrg`) that sync our DB (delete
+  cascades on the org row, since `organization.deleted` has no webhook). `/workspace/members`
+  redirects to `/workspace/manage`. `tests/manage-tab.test.ts` guards the wiring.
+- **Integrations page** (matches the Claude Design "Settings: Integrations" artboard, minus its tab bar: our Workspace sub-menu stays; the page is 70% wide and left-aligned on desktop): a slim **Needs attention** bar (only when something is wrong), then **Connected tools** with four sections (Lead capture, Booking, Communication, CRM and PSA). Each section lists its connected tools as rows (`service-row.tsx`: mark, name, state, gear) and has its own add button (`add-tool.tsx`, label/picker title from `SERVICE_GROUPS`) opening an inline searchable picker of that section's unconnected tools. **Connection health** is last (`health-section.tsx`): one line per service for the last 24 hours, a chip per service that isolates it. Data: `lib/integrations/health.ts` (`shapeHealth`, tested) over `webhook_deliveries`, which now holds **inbound webhooks and outbound API calls** (`direction`, migration 0045; providers resend, twilio, calcom, calendly, vapi, slack, connectwise, google, microsoft). Outbound calls are recorded by `vendorFetch(..., { track: { provider, orgId } })`; pass `track` on any new vendor call for an org's connected tool (Resend's SDK sends record themselves). Not recorded: OAuth token refreshes, Voyage and Anthropic (platform services, not a tool an org connects), Clerk and Inngest.
+- **Jump links:** a link from one workspace page to a section of another uses `JUMP` (`lib/jump.ts`, e.g. `/workspace/integrations#booking`). The target carries the matching `id` (Integrations sections use their `group.id`; Agent cards `booking` / `channels`), `components/jump-highlight.tsx` (in `workspace/layout.tsx`) scrolls to it and flashes `.jump-flash` once (`:target` does not update on Next client navigation). `tests/jump-links.test.ts` fails if an id goes missing. Use `JUMP` for every new cross-page link instead of a bare path.
 - **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
   (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never
   render a raw enum value. Shared formatters live in `lib/format.ts`.
@@ -253,7 +259,7 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
 - **0019** `org_profiles.booking_tool` — the ONE chosen booking tool (null = off),
   backfilled from the old precedence. See Booking below.
 - **0020** `org_profiles.business_address` — the org's postal address, printed in
-  every agent email footer (CAN-SPAM / CASL). Edited under Workspace → Business profile.
+  every agent email footer (CAN-SPAM / CASL). Edited under Workspace → Profile.
 - **0021** `rate_limits` (fixed-window counters keyed by hashed IP / org for the
   public lead endpoint; service path only, no policies).
 - **0022** PSA write-back: `org_profiles.connectwise_site` / `connectwise_company_id` /
@@ -273,7 +279,7 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
 - **0036** `org_profiles.chat_agent_name` — the name shown at the top of the website chat window instead of the company name (null = the company name). Set under Integrations → Chat widget → Agent name (max 40); `chatConfig` returns it as `agentName`, `chat.js` shows `agentName || company` (header and aria-label), and the Qualifier's chat prompt tells the agent that is its name (`buildSystemPrompt(..., agentName)`, chat channel only; tested).
 - **0035** `org_profiles.brand_text_color` — the **font colour** that goes with the Brand colour (the text ON it: the chat bubble / header / visitor messages, the form's coloured panel and button, the hosted page's `--ds-on-brand`). Null = white or navy by contrast. Set in the Brand colour dialog (below): a second `ColourField` row under the colour, one Save, with a live preview and a contrast warning under 3:1 (`contrastRatio`, `lib/colour.ts`).
 - **0033–0034** `org_profiles.brand_color` (0033 added it as `form_accent`, 0034 renamed it) — the workspace **Brand colour** (#rrggbb): the default colour of the website form (embed + hosted page) and the chat bubble, chosen with the colour picker in the Brand colour card at the top of Integrations. `chat_accent` is the older chat-only colour, read only while this is blank.
-- **0032** `org_profiles.contact_email` / `contact_phone` / `contact_hours` — the public details beside the contact form (with `business_address`); edited under Workspace → Business profile → Contact details.
+- **0032** `org_profiles.contact_email` / `contact_phone` / `contact_hours` — the public details beside the contact form (with `business_address`); edited under Workspace → Profile → Contact details.
 - **0037** contact identity — emails/phones normalised, contacts sharing a phone merged, unique `(org_id, phone)` (email was unique since 0007). **0038** `contacts.last_activity_at` (not null, default now) + `app.touch_contact_activity()` triggers on `messages` / `conversations` / `calls` inserts. See Contacts, clients and calls.
 - **0040** `kb_chunks.embedding_model` — which model made each vector (see Knowledge base).
 - **0044** `org_profiles.voice_labels jsonb` — a name per voice id (`{"Elliot":"Max"}`, set in the Voices boxes under Agent → Channels; letters, spaces and . ' - only, 30 max: `cleanVoiceLabel`). The agent goes by the name of the voice picked for that call: `buildAssistantBody` adds ", this is Max" to the greeting and "Your name is Max." to the prompt (`labelFor`); a voice with no name gives none.
@@ -382,7 +388,7 @@ importer of the `resend` SDK.
   (RFC 8058 one-click → `/api/unsubscribe?t=<signed token>`, public) and `org_id`
   / `conversation_id` tags. The footer (`emailFooter` in `resend.ts`) names the
   sender ("Sent by <Org> · <business_address>" — the MSP is the sender, so it is
-  THEIR address, from Workspace → Business profile), the unsubscribe link, and
+  THEIR address, from Workspace → Profile), the unsubscribe link, and
   "reply to request a copy or deletion of your data" + the privacy policy link.
   The Qualifier prompt handles a data request by confirming, escalating with
   "Data request: …" and handing off — it never argues or keeps qualifying.
@@ -728,8 +734,8 @@ silent when every org is on target or nothing is saved).
 ## Dashboard
 
 `(app)/dashboard/page.tsx` follows the Claude Design mockup row for row. One **time
-window** for the whole page (`?window=7|30|90`, `window-switch.tsx`; helpers in
-`lib/dashboard/window.ts`, tested): 7 and 30 days bucket per day, 90 per week (13
+window** for the whole page (`?window=1|7|30|90`; the shared `WindowSwitch` in `@alevo/ui` is a "Last:" dropdown with Alt+1…4 shortcuts; helpers in
+`lib/dashboard/window.ts`, tested): Today (1) buckets per hour (24 bars), 7 and 30 days per day, 90 per week (13
 bars), all as calendar days in the org timezone computed in SQL. Rows: the four
 `StatTile`s (`kpi-tiles.tsx`) → **Leads per day** (area chart) + **Speed to lead**
 (`speed-card.tsx`: p50 / p95 of `first_reply_sent_at − lead_received_at` over
@@ -956,3 +962,5 @@ of this for background work. Never call `fetch` on a vendor directly.
 Sentry is wired (`instrumentation.ts`, `sentry.*.config.ts`,
 `instrumentation-client.ts`) and is a no-op until `NEXT_PUBLIC_SENTRY_DSN` is
 set. Source-map upload (withSentryConfig) is intentionally not enabled yet.
+
+- **Settings and gear icons**: the sidebar bottom has a Settings link to `/preferences` (theme + plan; not `/settings`, which `next.config.ts` redirects permanently to `/workspace`). "Manage" buttons are the gear icon with an `sr-only` name, never the word.

@@ -11,7 +11,7 @@ import { callThread } from "./contact";
 /** Fetch the recording from Vapi and store it in R2. Returns the object key, or null if none. */
 export async function storeRecording(data: VoiceCallEndedData): Promise<string | null> {
   if (!isVapiConfigured() || !process.env.R2_BUCKET) return null;
-  const recording = await fetchCallRecording(data.callRef);
+  const recording = await fetchCallRecording(data.orgId, data.callRef);
   if (!recording) return null;
   const ext = recording.contentType.includes("mpeg") ? "mp3" : recording.contentType.includes("wav") ? "wav" : "bin";
   const key = `organizations/${data.orgId}/calls/${data.callRef}.${ext}`;

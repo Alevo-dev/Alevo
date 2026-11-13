@@ -1,12 +1,12 @@
-import { WorkspaceTabs } from "@/components/workspace-tabs";
+import { JumpHighlight } from "@/components/jump-highlight";
 
-/** Workspace: the organization's setup — profile, agent, knowledge, team, connections. */
+/** Workspace: the organization's setup. Its pages are the sub-menu under "Workspace" in the side nav. */
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   return (
     <div>
       <h1 className="text-title font-semibold text-ink">Workspace</h1>
-      <WorkspaceTabs />
-      <div className="mt-8">{children}</div>
+      <JumpHighlight />
+      <div className="mt-6">{children}</div>
     </div>
   );
 }

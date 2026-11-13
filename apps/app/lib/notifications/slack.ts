@@ -23,7 +23,7 @@ export async function notifySlack(orgId: string, text: string): Promise<SlackRes
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text }),
-    });
+    }, { track: { provider: "slack", orgId } });
     if (!res.ok) return rememberSlackError(orgId, (await vendorError(res, "Slack")).message);
     await markSlackWorking(orgId);
     return { ok: true };

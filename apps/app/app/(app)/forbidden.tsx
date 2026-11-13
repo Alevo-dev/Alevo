@@ -18,7 +18,7 @@ export default function AppForbidden() {
       actions={
         <>
           <StatusAction href="/dashboard">Back to dashboard</StatusAction>
-          <StatusAction href="/workspace/members" variant="secondary">
+          <StatusAction href="/workspace/manage" variant="secondary">
             See who can help
           </StatusAction>
         </>

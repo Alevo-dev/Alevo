@@ -14,6 +14,8 @@ export function isSmsConfigured(): boolean {
 export type SmsResult = { ok: boolean; sid?: string; error?: string; optedOut?: boolean };
 
 export async function sendSms(params: {
+  /** The org the text is for, so the send shows in Connection health. */
+  orgId: string;
   fromNumber: string;
   toPhone: string;
   body: string;
@@ -33,7 +35,7 @@ export async function sendSms(params: {
       method: "POST",
       headers: { authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" },
       body: form,
-    });
+    }, { track: { provider: "twilio", orgId: params.orgId } });
     const json = (await res.json()) as { sid?: string; error_code?: number; message?: string };
     if (!res.ok) {
       // 21610 = recipient previously sent STOP. Not a hard failure — they opted out.

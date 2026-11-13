@@ -13,6 +13,8 @@ export const webhookDeliveries = pgTable(
     orgId: uuid("org_id").references(() => organizations.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
     outcome: text("outcome").notNull(),
+    /** inbound = a webhook sent to us; outbound = an API call we made (migration 0045). */
+    direction: text("direction").notNull().default("inbound"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("webhook_deliveries_org_created_idx").on(t.orgId, t.createdAt)],

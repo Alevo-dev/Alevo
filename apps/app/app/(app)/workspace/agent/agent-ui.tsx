@@ -8,6 +8,7 @@ import { Select, type SelectOption } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
 import { Switch } from "@/components/ui/switch";
 import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
+import { JUMP } from "@/lib/jump";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { VoicePicker } from "./voice-picker";
 import { saveAgentSettings, type ActionState, type AgentErrors, type AgentValues } from "./actions";
@@ -97,7 +98,7 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
                 <>
                   {" "}
                   Needs the company name, offering and ideal customer in your{" "}
-                  <Link href="/workspace/profile">Business profile</Link> first.
+                  <Link href="/workspace/profile">Profile</Link> first.
                 </>
               )}
             </>
@@ -130,7 +131,7 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
         </div>
       </Card>
 
-      <Card>
+      <Card id="channels">
         <CardHeader title="Channels" hint="Leave the number blank to keep SMS off. Booking has its own section below." />
         <div className="mt-6">
           <SettingRow
@@ -185,7 +186,7 @@ export function AgentForm({ initial, profileReady }: { initial: AgentValues; pro
           hint={
             <>
               Every alert the agent raises — qualified lead, meeting booked, lead handed off or escalated, booking failed, lead needs a person,
-              call summaries — goes to your Slack channel when one is connected under <Link href="/workspace/integrations">Integrations</Link>.
+              call summaries — goes to your Slack channel when one is connected under <Link href={JUMP.integrationsCommunication}>Integrations</Link>.
             </>
           }
         />

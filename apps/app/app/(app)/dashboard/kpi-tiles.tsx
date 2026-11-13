@@ -20,7 +20,7 @@ const pct = (n: number, of: number) =>
 /** The four key figures with their day-by-day mini bars. Each total is the sum
  *  of its series, so the number and the bars always agree. */
 export function KpiTiles({
-  days,
+  span,
   labels,
   period,
   compact = false,
@@ -29,10 +29,11 @@ export function KpiTiles({
   meetings,
   calls,
 }: {
-  days: number;
+  /** The window's name: "Today" or "Last 7 days". */
+  span: string;
   /** One per bar, oldest first. */
   labels: string[];
-  period: "day" | "week";
+  period: "hour" | "day" | "week";
   /** Two across instead of four: for when the tiles share the row with the checklist rail. */
   compact?: boolean;
   leads: number[];
@@ -51,7 +52,7 @@ export function KpiTiles({
       <StatTile
         label="Leads in"
         value={leadsN}
-        delta={`Last ${days} days`}
+        delta={span}
         series={leads}
         seriesLabels={labels}
         unit="leads"
@@ -79,7 +80,7 @@ export function KpiTiles({
         delta={
           pct(meetingsN, leadsN)
             ? `${pct(meetingsN, leadsN)} conversion`
-            : `Last ${days} days`
+            : span
         }
         series={meetings}
         seriesLabels={labels}

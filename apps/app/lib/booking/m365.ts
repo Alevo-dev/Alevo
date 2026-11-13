@@ -29,7 +29,7 @@ const toGraph = (iso: string) => new Date(iso).toISOString().slice(0, 19);
 const fromGraph = (dt: string) => new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(dt) ? dt : `${dt}Z`);
 
 /** Free/busy from the user's own calendar view (works for every account type). */
-async function calendarViewBusy(token: string, fromIso: string, toIso: string): Promise<BusyInterval[]> {
+async function calendarViewBusy(token: string, fromIso: string, toIso: string, orgId: string): Promise<BusyInterval[]> {
   const qs = new URLSearchParams({
     startDateTime: new Date(fromIso).toISOString(),
     endDateTime: new Date(toIso).toISOString(),
@@ -38,7 +38,7 @@ async function calendarViewBusy(token: string, fromIso: string, toIso: string): 
   });
   const res = await vendorFetch(`${GRAPH}/me/calendarView?${qs}`, {
     headers: { authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
-  });
+  }, { track: { provider: "microsoft", orgId } });
   if (!res.ok) throw await vendorError(res, "Graph calendarView");
   const json = (await res.json()) as {
     value?: { showAs?: string; start: { dateTime: string }; end: { dateTime: string } }[];
@@ -53,6 +53,7 @@ async function getScheduleBusy(
   mailbox: string,
   fromIso: string,
   toIso: string,
+  orgId: string,
 ): Promise<BusyInterval[]> {
   const res = await vendorFetch(`${GRAPH}/me/calendar/getSchedule`, {
     method: "POST",
@@ -67,10 +68,10 @@ async function getScheduleBusy(
       endTime: { dateTime: toGraph(toIso), timeZone: "UTC" },
       availabilityViewInterval: 30,
     }),
-  }, { idempotent: true }); // a read, despite the POST
+  }, { idempotent: true }); // a read, despite the POST. Not tracked: personal accounts always reject it, and that is not a failed connection.
   // getSchedule is a work/school (Exchange Online) feature; personal Microsoft
   // accounts reject it. Fall back to reading the calendar view directly.
-  if (!res.ok) return calendarViewBusy(token, fromIso, toIso);
+  if (!res.ok) return calendarViewBusy(token, fromIso, toIso, orgId);
   const json = (await res.json()) as {
     value?: {
       scheduleItems?: { status?: string; start: { dateTime: string }; end: { dateTime: string } }[];
@@ -88,6 +89,7 @@ export async function makeM365Adapter(
   cfg: CalendarConfig,
 ): Promise<BookingAdapter | null> {
   const refreshToken = await getOrgSecret(orgId, refreshTokenKey("m365"));
+  const call: typeof vendorFetch = (url, init, opts) => vendorFetch(url, init, { ...opts, track: { provider: "microsoft", orgId } });
   if (!refreshToken || !cfg.calendarId) return null;
   const token = await refreshAccessToken("m365", refreshToken);
   const mailbox = cfg.calendarId;
@@ -96,7 +98,7 @@ export async function makeM365Adapter(
     provider: "m365",
 
     async availableSlots(fromIso, toIso, timeZone) {
-      const busy = await getScheduleBusy(token, mailbox, fromIso, toIso);
+      const busy = await getScheduleBusy(token, mailbox, fromIso, toIso, orgId);
       return generateSlots({
         fromIso,
         toIso,
@@ -112,7 +114,7 @@ export async function makeM365Adapter(
       try {
         const endIso = new Date(new Date(params.startIso).getTime() + cfg.lengthMin * 60_000)
           .toISOString();
-        const busy = await getScheduleBusy(token, mailbox, params.startIso, endIso);
+        const busy = await getScheduleBusy(token, mailbox, params.startIso, endIso, orgId);
         if (isBusy(params.startIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time was just taken", conflict: true };
         }
@@ -130,7 +132,7 @@ export async function makeM365Adapter(
           transactionId: `alevo-${params.conversationId}-${Date.parse(params.startIso)}`,
         };
         const create = (body: Record<string, unknown>) =>
-          vendorFetch(`${GRAPH}/me/events`, {
+          call(`${GRAPH}/me/events`, {
             method: "POST",
             headers: {
               authorization: `Bearer ${token}`,
@@ -172,7 +174,7 @@ export async function makeM365Adapter(
 
     async cancel(uid: string): Promise<CancelResult> {
       try {
-        const res = await vendorFetch(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
+        const res = await call(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
           method: "DELETE",
           headers: { authorization: `Bearer ${token}` },
         });
@@ -189,11 +191,11 @@ export async function makeM365Adapter(
       try {
         const endIso = new Date(new Date(newStartIso).getTime() + cfg.lengthMin * 60_000)
           .toISOString();
-        const busy = await getScheduleBusy(token, mailbox, newStartIso, endIso);
+        const busy = await getScheduleBusy(token, mailbox, newStartIso, endIso, orgId);
         if (isBusy(newStartIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time is no longer open" };
         }
-        const res = await vendorFetch(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
+        const res = await call(`${GRAPH}/me/events/${encodeURIComponent(uid)}`, {
           method: "PATCH",
           headers: {
             authorization: `Bearer ${token}`,

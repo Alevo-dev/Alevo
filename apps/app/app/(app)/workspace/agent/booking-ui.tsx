@@ -1,5 +1,6 @@
 "use client";
 
+import { Settings } from "lucide-react";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { buttonClass } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { BrandMark } from "@/components/workspace/brand-mark";
 import type { ConnectedTool, BookingTool } from "@/lib/booking/connected";
 import type { ServiceIcon } from "@/lib/integrations/services";
 import { cx } from "@/lib/cx";
+import { JUMP } from "@/lib/jump";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { HourRange, LENGTH_OPTIONS } from "./agent-ui";
 import { saveBookingSettings, type BookingState, type BookingValues } from "./booking-actions";
@@ -25,7 +27,7 @@ const HOW: Record<BookingTool, string> = {
   m365: "Reads free/busy and books with a Teams link.",
   calendly: "The agent sends your scheduling link for the lead to self-book.",
 };
-const INTEGRATIONS = "/workspace/integrations";
+const INTEGRATIONS = JUMP.integrationsBooking;
 
 type Props = { initial: BookingValues; connected: ConnectedTool[] };
 
@@ -57,7 +59,7 @@ export function BookingForm({ initial, connected }: Props) {
 
   return (
     <form key={formKey} ref={formRef} action={action} noValidate onInput={recheck} onChange={recheck} className="space-y-6">
-      <Card>
+      <Card id="booking">
         <CardHeader
           title="Booking"
           hint={
@@ -101,7 +103,7 @@ export function BookingForm({ initial, connected }: Props) {
               </p>
             </div>
             <Link href={INTEGRATIONS} className="text-label font-semibold text-link hover:underline">
-              {on ? "Change" : "Manage"}
+              {on ? "Change" : <><Settings className="size-4" strokeWidth={1.75} aria-hidden="true" /><span className="sr-only">Booking settings</span></>}
             </Link>
           </div>
         )}
@@ -138,7 +140,7 @@ export function BookingForm({ initial, connected }: Props) {
             <p className="text-label text-ink-muted">
               Only connected tools are listed.{" "}
               <Link href={INTEGRATIONS} className="font-semibold text-link hover:underline">
-                Manage connections
+                Connection settings
               </Link>
             </p>
           </fieldset>

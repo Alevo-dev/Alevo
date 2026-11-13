@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
-import { ChevronDown, Plus, Settings, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Plus, Trash2, Upload } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { initials } from "@/lib/format";
 import { toFormErrors, type FormErrors } from "@/components/auth/clerk-errors";
@@ -13,12 +12,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
 import { Menu, type MenuItem } from "@/components/ui/menu";
-// The Manage dialog (General + Members tabs) is a large client subtree opened
-// rarely — load it on demand rather than shipping it with the sidebar.
-const OrganizationDialog = dynamic(
-  () => import("@/components/workspace/organization-dialog").then((m) => m.OrganizationDialog),
-  { ssr: false },
-);
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
@@ -37,7 +30,6 @@ export function WorkspaceSwitcher() {
   });
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [manageOpen, setManageOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createErrors, setCreateErrors] = useState<FormErrors>(NONE);
@@ -157,7 +149,7 @@ export function WorkspaceSwitcher() {
             )}
           </>
         }
-        header={(close) =>
+        header={() =>
           organization && (
             <div className="flex min-w-0 items-center gap-2.5 py-1">
               <WorkspaceAvatar
@@ -169,17 +161,6 @@ export function WorkspaceSwitcher() {
                 <div className="truncate text-sm font-medium text-ink">{organization.name}</div>
                 <div className="text-label text-ink-muted">Current workspace</div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  close();
-                  setManageOpen(true);
-                }}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1 text-label font-medium text-ink-muted transition-colors hover:bg-brand-soft hover:text-ink"
-              >
-                <Settings className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
-                Manage
-              </button>
             </div>
           )
         }
@@ -202,7 +183,6 @@ export function WorkspaceSwitcher() {
       />
       {error && <p className="mt-1 text-label text-danger">{error}</p>}
 
-      {manageOpen && <OrganizationDialog open onClose={() => setManageOpen(false)} />}
 
       <Dialog open={createOpen} title="Create workspace" onClose={closeCreate} showClose>
         <form onSubmit={create} noValidate className="flex flex-col gap-5">

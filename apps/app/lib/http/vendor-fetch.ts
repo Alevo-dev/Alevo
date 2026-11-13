@@ -1,4 +1,5 @@
 import "server-only";
+import { recordWebhookDelivery, type WebhookProvider } from "@alevo/db";
 import { isIdempotentMethod, isTransientFetchError, retryDelayMs, shouldRetryStatus } from "./retry";
 
 export type VendorFetchOptions = {
@@ -16,6 +17,11 @@ export type VendorFetchOptions = {
   idempotent?: boolean;
   /** First backoff ceiling in ms (doubles each retry, full jitter). */
   baseDelayMs?: number;
+  /**
+   * Record the final outcome in Connection health (outbound). Pass the service and the org
+   * the call is for; leave out for calls that are not an org's connected tool.
+   */
+  track?: { provider: WebhookProvider; orgId: string | null };
 };
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -32,6 +38,19 @@ const DEFAULT_RETRIES = 2;
  * at once. The last attempt's response (or error) is what the caller gets.
  */
 export async function vendorFetch(url: string | URL, init: RequestInit = {}, opts: VendorFetchOptions = {}): Promise<Response> {
+  const { track } = opts;
+  if (!track) return attempts(url, init, opts);
+  try {
+    const res = await attempts(url, init, opts);
+    await recordWebhookDelivery({ ...track, outcome: res.ok ? "ok" : "failed", direction: "outbound" });
+    return res;
+  } catch (err) {
+    await recordWebhookDelivery({ ...track, outcome: "failed", direction: "outbound" });
+    throw err;
+  }
+}
+
+async function attempts(url: string | URL, init: RequestInit, opts: VendorFetchOptions): Promise<Response> {
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const retries = opts.retries ?? DEFAULT_RETRIES;
   const idempotent = opts.idempotent ?? isIdempotentMethod(init.method);

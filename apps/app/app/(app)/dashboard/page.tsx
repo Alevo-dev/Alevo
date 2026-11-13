@@ -10,7 +10,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill, StatusDot } from "@/components/ui/pill";
-import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow, showRatePct } from "@/lib/dashboard/window";
+import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow, showRatePct, windowLabel } from "@/lib/dashboard/window";
 import { anonymousLabel, displayName, fmtShort } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { getCurrentUsage } from "@/lib/usage/current";
@@ -51,7 +51,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const days = parseWindow(search.window);
   const bucket = bucketFor(days);
   const buckets = bucketCount(days);
-  const per = bucket === "day" ? "per day" : "per week";
+  const per = `per ${bucket}`;
+  const span = windowLabel(days);
 
   // Calendar days in the org's timezone, so bars line up with what the user calls
   // a day. Computed in SQL so the render stays pure (no clock reads).
@@ -59,10 +60,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const today = sql`(now() at time zone ${tz})::date`;
   const windowStart = sql`(${today} - ${coverDays(days) - 1}::int)::timestamp at time zone ${tz}`;
   // Whole buckets ago (0 = today / this week) for a timestamptz column.
+  // Today's hours count back from the last bar (23 = the 11 PM bar, 0 ago).
   const ago = (col: SQLWrapper) =>
-    bucket === "day"
-      ? sql<number>`(${today} - (${col} at time zone ${tz})::date)`.mapWith(Number)
-      : sql<number>`floor((${today} - (${col} at time zone ${tz})::date) / 7)`.mapWith(Number);
+    bucket === "hour"
+      ? sql<number>`(23 - extract(hour from (${col} at time zone ${tz}))::int)`.mapWith(Number)
+      : bucket === "day"
+        ? sql<number>`(${today} - (${col} at time zone ${tz})::date)`.mapWith(Number)
+        : sql<number>`floor((${today} - (${col} at time zone ${tz})::date) / 7)`.mapWith(Number);
   // Explicit active-org scope on every read (platform admins bypass RLS).
   const inOrg = (col: typeof conversations.orgId | typeof meetings.orgId | typeof calls.orgId) =>
     sql`${col} = (select app.current_org_id())`;
@@ -211,7 +215,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         description={
           <>
             <StatusDot tone={agentOn ? "success" : "muted"} live={agentOn} />
-            {agentOn ? "Live." : "The agent is off."} {org?.name ?? "Your workspace"}, last {days} days
+            {agentOn ? "Live." : "The agent is off."} {org?.name ?? "Your workspace"}, {span.toLowerCase()}
           </>
         }
       >
@@ -234,7 +238,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className={checklist ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]" : "space-y-6"}>
         {checklist && <GettingStarted items={checklist} className="xl:col-start-2 xl:row-start-1" />}
         <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
-          <KpiTiles days={days} labels={labels} period={bucket} compact={!!checklist} {...series} />
+          <KpiTiles span={span} labels={labels} period={bucket} compact={!!checklist} {...series} />
 
           {/* Row 1 (mockup): leads area chart, 2/3; speed to lead, 1/3. */}
           <section
@@ -242,7 +246,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             aria-label="Leads and response time"
           >
             <Card>
-              <CardHeader title={`Leads ${per}`} hint={`Last ${days} days`} />
+              <CardHeader title={`Leads ${per}`} hint={span} />
               <TrendChart points={points(series.leads)} unit="leads" kind="area" tone="brand" />
             </Card>
             <SpeedCard p50={speed?.p50 ?? null} p95={speed?.p95 ?? null} replied={speed?.replied ?? 0} excluded={skipped?.n ?? 0} trend={speedTrend} per={per} />
@@ -255,7 +259,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <Card>
           <CardHeader
             title="Meetings booked"
-            hint={`${per[0]!.toUpperCase()}${per.slice(1)}, last ${days} days`}
+            hint={`${per[0]!.toUpperCase()}${per.slice(1)}, ${span.toLowerCase()}`}
             aside={
               showRate != null ? (
                 <span className="text-label text-ink-muted">
@@ -272,7 +276,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <TrendChart points={points(series.meetings)} unit="meetings" kind="columns" tone="brand" width={400} />
         </Card>
         <Card>
-          <CardHeader title="Where leads come from" hint={`Last ${days} days`} />
+          <CardHeader title="Where leads come from" hint={span} />
           {byChannel.length === 0 ? (
             <p className="mt-6 text-sm text-ink-muted">No new leads in this window.</p>
           ) : (

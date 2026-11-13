@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { importTwilioNumber } from "@/lib/voice/vapi";
 
 const EXISTING = "c0cdca7c-7311-4f6d-9a97-af24cff9b9dc";
-const params = { number: "+18073025386", name: "Acme inbound", serverUrl: "https://x.test/v", secretHeader: "x-s", secret: "s" };
+const params = { orgId: "org-1", number: "+18073025386", name: "Acme inbound", serverUrl: "https://x.test/v", secretHeader: "x-s", secret: "s" };
 
 const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });

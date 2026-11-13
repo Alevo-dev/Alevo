@@ -29,7 +29,7 @@ type Query = Record<string, string | number | undefined>;
 
 export type ConnectWiseClient = ReturnType<typeof createConnectWiseClient>;
 
-export function createConnectWiseClient(cfg: { site: string; companyId: string; publicKey: string; privateKey: string; clientId: string }) {
+export function createConnectWiseClient(cfg: { orgId: string; site: string; companyId: string; publicKey: string; privateKey: string; clientId: string }) {
   const base = cwBaseUrl(cfg.site);
   const headers = {
     Authorization: cwAuthorization(cfg.companyId, cfg.publicKey, cfg.privateKey),
@@ -45,7 +45,7 @@ export function createConnectWiseClient(cfg: { site: string; companyId: string; 
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-    }, { timeoutMs: 20_000, idempotent: method === "GET" });
+    }, { timeoutMs: 20_000, idempotent: method === "GET", track: { provider: "connectwise", orgId: cfg.orgId } });
     if (!res.ok) {
       const text = (await res.text().catch(() => "")).slice(0, 400);
       throw new ConnectWiseError(res.status, `ConnectWise ${method} ${path} → ${res.status}${text ? `: ${text}` : ""}`);
@@ -167,6 +167,6 @@ export async function loadConnectWise(orgId: string): Promise<{ ok: true; conn: 
   if (!profile?.site || !profile.companyId || !profile.member || !publicKey || !privateKey) {
     return { ok: false, reason: "ConnectWise isn't fully set up for this workspace." };
   }
-  const client = createConnectWiseClient({ site: profile.site, companyId: profile.companyId, publicKey, privateKey, clientId });
+  const client = createConnectWiseClient({ orgId, site: profile.site, companyId: profile.companyId, publicKey, privateKey, clientId });
   return { ok: true, conn: { client, member: profile.member, site: profile.site } };
 }

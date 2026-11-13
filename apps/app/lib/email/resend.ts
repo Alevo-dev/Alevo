@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { recordWebhookDelivery } from "@alevo/db";
 import { makeUnsubscribeToken } from "./unsubscribe-token";
 
 /**
@@ -135,9 +136,11 @@ export async function sendQualifierEmail(params: {
         { name: "conversation_id", value: params.conversationId },
       ],
     });
+    await recordWebhookDelivery({ orgId: params.orgId, provider: "resend", outcome: error ? "failed" : "ok", direction: "outbound" });
     if (error) return { ok: false, error: error.message };
     return { ok: true, id: data?.id };
   } catch (err) {
+    await recordWebhookDelivery({ orgId: params.orgId, provider: "resend", outcome: "failed", direction: "outbound" });
     return { ok: false, error: err instanceof Error ? err.message : "send-failed" };
   }
 }

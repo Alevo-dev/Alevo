@@ -7,11 +7,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Input, Textarea } from "@/components/ui/field";
-import { Select } from "@/components/ui/select";
 import { SettingRow } from "@/components/ui/setting-row";
 import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
 import { mergeImported, type ImportedProfile, type ImportMode } from "@/lib/profile/merge";
-import { toneOptions } from "@/lib/profile/tone";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { saveBusinessProfile, type ActionState, type BusinessProfileErrors, type BusinessProfileValues } from "./actions";
 import { ImportDialog } from "./import-dialog";
@@ -23,7 +21,7 @@ type Imported = { on: ActionState; values: BusinessProfileValues; note: string }
 
 export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessProfileValues; agentOn: boolean }) {
   const [state, action, pending] = useActionState(saveBusinessProfile, INITIAL);
-  useActionToast(state, "Business profile saved.");
+  useActionToast(state, "Profile saved.");
   const { formRef, formKey, dirty, recheck, touch, discard, guard } = useUnsavedForm(state);
 
   const [importOpen, setImportOpen] = useState(false);
@@ -175,18 +173,6 @@ export function BusinessProfileForm({ initial, agentOn }: { initial: BusinessPro
               defaultValue={v("disqualifiers")}
               placeholder="Individuals or home users, under 10 seats, or outside our service region."
             />
-          </SettingRow>
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader title="Voice" hint="How the agent sounds and signs off." />
-        <div className="mt-6">
-          <SettingRow label="Tone and voice" htmlFor="tone" hint="Pick the voice closest to yours.">
-            <Select id="tone" name="tone" options={toneOptions(initial.tone)} defaultValue={v("tone")} placeholder="Choose a tone" onChange={touch} />
-          </SettingRow>
-          <SettingRow label="Sign off as" htmlFor="signoff">
-            <Input id="signoff" name="signoff" defaultValue={v("signoff")} placeholder="Sam from Northwind IT" />
           </SettingRow>
         </div>
       </Card>

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cx } from "./cx";
 import { controlClass } from "./field";
 
-export type SelectOption = { value: string; label: string };
+/** `hint`: small muted text at the right of the row (e.g. a keyboard shortcut). */
+export type SelectOption = { value: string; label: string; hint?: string };
 
 type Props = {
   id?: string;
@@ -27,7 +28,7 @@ type Props = {
   "aria-labelledby"?: string;
 };
 
-type Pos = { top: number; left: number; width: number; up: boolean };
+type Pos = { top: number; left?: number; right?: number; width: number; up: boolean };
 
 const OPTION_H = 36;
 const MENU_MAX = 280;
@@ -69,7 +70,14 @@ export function Select({
     const r = el.getBoundingClientRect();
     const menuH = Math.min(options.length * OPTION_H + 8, MENU_MAX);
     const up = window.innerHeight - r.bottom < menuH + 8 && r.top > menuH + 8;
-    setPos({ top: up ? r.top - 4 : r.bottom + 4, left: r.left, width: r.width, up });
+    // A trigger in the right half opens its menu leftwards, so a wider menu never leaves the window.
+    const rightHalf = r.left > window.innerWidth / 2;
+    setPos({
+      top: up ? r.top - 4 : r.bottom + 4,
+      ...(rightHalf ? { right: document.documentElement.clientWidth - r.right } : { left: r.left }),
+      width: r.width,
+      up,
+    });
   }, [options.length]);
 
   const openMenu = () => {
@@ -204,6 +212,7 @@ export function Select({
             style={{
               top: pos.top,
               left: pos.left,
+              right: pos.right,
               minWidth: pos.width,
               maxHeight: MENU_MAX,
               transform: pos.up ? "translateY(-100%)" : undefined,
@@ -223,12 +232,11 @@ export function Select({
                   onClick={() => choose(o.value)}
                   className={cx(
                     "flex h-9 cursor-pointer items-center justify-between gap-3 whitespace-nowrap rounded-sm px-3 text-sm text-ink",
-                    i === active && "bg-brand-soft",
-                    isSelected && "font-medium",
+                    isSelected ? "bg-brand-soft font-semibold" : i === active && "bg-surface",
                   )}
                 >
-                  {o.label}
-                  {isSelected && <Check className="size-4 text-brand" strokeWidth={2} aria-hidden="true" />}
+                  <span className="flex-1">{o.label}</span>
+                  {o.hint && <span className="text-label text-ink-muted">{o.hint}</span>}
                 </li>
               );
             })}

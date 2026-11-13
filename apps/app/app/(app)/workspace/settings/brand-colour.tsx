@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ColourField } from "@/components/ui/colour-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { chatTextColour, contrastRatio, normaliseHex } from "@/lib/colour";
 import { useActionToast } from "@/lib/ui/use-action-toast";
-import { saveBrandColour, type BrandColourState } from "./actions";
+import { saveBrandColour, type BrandColourState } from "../integrations/actions";
 
 const INITIAL: BrandColourState = {};
 const ALEVO_BLUE = "#2e9be6";
@@ -32,9 +33,9 @@ function Chip({ label, hex, fallbackHex, fallbackName }: { label: string; hex: s
 
 /**
  * The workspace's default colours: the brand colour and the font colour that goes on it, used by the website
- * form (the embed and the hosted page) and the chat bubble. A summary here; Manage opens the dialog where each
- * colour is a swatch + hex field (the swatch opens the picker). A page can still override both with
- * data-accent / data-color.
+ * form (the embed and the hosted page) and the chat bubble. A read-only summary (swatches, not a button-shaped
+ * preview) with a gear that opens the dialog where each colour is a swatch + hex field (the swatch opens the
+ * picker). A page can still override both with data-accent / data-color.
  */
 export function BrandColour({ accent, textColor, canModify }: { accent: string; textColor: string; canModify: boolean }) {
   const [open, setOpen] = useState(false);
@@ -62,8 +63,7 @@ export function BrandColour({ accent, textColor, canModify }: { accent: string; 
   const autoText = chatTextColour(liveAccent);
   const typedText = normaliseHex(text);
   const weak = typedText !== null && contrastRatio(liveAccent, typedText) < 3;
-  const summaryAccent = savedAccentHex || ALEVO_BLUE;
-  const summaryText = savedTextHex || chatTextColour(summaryAccent);
+  const summaryText = savedTextHex || chatTextColour(savedAccentHex || ALEVO_BLUE);
   const err = dirty ? state.errors : undefined;
 
   return (
@@ -88,20 +88,16 @@ export function BrandColour({ accent, textColor, canModify }: { accent: string; 
               setOpen(true);
             }}
           >
-            Manage
+            <Settings className="size-4" strokeWidth={1.75} aria-hidden="true" />
+            <span className="sr-only">Brand colour settings</span>
           </Button>
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-x-10 gap-y-4">
-        <dl className="flex flex-wrap gap-x-10 gap-y-4">
-          <Chip label="Colour" hex={savedAccentHex} fallbackHex={ALEVO_BLUE} fallbackName="Alevo blue" />
-          <Chip label="Font colour" hex={savedTextHex} fallbackHex={summaryText} fallbackName="white or navy" />
-        </dl>
-        <span className="rounded-full px-5 py-2.5 text-sm font-semibold" style={{ background: summaryAccent, color: summaryText }} aria-hidden="true">
-          Preview
-        </span>
-      </div>
+      <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-4">
+        <Chip label="Colour" hex={savedAccentHex} fallbackHex={ALEVO_BLUE} fallbackName="Alevo blue" />
+        <Chip label="Font colour" hex={savedTextHex} fallbackHex={summaryText} fallbackName="white or navy" />
+      </dl>
 
       <Dialog
         open={visible}
@@ -142,8 +138,8 @@ export function BrandColour({ accent, textColor, canModify }: { accent: string; 
           />
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline pt-5">
-            <span className="rounded-full px-5 py-2.5 text-sm font-semibold" style={{ background: liveAccent, color: typedText ?? autoText }} aria-hidden="true">
-              Preview
+            <span className="rounded-md px-4 py-2 text-sm font-semibold" style={{ background: liveAccent, color: typedText ?? autoText }} aria-hidden="true">
+              Aa Sample text
             </span>
             {weak && typedText && (
               <p role="status" className="basis-full text-label text-warning">

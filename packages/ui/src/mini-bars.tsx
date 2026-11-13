@@ -22,10 +22,10 @@ const SWATCH: Record<MiniBarsTone, string> = {
   danger: "var(--color-danger)",
 };
 
-/** "today", "yesterday", "3 days ago" / "this week", "last week", "3 weeks ago". */
-export function relativePeriod(ago: number, period: "day" | "week"): string {
-  if (ago === 0) return period === "day" ? "today" : "this week";
-  if (ago === 1) return period === "day" ? "yesterday" : "last week";
+/** "today", "yesterday", "3 days ago" / "this week", "last week", "3 weeks ago" / "this hour", "3 hours ago". */
+export function relativePeriod(ago: number, period: "hour" | "day" | "week"): string {
+  if (ago === 0) return period === "day" ? "today" : `this ${period}`;
+  if (ago === 1) return period === "day" ? "yesterday" : `last ${period}`;
   return `${ago} ${period}s ago`;
 }
 
@@ -47,7 +47,7 @@ export function MiniBars({
   labels?: string[];
   /** Noun for the tooltip, e.g. "leads". */
   unit?: string;
-  period?: "day" | "week";
+  period?: "hour" | "day" | "week";
   tone?: MiniBarsTone;
 }) {
   const [active, setActive] = useState<number | null>(null);

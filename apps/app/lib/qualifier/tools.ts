@@ -237,6 +237,7 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
     note = "shown in the chat widget";
   } else if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
     const sent = await sendSms({
+      orgId: target.orgId,
       fromNumber: target.smsFromNumber,
       toPhone: target.contactPhone,
       body,

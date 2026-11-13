@@ -1,9 +1,8 @@
 import type { BusinessProfileValues } from "../../app/(app)/workspace/profile/actions";
-import { TONE_KEYS } from "./tone";
 
 /** The profile fields a website can tell us about. Criteria and disqualifiers are the owner's call. */
 export const IMPORT_KEYS = [
-  "companyName", "businessAddress", "contactPhone", "contactEmail", "contactHours", "offering", "idealCustomer", "tone", "signoff",
+  "companyName", "businessAddress", "contactPhone", "contactEmail", "contactHours", "offering", "idealCustomer",
 ] as const;
 
 export type ImportedProfile = Partial<Pick<BusinessProfileValues, (typeof IMPORT_KEYS)[number]>>;
@@ -22,7 +21,6 @@ export function mergeImported(
   for (const key of IMPORT_KEYS) {
     const next = imported[key]?.trim();
     if (!next || NOT_FOUND.test(next)) continue;
-    if (key === "tone" && !TONE_KEYS.includes(next)) continue;
     if (mode === "fill" && current[key].trim()) continue;
     if (next === current[key]) continue;
     values[key] = next;

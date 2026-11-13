@@ -32,7 +32,7 @@ export function StatTile({
   seriesLabels?: string[];
   /** Noun for the bar tooltip, e.g. "leads". */
   unit?: string;
-  period?: "day" | "week";
+  period?: "hour" | "day" | "week";
   tone?: StatTone;
   featured?: boolean;
 }) {

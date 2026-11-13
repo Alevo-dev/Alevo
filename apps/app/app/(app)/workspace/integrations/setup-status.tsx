@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Notice } from "@/components/ui/notice";
 import type { ServiceView } from "@/lib/integrations/services";
+import { JUMP } from "@/lib/jump";
 
 /**
  * The reminder at the top of a booking tool's Manage dialog: is it set up
@@ -24,7 +25,7 @@ export function SetupStatus({ service }: { service: ServiceView }) {
   }
   return (
     <Notice>
-      Connected. Turn booking on under <Link href="/workspace/agent">Agent → Booking</Link> to have the agent use it.
+      Connected. Turn booking on under <Link href={JUMP.agentBooking}>Agent → Booking</Link> to have the agent use it.
     </Notice>
   );
 }

@@ -10,7 +10,7 @@ export {
   listOrgSecretKeys,
 } from "./secrets";
 export { recordAudit, type AuditEntry } from "./audit";
-export { recordWebhookDelivery, type WebhookProvider, type WebhookOutcome } from "./webhook-deliveries";
+export { CONNECTION_PROVIDERS, recordWebhookDelivery, type DeliveryDirection, type WebhookProvider, type WebhookOutcome } from "./webhook-deliveries";
 export { claimWebhookEvent, releaseWebhookEvent } from "./webhook-events";
 export { currentPeriod, getUsage, recordUsage, type UsageRow } from "./usage";
 export { hitRateLimit } from "./rate-limit";

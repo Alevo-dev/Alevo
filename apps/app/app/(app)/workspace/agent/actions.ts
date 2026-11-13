@@ -97,7 +97,7 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
     if (values.voiceEnabled && !values.smsFromNumber) errors.voiceEnabled = "Add an SMS number above to turn phone calls on.";
     // Turning the agent on needs the business profile it reasons from.
     if (values.enabled && (!existing?.companyName || !existing.offering || !existing.idealCustomer)) {
-      errors.enabled = "Fill in the company name, offering and ideal customer under Business profile first.";
+      errors.enabled = "Fill in the company name, offering and ideal customer under Profile first.";
     }
     if (Object.keys(errors).length > 0 || Object.keys(labelErrors).length > 0) return { errors, labelErrors, values };
 

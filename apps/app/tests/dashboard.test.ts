@@ -11,6 +11,7 @@ import {
   parseWindow,
   showLabel,
   speedLevel,
+  windowLabel,
 } from "../lib/dashboard/window";
 
 describe("axis labels", () => {
@@ -34,12 +35,26 @@ describe("axis labels", () => {
 });
 
 describe("parseWindow", () => {
-  it("accepts the three windows and falls back to 7", () => {
+  it("accepts Today and the three ranges, and falls back to 7", () => {
+    expect(parseWindow("1")).toBe(1);
     expect(parseWindow("30")).toBe(30);
     expect(parseWindow("90")).toBe(90);
     expect(parseWindow("7")).toBe(7);
     expect(parseWindow("14")).toBe(7);
     expect(parseWindow(undefined)).toBe(7);
+  });
+});
+
+describe("Today", () => {
+  it("reads per hour: 24 bars, one query day, hour labels", () => {
+    expect(bucketFor(1)).toBe("hour");
+    expect(bucketCount(1)).toBe(24);
+    expect(coverDays(1)).toBe(1);
+    const hours = bucketLabels("2026-10-27", 1);
+    expect([hours[0], hours[12], hours[13], hours[23]]).toEqual(["12 AM", "12 PM", "1 PM", "11 PM"]);
+    expect(bucketShortLabels("2026-10-27", 1)).toEqual(hours);
+    expect(windowLabel(1)).toBe("Today");
+    expect(windowLabel(30)).toBe("Last 30 days");
   });
 });
 

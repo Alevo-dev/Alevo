@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, CalendarCheck, LayoutDashboard, MessagesSquare } from "lucide-react";
+import { Building2, CalendarCheck, LayoutDashboard, MessagesSquare, Settings } from "lucide-react";
 import { cx } from "@/lib/cx";
+import { WorkspaceSubnav } from "./workspace-subnav";
 import { AgentStatus } from "./agent-status";
-import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 const NAV = [
@@ -15,10 +15,25 @@ const NAV = [
   { href: "/workspace/profile", label: "Workspace", icon: Building2, match: "/workspace" },
 ] as const;
 
-export type PlanCard = { name: string; renews: string | null } | null;
+/** Settings sits where the theme control used to: bottom of the rail, above the agent status. */
+function SettingsLink({ active }: { active: boolean }) {
+  return (
+    <Link
+      href="/preferences"
+      aria-current={active ? "page" : undefined}
+      className={cx(
+        "-mx-1 flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium no-underline transition-colors",
+        active ? "bg-brand-soft text-ink" : "text-ink-muted hover:bg-raised hover:text-ink",
+      )}
+    >
+      <Settings className={cx("size-4", active ? "text-brand" : "text-ink-muted")} strokeWidth={1.75} aria-hidden="true" />
+      Settings
+    </Link>
+  );
+}
 
 /** Left rail on desktop, a stacked top bar on phones. */
-export function AppSidebar({ plan, agentOn }: { plan: PlanCard; agentOn: boolean }) {
+export function AppSidebar({ agentOn }: { agentOn: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -32,34 +47,28 @@ export function AppSidebar({ plan, agentOn }: { plan: PlanCard; agentOn: boolean
           const base = "match" in item ? item.match : href;
           const active = pathname === base || pathname.startsWith(`${base}/`);
           return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cx(
-                "flex shrink-0 items-center gap-3 rounded-sm px-3 py-2.5 text-sm no-underline transition-colors",
-                active
-                  ? "bg-brand-soft font-medium text-ink"
-                  : "font-medium text-ink-muted hover:bg-raised hover:text-ink",
-              )}
-            >
-              <Icon className={cx("size-4", active ? "text-brand" : "text-ink-muted")} strokeWidth={1.75} aria-hidden="true" />
-              {label}
-            </Link>
+            <div key={href}>
+              <Link
+      href={href}
+                aria-current={active ? "page" : undefined}
+                className={cx(
+                  "flex shrink-0 items-center gap-3 rounded-sm px-3 py-2.5 text-sm no-underline transition-colors",
+                  active
+                    ? "bg-brand-soft font-medium text-ink"
+                    : "font-medium text-ink-muted hover:bg-raised hover:text-ink",
+                )}
+              >
+                <Icon className={cx("size-4", active ? "text-brand" : "text-ink-muted")} strokeWidth={1.75} aria-hidden="true" />
+                {label}
+              </Link>
+              {active && base === "/workspace" && <WorkspaceSubnav />}
+            </div>
           );
         })}
       </nav>
 
-      {plan && (
-        <div className="hidden rounded-md border border-hairline bg-surface p-4 md:block">
-          <div className="text-label text-ink-muted">Plan</div>
-          <div className="mt-1 text-sm font-semibold text-ink">{plan.name}</div>
-          {plan.renews && <div className="mt-3 text-label text-ink-muted">Renews {plan.renews}</div>}
-        </div>
-      )}
-
       <div className="flex flex-col gap-4 px-1 md:mt-auto">
-        <ThemeToggle />
+        <SettingsLink active={pathname === "/preferences"} />
         <AgentStatus on={agentOn} className="border-t border-hairline pt-4" />
       </div>
     </aside>

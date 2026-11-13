@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Settings } from "lucide-react";
 import { StatusDot } from "@/components/ui/pill";
 import { cx } from "@/lib/cx";
 
@@ -46,7 +47,8 @@ export function AgentStatus({
         <StatusDot tone={on ? "success" : "muted"} live={on} />
         Agent: {label}
       </span>
-      <span>Manage</span>
+      <Settings className="size-4" strokeWidth={1.75} aria-hidden="true" />
+      <span className="sr-only">Agent settings</span>
     </Link>
   );
 }

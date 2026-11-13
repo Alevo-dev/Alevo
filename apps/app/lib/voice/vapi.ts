@@ -12,14 +12,15 @@ export function isVapiConfigured(): boolean {
   return Boolean(process.env.VAPI_API_KEY);
 }
 
-async function vapi(path: string, init: { method: string; body?: unknown }): Promise<Response> {
+/** `orgId`: the org the call is for, so it shows in Connection health. */
+async function vapi(path: string, init: { method: string; body?: unknown; orgId: string }): Promise<Response> {
   const key = process.env.VAPI_API_KEY;
   if (!key) throw new Error("Vapi is not configured (VAPI_API_KEY)");
   return vendorFetch(`${BASE}${path}`, {
     method: init.method,
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
+  }, { track: { provider: "vapi", orgId: init.orgId } });
 }
 
 async function json<T>(res: Response, what: string): Promise<T> {
@@ -31,13 +32,13 @@ async function json<T>(res: Response, what: string): Promise<T> {
 }
 
 /** Create an assistant. Returns its id. */
-export async function createAssistant(body: Record<string, unknown>): Promise<{ id: string }> {
-  return json(await vapi("/assistant", { method: "POST", body }), "create assistant");
+export async function createAssistant(orgId: string, body: Record<string, unknown>): Promise<{ id: string }> {
+  return json(await vapi("/assistant", { method: "POST", body, orgId }), "create assistant");
 }
 
 /** Update an assistant with a partial body. */
-export async function updateAssistant(id: string, body: Record<string, unknown>): Promise<void> {
-  await json(await vapi(`/assistant/${encodeURIComponent(id)}`, { method: "PATCH", body }), "update assistant");
+export async function updateAssistant(orgId: string, id: string, body: Record<string, unknown>): Promise<void> {
+  await json(await vapi(`/assistant/${encodeURIComponent(id)}`, { method: "PATCH", body, orgId }), "update assistant");
 }
 
 /**
@@ -47,6 +48,7 @@ export async function updateAssistant(id: string, body: Record<string, unknown>)
  * or off). Returns the phone-number id.
  */
 export async function importTwilioNumber(params: {
+  orgId: string;
   number: string;
   name: string;
   serverUrl: string;
@@ -57,6 +59,7 @@ export async function importTwilioNumber(params: {
   const token = process.env.TWILIO_AUTH_TOKEN;
   if (!sid || !token) throw new Error("Twilio is not configured (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)");
   const res = await vapi("/phone-number", {
+    orgId: params.orgId,
     method: "POST",
     body: {
       provider: "twilio",
@@ -86,6 +89,7 @@ export async function importTwilioNumber(params: {
  * stale assistant answers every call) and the current server URL + secret.
  */
 export async function detachAssistantFromNumber(params: {
+  orgId: string;
   phoneNumberId: string;
   serverUrl: string;
   secretHeader: string;
@@ -93,6 +97,7 @@ export async function detachAssistantFromNumber(params: {
 }): Promise<void> {
   await json(
     await vapi(`/phone-number/${encodeURIComponent(params.phoneNumberId)}`, {
+      orgId: params.orgId,
       method: "PATCH",
       body: { assistantId: null, server: { url: params.serverUrl, headers: { [params.secretHeader]: params.secret } } },
     }),
@@ -104,8 +109,8 @@ export async function detachAssistantFromNumber(params: {
  * Download a call's mono recording. Vapi answers with a redirect to a signed URL
  * that expires, so this follows it immediately and returns the bytes.
  */
-export async function fetchCallRecording(callId: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
-  const res = await vapi(`/call/${encodeURIComponent(callId)}/mono-recording`, { method: "GET" });
+export async function fetchCallRecording(orgId: string, callId: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
+  const res = await vapi(`/call/${encodeURIComponent(callId)}/mono-recording`, { method: "GET", orgId });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Vapi recording fetch failed (${res.status})`);
   return {

@@ -15,6 +15,7 @@ import {
   type ActionState,
 } from "@/app/(app)/workspace/members/actions";
 import { Button, Spinner } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
@@ -46,12 +47,18 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-/** Right pane of the dialog — same container as the account panes. */
+/** The card the Members list sits in on the Manage page. */
 function Wrap({ children }: { children: ReactNode }) {
-  return <div className="min-w-0 flex-1 overflow-y-auto p-6 md:p-8 md:pt-6">{children}</div>;
+  return (
+    <Card>
+      <CardHeader title="Members" />
+      <div className="mt-4">{children}</div>
+    </Card>
+  );
 }
 
-export function MembersTab() {
+/** Everyone sees the list; only admins and owners invite, change roles or remove people (the server actions enforce it too). */
+export function MembersTab({ canEdit }: { canEdit: boolean }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof loadMembers>> | null>(null);
   const [tab, setTab] = useState<"members" | "invites">("members");
   const [query, setQuery] = useState("");
@@ -84,7 +91,7 @@ export function MembersTab() {
   if ("error" in data) {
     return (
       <Wrap>
-        <Notice tone="warning">You need an admin role to manage members.</Notice>
+        <Notice tone="warning">Could not load the members. Try again in a moment.</Notice>
       </Wrap>
     );
   }
@@ -99,12 +106,14 @@ export function MembersTab() {
 
   return (
     <Wrap>
-      <div role="tablist" aria-label="Members and invitations" className="flex gap-6 border-b border-hairline">
-        <SubTab active={tab === "members"} onClick={() => setTab("members")} label="Members" count={members.length} />
-        <SubTab active={tab === "invites"} onClick={() => setTab("invites")} label="Invitations" count={pending.length} />
-      </div>
+      {canEdit && (
+        <div role="tablist" aria-label="Members and invitations" className="flex gap-6 border-b border-hairline">
+          <SubTab active={tab === "members"} onClick={() => setTab("members")} label="Members" count={members.length} />
+          <SubTab active={tab === "invites"} onClick={() => setTab("invites")} label="Invitations" count={pending.length} />
+        </div>
+      )}
 
-      <div className="mt-5 flex items-center gap-3">
+      <div className={cx("flex items-center gap-3", canEdit && "mt-5")}>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
           <Input
@@ -115,12 +124,14 @@ export function MembersTab() {
             className="pl-9"
           />
         </div>
-        <Button variant="primary" onClick={() => setInviteOpen((o) => !o)}>
-          Invite
-        </Button>
+        {canEdit && (
+          <Button variant="primary" onClick={() => setInviteOpen((o) => !o)}>
+            Invite
+          </Button>
+        )}
       </div>
 
-      {inviteOpen && (
+      {canEdit && inviteOpen && (
         <InviteForm
           onDone={() => {
             setInviteOpen(false);
@@ -129,11 +140,11 @@ export function MembersTab() {
         />
       )}
 
-      {tab === "members" ? (
+      {tab === "members" || !canEdit ? (
         <ul className="mt-4 divide-y divide-hairline">
           {filtered.length === 0 && <li className="py-6 text-sm text-ink-muted">No members found.</li>}
           {filtered.map((m) => (
-            <MemberRow key={m.userId} member={m} reload={reload} />
+            <MemberRow key={m.userId} member={m} reload={reload} canEdit={canEdit} />
           ))}
         </ul>
       ) : (
@@ -167,7 +178,7 @@ function SubTab({ active, onClick, label, count }: { active: boolean; onClick: (
   );
 }
 
-function MemberRow({ member, reload }: { member: MemberView; reload: () => void }) {
+function MemberRow({ member, reload, canEdit }: { member: MemberView; reload: () => void; canEdit: boolean }) {
   const [roleState, roleAction, rolePending] = useActionState(changeMemberRole, INITIAL);
   const [rmState, rmAction, rmPending] = useActionState(removeMember, INITIAL);
   const [dirty, setDirty] = useState(false);
@@ -187,6 +198,8 @@ function MemberRow({ member, reload }: { member: MemberView; reload: () => void 
       <div className="hidden w-24 shrink-0 text-label text-ink-muted sm:block">{fmtDate(member.joinedAt)}</div>
       {member.support ? (
         <Pill tone="muted">Alevo support</Pill>
+      ) : !canEdit ? (
+        <Pill tone="brand">{ROLE_LABEL[member.role]}</Pill>
       ) : (
         <>
           <form action={roleAction} onSubmit={() => setDirty(false)} className="flex shrink-0 items-center gap-1.5">

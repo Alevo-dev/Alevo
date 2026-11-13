@@ -1,5 +1,6 @@
 import type { SecretKey } from "@/lib/secrets-registry";
 import type { Tone } from "@/lib/ui/status";
+import { JUMP } from "@/lib/jump";
 import { BOOKING_TOOL_LABEL, bookingToolMissing, type BookingSnapshot, type BookingTool } from "@/lib/booking/connected";
 import { connectwiseMissing, connectwiseStarted, type ConnectWiseSnapshot } from "@/lib/psa/connectwise-map";
 
@@ -20,11 +21,11 @@ export type ServiceIcon =
 
 /** The page is split into these sections, in this order. */
 export type ServiceGroup = "capture" | "booking" | "communication" | "crm";
-export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string }[] = [
-  { id: "capture", title: "Lead capture", hint: "Where leads come in from your website: the form (embed, or your own form posting to Alevo) and the chat bubble." },
-  { id: "booking", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
-  { id: "communication", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
-  { id: "crm", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. ConnectWise today; HaloPSA and CRMs later." },
+export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string; add: string; pick: string }[] = [
+  { id: "capture", add: "Add lead source", pick: "Add a lead source", title: "Lead capture", hint: "Where leads come in from your website: the form (embed, or your own form posting to Alevo) and the chat bubble." },
+  { id: "booking", add: "Add booking tool", pick: "Add a booking tool", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
+  { id: "communication", add: "Add channel", pick: "Add a channel", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
+  { id: "crm", add: "Add CRM or PSA", pick: "Add a CRM or PSA", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. ConnectWise today; HaloPSA and CRMs later." },
 ];
 
 export type ServiceView = {
@@ -64,13 +65,12 @@ export type ServiceInput = {
 };
 
 const CONNECTED = { label: "Connected", tone: "success" } as const;
-const IN_USE = { label: "Booking tool", tone: "brand" } as const;
 const NOT_CONNECTED = { label: "Not connected", tone: "muted" } as const;
 const NEEDS_SETUP = { label: "Needs setup", tone: "warning" } as const;
 const NEEDS_ATTENTION = { label: "Needs attention", tone: "danger" } as const;
 const UNTESTED = { label: "Untested", tone: "warning" } as const;
 const COMING_SOON = { label: "Coming soon", tone: "muted" } as const;
-const AGENT = "/workspace/agent";
+const AGENT = JUMP.agentChannels;
 
 /** PSA / CRM write-back still to come. Cards only, nothing to manage yet. */
 const CRM_PLACEHOLDERS: { id: string; name: string; hint: string; icon: ServiceIcon }[] = [
@@ -87,8 +87,8 @@ const BOOKING_META: Record<BookingTool, { hint: string; icon: ServiceIcon; signi
 };
 
 /**
- * One booking tool's card. Connected = can book (see `bookingToolMissing`);
- * "Booking tool" = connected AND the one chosen under Agent → Booking. A tool
+ * One booking tool's row. Connected = can book (see `bookingToolMissing`); which
+ * one the agent books through is chosen under Agent → Booking, not shown here. A tool
  * that is half set up, or chosen but no longer connected, lands in Needs attention.
  */
 function bookingService(tool: BookingTool, booking: BookingSnapshot, has: (key: string) => boolean): ServiceView {
@@ -115,7 +115,7 @@ function bookingService(tool: BookingTool, booking: BookingSnapshot, has: (key: 
     name: label,
     hint: meta.hint,
     icon: meta.icon,
-    status: connected ? (chosen ? IN_USE : CONNECTED) : started || chosen ? NEEDS_SETUP : NOT_CONNECTED,
+    status: connected ? CONNECTED : started || chosen ? NEEDS_SETUP : NOT_CONNECTED,
     keys: [],
     managed: true,
     listed: connected || started || chosen,

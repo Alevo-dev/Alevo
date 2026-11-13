@@ -59,7 +59,7 @@ export function readiness(f: ReadinessFacts): ReadinessItem[] {
   const alertsDone = f.emailAlerts && f.ownerEmailCount > 0;
   return [
     item("owner", "Owner joined", f.ownerAccepted, "The owner has accepted their invite.", "The owner hasn't accepted the invite yet.", PROFILE),
-    item("profile", "Business profile", profileDone, "Company, offering and ideal customer are set.", "Add the company, what it sells and who it sells to.", PROFILE),
+    item("profile", "Profile", profileDone, "Company, offering and ideal customer are set.", "Add the company, what it sells and who it sells to.", PROFILE),
     item("knowledge", "Knowledge base", f.readyDocs > 0, `${f.readyDocs} document${f.readyDocs === 1 ? "" : "s"} ready.`, "Add at least one document so the agent can answer from your material.", "/workspace/knowledge"),
     {
       ...item(
@@ -68,13 +68,13 @@ export function readiness(f: ReadinessFacts): ReadinessItem[] {
         bookingDone,
         f.bookingTool ? `Booking through ${TOOL[f.bookingTool]}.` : "Not using booking.",
         f.bookingTool ? `${TOOL[f.bookingTool]} is chosen but not set up yet.` : "Connect a booking tool, or mark it as not used.",
-        INTEGRATIONS,
+        `${INTEGRATIONS}#booking`,
       ),
       declinable: "booking",
       declined: !f.bookingTool && f.bookingDeclined,
     },
     {
-      ...item("phone", "Phone", phoneDone, f.smsFromNumber ? `Texts and calls on ${f.smsFromNumber}.` : "Not using phone.", "Set the Twilio number, or mark phone as not used.", INTEGRATIONS),
+      ...item("phone", "Phone", phoneDone, f.smsFromNumber ? `Texts and calls on ${f.smsFromNumber}.` : "Not using phone.", "Set the Twilio number, or mark phone as not used.", `${AGENT}#channels`),
       declinable: "phone",
       declined: !f.smsFromNumber && f.phoneDeclined,
     },
@@ -85,7 +85,7 @@ export function readiness(f: ReadinessFacts): ReadinessItem[] {
         f.slackVerified || slackDeclined,
         slackDeclined ? "Not using Slack." : "Alerts reach the channel.",
         f.slackSaved ? "Webhook saved — send a test so you know alerts land." : "Connect Slack so the team hears about leads, or mark it as not used.",
-        INTEGRATIONS,
+        `${INTEGRATIONS}#communication`,
       ),
       declinable: "slack",
       declined: slackDeclined,

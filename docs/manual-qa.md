@@ -917,7 +917,8 @@ still works, Sentry gets the error).
 
 Matches the Claude Design dashboard mockup. Dashboards: **App** `/dashboard`, **Supabase** (`conversations`, `meetings`, `calls`, `usage_counters`).
 
-- [x] Header has a **7 days / 30 days / 90 days** switch; the choice sits in the URL (`?window=30`), survives refresh, and the description reads "last N days".
+- [x] Header has a **Last: [7 days ▾]** dropdown (Today, 7 days, 30 days, 90 days; each row shows its Alt+1…Alt+4 shortcut); the choice sits in the URL (`?window=30`), survives refresh, and the description reads "last N days".
+- [ ] Alt+1 → Today: 24 hourly bars (12 AM … 11 PM), labels say "Today" / "Per hour, today"; Alt+2/3/4 → 7/30/90 days. Shortcuts don't fire while typing in a field.
 - [x] Switching re-scopes everything: the four tiles, Leads per day, Speed to lead, Meetings booked, Where leads come from. **Plan usage** stays "This billing month".
 - [x] 7 and 30 days: tiles and charts bucket per day; 90 days: per week (13 bars, labels like "Oct 20"). Tooltips on the 90-day charts show the full week range ("Oct 14 – Oct 20").
 - [x] Leads per day is an **area chart**: line + soft fill + a dot per point, gridlines at 0 / half / max, x labels never collide at any window (30 days shows every 4th day plus the last; the meetings card at a third width shows fewer).
@@ -1234,9 +1235,41 @@ Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voi
 - [ ] Type a new number, turn Phone calls on, **Save once**: the number is saved and calls are on. In Vapi's dashboard the number exists with no assistant and the Server URL ending in `/api/webhooks/vapi`.
 - [ ] **Voices** lists Savannah, Emma, Clara (female) and Elliot, Nico, Sid (male), each with a switch and a play button. Play plays a short sample, pressing it again stops it, and playing another voice stops the first. Savannah is on for a new org.
 - [ ] Each voice box has a **Name callers hear (optional)** field. Give Savannah "Sophie" and Elliot "Max", turn both on, Save, and call a few times: the greeting is "Thanks for calling <company>, this is Sophie. This call may be recorded…" when Savannah answers and "…this is Max…" when Elliot does. Ask who you are speaking to: it answers with that voice's name. A voice with no name just says "Thanks for calling <company>." with no introduction.
-- [ ] A name with digits or symbols ("Agent 007", "<b>") shows "A voice's name can use letters, spaces, . ' and - only, up to 30 characters." under the list and nothing is saved.
+- [ ] A name with digits or symbols ("Agent 007", "<b>") turns only that voice's box red, with "Use letters, spaces, . ' and - only, up to 30 characters." under it (the other five stay normal and keep what you typed), and nothing is saved.
 - [ ] Turn on two or three voices, Save, and call several times: each call uses one of the voices you turned on, never one that is off, and never the same voice as the call just before it (with two on they alternate; with one on it is always that one). The last voice that is on cannot be switched off. Turn all but one off, Save, call: always that voice.
 - [ ] If Vapi refuses (for example a bad key), the number and other settings are still saved and the error appears under the Phone calls switch.
 - [ ] Clear the number with calls on, Save: calls are off. Call the old number: you hear only "This phone is not in service right now." and no conversation is created in any org.
 - [ ] Move a number: clear it from org A and save, set it on org B and turn calls on. A call reaches B's agent and the thread is in B. Org A has calls off and no Vapi number saved.
 - [ ] Put a number that another org already uses: the error under the SMS number reads "That number is already used by another organization."
+
+## Links that jump between workspace pages
+- [ ] Agent → Notifications, click **Integrations**: you land on Integrations scrolled to **Communication**, and that section flashes a brand outline once.
+- [ ] Agent → Booking, click **Change** (or **Connect a booking tool**): Integrations opens scrolled to **Booking** with the same flash.
+- [ ] Dashboard → Getting started: the Booking item opens Integrations at Booking, Slack opens it at Communication, and Phone opens Agent at **Channels**.
+- [ ] Open `/workspace/agent#booking` straight in the address bar (a full page load): the page scrolls to the Booking card and it flashes.
+- [ ] With "reduce motion" on in your system settings the section is still scrolled to, just without the flash.
+
+## Settings tab and gear icons
+- [ ] The sidebar has no plan card and no theme switch. **Settings** (gear) sits at the bottom, above "Agent: Online", and opens `/preferences` with an **Appearance** card (Light / Dark / System, applies at once and survives refresh) and a **Plan** card (plan name, renewal date, Compare plans). The phone menu has the same Settings link.
+- [ ] "Manage" is a gear icon everywhere, each with a screen-reader name: by the agent status, in the workspace picker (opens the workspace dialog), on the Agent booking card (when booking is off), on Brand colour, on connection cards under Integrations, and in the Meetings table header.
+
+## Workspace → Manage tab (replaces the workspace picker's Manage dialog; the earlier "Manage workspace dialog" section above is superseded)
+- [ ] Workspace has no tab bar: its five pages (Business profile, Agent, Knowledge, Integrations, **Manage**) are a sub-menu under Workspace in the side nav, open only while you are in Workspace, the current page highlighted; the phone menu has the same list and closes when you pick one.
+- [ ] Manage is the last page. The workspace picker's header no longer has a gear/Manage button; the picker still switches and creates workspaces.
+- [ ] As an owner or admin: **General** (Update profile, Workspace ID with copy, Leave, Delete) and **Members** (search, Invite, role selects, remove, Invitations sub-tab) all work as before, with the same confirm dialogs.
+- [ ] As a viewer or rep: Manage opens, with a line saying only owners and admins can change it. General shows the profile, Workspace ID and **Leave workspace** only (no Update profile, no Delete). Members is a list with a role pill per person: no Invite, no Invitations tab, no role select, no remove.
+- [ ] `/workspace/members` (old link) lands on Manage; the "See who can help" button on the 403 page does too.
+
+## Brand colour moved to Business profile (supersedes the Integrations lines in "Brand colour, embed colours…" above)
+- [ ] Integrations has no Brand colour card any more. Workspace → **Settings** (sub-menu, after Manage) holds the **Brand colour** card: two swatches (Colour, Font colour, each showing its hex or "Default (…)") and a gear at the top right. It has no button-shaped preview.
+- [ ] Gear opens the same dialog as before; Save → toast, the swatches update, the form and chat bubble use the new colour. The dialog's preview is a small rectangle "Aa Sample text", not a pill.
+- [ ] Settings also has **Tone and sign-off** (Tone, Sign off as; Save and Cancel appear only after a change; saving shows a toast and keeps the value after reload). The Profile page no longer has a tone or sign-off field, saving Profile leaves them as they were, and the website import no longer suggests them. Settings is admins-only like Profile.
+
+- [ ] The Workspace page formerly called Business profile is now **Profile**: sub-menu entry, page title, save toast ("Profile saved."), the Agent page's "Profile first" link, and the Getting started row.
+
+## Integrations rework (step 6; run `npx supabase db push --remote` first: migration 0045)
+- [ ] Integrations is 70% wide, left-aligned on desktop. No Connection health / Needs attention cards on top; a slim warning bar appears only while a tool needs attention (one line each, Review opens its dialog). Nothing wrong → no bar.
+- [ ] Four sections, each with connected tools as rows (mark, name, state, gear). Each section header has its own add button (Add booking tool, Add channel, Add CRM or PSA; none for Lead capture while everything is already listed). It opens a picker right under the header with a search box; picking a tool opens its settings dialog; once connected it becomes a row. There is no single "Connect a tool" list any more.
+- [ ] Connection health is the last section: one coloured line per service, a chip per service with its 24h rate. Press a chip: only that line, the big rate and failed count switch to it; press again: all. A connected tool with no activity shows "No data".
+- [ ] With data (`supabase/seed-dev-health.sql`, dev only): quiet hours are gaps in a line, not interpolated; a failing tool pulls the axis floor down; all nine possible services have different colours, none red.
+- [ ] Recording: send a Slack test, an agent email/SMS, a booking, a call setup: each adds an outbound row for that service; webhooks from Resend, Twilio, Cal.com, Calendly and Vapi add inbound rows. Check `select provider, direction, outcome, count(*) from webhook_deliveries group by 1,2,3`.

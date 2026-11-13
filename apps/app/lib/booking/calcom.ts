@@ -25,6 +25,7 @@ export async function makeCalcomAdapter(
   eventTypeId: number,
 ): Promise<BookingAdapter | null> {
   const apiKey = await getOrgSecret(orgId, "calcom_api_key");
+  const call: typeof vendorFetch = (url, init, opts) => vendorFetch(url, init, { ...opts, track: { provider: "calcom", orgId } });
   if (!apiKey) return null;
 
   const auth = { authorization: `Bearer ${apiKey}` };
@@ -39,7 +40,7 @@ export async function makeCalcomAdapter(
         end: toIso,
         timeZone,
       });
-      const res = await vendorFetch(`${BASE}/slots?${qs}`, {
+      const res = await call(`${BASE}/slots?${qs}`, {
         headers: { ...auth, "cal-api-version": SLOTS_VERSION },
       });
       if (!res.ok) throw new Error(`Cal.com slots failed (${res.status})`);
@@ -56,7 +57,7 @@ export async function makeCalcomAdapter(
 
     async book(params: BookParams): Promise<BookResult> {
       try {
-        const res = await vendorFetch(`${BASE}/bookings`, {
+        const res = await call(`${BASE}/bookings`, {
           method: "POST",
           headers: { ...auth, "cal-api-version": BOOKINGS_VERSION, "content-type": "application/json" },
           body: JSON.stringify({
@@ -92,7 +93,7 @@ export async function makeCalcomAdapter(
 
     async cancel(uid: string, reason?: string): Promise<CancelResult> {
       try {
-        const res = await vendorFetch(`${BASE}/bookings/${encodeURIComponent(uid)}/cancel`, {
+        const res = await call(`${BASE}/bookings/${encodeURIComponent(uid)}/cancel`, {
           method: "POST",
           headers: { ...auth, "cal-api-version": BOOKINGS_VERSION, "content-type": "application/json" },
           body: JSON.stringify(reason ? { cancellationReason: reason } : {}),
@@ -109,7 +110,7 @@ export async function makeCalcomAdapter(
 
     async reschedule(uid: string, newStartIso: string, reason?: string): Promise<RescheduleResult> {
       try {
-        const res = await vendorFetch(`${BASE}/bookings/${encodeURIComponent(uid)}/reschedule`, {
+        const res = await call(`${BASE}/bookings/${encodeURIComponent(uid)}/reschedule`, {
           method: "POST",
           headers: { ...auth, "cal-api-version": BOOKINGS_VERSION, "content-type": "application/json" },
           body: JSON.stringify({ start: newStartIso, ...(reason ? { reschedulingReason: reason } : {}) }),

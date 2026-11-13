@@ -48,6 +48,27 @@
     border-radius: var(--ds-radius-sm);
   }
 
+  /* The section a jump link (lib/jump.ts) lands on flashes a brand outline once (components/jump-highlight.tsx). */
+  .jump-flash {
+    border-radius: var(--ds-radius-lg, 0.75rem);
+    animation: jump-flash 2s ease-out 1;
+  }
+  @keyframes jump-flash {
+    from {
+      outline: 2px solid var(--color-brand);
+      outline-offset: 6px;
+    }
+    to {
+      outline: 2px solid transparent;
+      outline-offset: 6px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .jump-flash {
+      animation: none;
+    }
+  }
+
   /* Native pickers (date/time) follow the active theme, not the OS. */
   :root {
     color-scheme: light;

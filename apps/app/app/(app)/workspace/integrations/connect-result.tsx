@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { JUMP } from "@/lib/jump";
 
 /** The callback's short error codes, as sentences. Anything else is the vendor's own message. */
 const ERROR_TEXT: Record<string, string> = {
@@ -31,7 +32,7 @@ export function ConnectResult({ connected, error }: { connected?: string; error?
       toast.success(
         <span>
           Connected your {name} calendar. Turn booking on under{" "}
-          <Link href="/workspace/agent" className="font-semibold underline underline-offset-2">
+          <Link href={JUMP.agentBooking} className="font-semibold underline underline-offset-2">
             Agent
           </Link>{" "}
           to use it.

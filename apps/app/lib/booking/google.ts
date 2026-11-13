@@ -37,12 +37,13 @@ async function freeBusy(
   calendarId: string,
   fromIso: string,
   toIso: string,
+  orgId: string,
 ): Promise<BusyInterval[]> {
   const res = await vendorFetch(`${BASE}/freeBusy`, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ timeMin: fromIso, timeMax: toIso, items: [{ id: calendarId }] }),
-  }, { idempotent: true }); // a read, despite the POST
+  }, { idempotent: true, track: { provider: "google", orgId } }); // a read, despite the POST
   if (!res.ok) throw await vendorError(res, "Google free/busy");
   return busyFromFreeBusy(await res.json(), calendarId);
 }
@@ -52,6 +53,7 @@ export async function makeGoogleAdapter(
   cfg: CalendarConfig,
 ): Promise<BookingAdapter | null> {
   const refreshToken = await getOrgSecret(orgId, refreshTokenKey("google"));
+  const call: typeof vendorFetch = (url, init, opts) => vendorFetch(url, init, { ...opts, track: { provider: "google", orgId } });
   if (!refreshToken || !cfg.calendarId) return null;
   const token = await refreshAccessToken("google", refreshToken);
   const cal = encodeURIComponent(cfg.calendarId);
@@ -60,7 +62,7 @@ export async function makeGoogleAdapter(
     provider: "google",
 
     async availableSlots(fromIso, toIso, timeZone) {
-      const busy = await freeBusy(token, cfg.calendarId, fromIso, toIso);
+      const busy = await freeBusy(token, cfg.calendarId, fromIso, toIso, orgId);
       return generateSlots({
         fromIso,
         toIso,
@@ -77,11 +79,11 @@ export async function makeGoogleAdapter(
         const endIso = new Date(new Date(params.startIso).getTime() + cfg.lengthMin * 60_000)
           .toISOString();
         // Double-booking guard: re-check the exact slot right before writing.
-        const busy = await freeBusy(token, cfg.calendarId, params.startIso, endIso);
+        const busy = await freeBusy(token, cfg.calendarId, params.startIso, endIso, orgId);
         if (isBusy(params.startIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time was just taken", conflict: true };
         }
-        const res = await vendorFetch(`${BASE}/calendars/${cal}/events?conferenceDataVersion=1`, {
+        const res = await call(`${BASE}/calendars/${cal}/events?conferenceDataVersion=1`, {
           method: "POST",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify({
@@ -125,7 +127,7 @@ export async function makeGoogleAdapter(
 
     async cancel(uid: string): Promise<CancelResult> {
       try {
-        const res = await vendorFetch(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
+        const res = await call(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
           method: "DELETE",
           headers: { authorization: `Bearer ${token}` },
         });
@@ -143,11 +145,11 @@ export async function makeGoogleAdapter(
       try {
         const endIso = new Date(new Date(newStartIso).getTime() + cfg.lengthMin * 60_000)
           .toISOString();
-        const busy = await freeBusy(token, cfg.calendarId, newStartIso, endIso);
+        const busy = await freeBusy(token, cfg.calendarId, newStartIso, endIso, orgId);
         if (isBusy(newStartIso, cfg.lengthMin, busy)) {
           return { ok: false, error: "that time is no longer open" };
         }
-        const res = await vendorFetch(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
+        const res = await call(`${BASE}/calendars/${cal}/events/${encodeURIComponent(uid)}`, {
           method: "PATCH",
           headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
           body: JSON.stringify({

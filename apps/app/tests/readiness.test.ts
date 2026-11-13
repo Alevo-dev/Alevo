@@ -73,7 +73,9 @@ describe("readiness", () => {
     const byKey = Object.fromEntries(readiness(BASE).map((i) => [i.key, i]));
     expect(byKey.owner!.href).toBe("/workspace/profile");
     expect(byKey.knowledge!.href).toBe("/workspace/knowledge");
-    expect(byKey.booking!.href).toBe("/workspace/integrations");
+    expect(byKey.booking!.href).toBe("/workspace/integrations#booking");
+    expect(byKey.phone!.href).toBe("/workspace/agent#channels");
+    expect(byKey.slack!.href).toBe("/workspace/integrations#communication");
     expect(byKey.agent!.href).toBe("/workspace/agent");
     expect(byKey.proven!.href).toBe("/conversations");
     expect(byKey.booking!.declinable).toBe("booking");

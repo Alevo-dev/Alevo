@@ -344,6 +344,7 @@ export async function saveBrandColour(_prev: BrandColourState, formData: FormDat
     await upsertProfile(org.id, { brandColor: accent || null, brandTextColor: textColor || null });
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "workspace.brand_colour_saved", target: [accent || "default", textColor || "auto"].join(" / ") });
     revalidatePath("/workspace/integrations");
+    revalidatePath("/workspace/settings");
     return { ok: true, values };
   } catch (error) {
     return { ...fail(error), values };

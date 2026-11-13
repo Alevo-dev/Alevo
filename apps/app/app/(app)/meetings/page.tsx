@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { and, eq, sql, type SQL } from "drizzle-orm";
@@ -91,7 +92,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
               <Th>Status</Th>
               <Th>Source</Th>
               <Th>Outcome</Th>
-              <Th className="text-right">Manage</Th>
+              <Th className="text-right"><Settings className="ml-auto size-4" strokeWidth={1.75} aria-hidden="true" /><span className="sr-only">Manage</span></Th>
             </tr>
           </thead>
           <tbody>

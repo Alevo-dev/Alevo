@@ -1,14 +1,13 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { buttonClass } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/pill";
 import type { ServiceView } from "@/lib/integrations/services";
 import { BrandMark } from "@/components/workspace/brand-mark";
 import { ManageDialog } from "./manage-dialog";
 
-/** One connected service: brand mark, name, state, and a Manage dialog with its keys. */
-export function ServiceCard({
+/** One connected tool as a row: mark, name and what it does, its state, and a gear that opens its settings. */
+export function ServiceRow({
   service,
   manage,
   dialogDescription,
@@ -18,27 +17,24 @@ export function ServiceCard({
   dialogDescription?: string;
 }) {
   return (
-    <Card as="article" padding="sm" className="flex flex-col gap-4 p-5">
-      <div className="flex items-center gap-3">
-        <BrandMark icon={service.icon} />
-        <div className="min-w-0">
-          <h3 className="font-sans text-sm font-semibold text-ink">{service.name}</h3>
-          <p className="text-label text-ink-muted">{service.hint}</p>
-        </div>
+    <li className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-t border-hairline px-3 py-3.5 transition-colors first:border-t-0 hover:bg-surface sm:grid-cols-[40px_minmax(0,1fr)_150px_auto]">
+      <BrandMark icon={service.icon} />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-ink">{service.name}</p>
+        <p className="text-label text-ink-muted">{service.hint}</p>
       </div>
-
-      <div className="mt-auto flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-label font-medium text-ink">
-          <StatusDot tone={service.status.tone} />
-          {service.status.label}
-        </span>
+      <span className="col-start-2 row-start-2 inline-flex items-center gap-2 text-label font-medium text-ink sm:col-start-3 sm:row-start-1">
+        <StatusDot tone={service.status.tone} />
+        {service.status.label}
+      </span>
+      <span className="col-start-3 row-span-2 row-start-1 flex justify-end sm:col-start-4 sm:row-span-1">
         {service.managed && (
           <ManageDialog name={service.name} description={dialogDescription}>
             {manage}
           </ManageDialog>
         )}
-      </div>
-    </Card>
+      </span>
+    </li>
   );
 }
 

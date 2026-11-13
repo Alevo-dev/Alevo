@@ -3,9 +3,9 @@ import { eq } from "drizzle-orm";
 import { listOrgSecretKeys, orgProfiles } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { authInterrupt } from "@/lib/auth-interrupts";
-import { Card } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { StatusDot } from "@/components/ui/pill";
+import type { WebhookProvider } from "@alevo/db";
 import { isEmailConfigured } from "@/lib/email/resend";
 import { isSmsConfigured } from "@/lib/sms/twilio";
 import { bookingSnapshot } from "@/lib/booking/connected";
@@ -20,13 +20,12 @@ import { CalendlyForm } from "./calendly-form";
 import { ChatWidgetForm } from "./chat-widget-form";
 import { ConnectResult } from "./connect-result";
 import { ConnectWiseForm } from "./connectwise-form";
-import { ConnectTool } from "./connect-tool";
+import { AddTool } from "./add-tool";
 import { normaliseHex } from "@/lib/colour";
-import { BrandColour } from "./brand-colour";
 import { EmbedSnippets } from "./embed-snippets";
-import { ConnectionHealthCard, PAIR_CARD_CLASS } from "./connection-health";
+import { HealthSection } from "./health-section";
 import { ServiceKeysForm } from "./integrations-ui";
-import { ElsewhereNote, ServiceCard } from "./service-card";
+import { ElsewhereNote, ServiceRow } from "./service-row";
 import { ManageDialog } from "./manage-dialog";
 import { SetupStatus } from "./setup-status";
 
@@ -62,11 +61,10 @@ export default async function SecretsPage({
   const orgName = org.name;
 
   // Explicit org filter: platform admins bypass RLS, so scope in code.
-  const [{ calendar_connected, calendar_error }, setKeys, [profile], health] = await Promise.all([
+  const [{ calendar_connected, calendar_error }, setKeys, [profile]] = await Promise.all([
     searchParams,
     listOrgSecretKeys(org.id),
     withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1)),
-    getConnectionHealth(org.id),
   ]);
   const canModify = userRole === "admin" || userRole === "owner";
   const isSet = new Set(setKeys);
@@ -87,6 +85,11 @@ export default async function SecretsPage({
     chat: { enabled: profile?.chatEnabled ?? false },
     slack: { lastError: profile?.slackLastError ?? null, verified: profile?.slackVerifiedAt != null },
   });
+  // Every connected tool gets a line in Connection health, even before it has logged anything.
+  const LOGGED: Record<string, WebhookProvider> = { calcom: "calcom", calendly: "calendly", google: "google", m365: "microsoft", twilio: "twilio", resend: "resend", slack: "slack", connectwise: "connectwise" };
+  const connectedProviders = services.flatMap((s) => (s.listed && LOGGED[s.id] ? [LOGGED[s.id]!] : []));
+  if (profile?.vapiAssistantId) connectedProviders.push("vapi");
+  const health = await getConnectionHealth(org.id, connectedProviders);
   const attention = services.filter((s) => s.issue);
   const listed = services.filter((s) => s.listed);
   const connectable = services.filter((s) => !s.listed);
@@ -179,95 +182,84 @@ export default async function SecretsPage({
           : undefined;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12 lg:w-[70%]">
       <ConnectResult connected={calendar_connected} error={calendar_error} />
 
-      {/* Side by side on desktop, stacked on mobile. */}
-      <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <ConnectionHealthCard health={health} />
+      {/* Slim: only when something needs doing, one line each. */}
+      {attention.length > 0 && (
+        <section aria-label="Needs attention" className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3">
+          <ul className="divide-y divide-warning/20">
+            {attention.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                <p className="min-w-0 flex-1 text-sm text-ink">
+                  <span className="font-semibold">{s.name}:</span> {s.issue}
+                </p>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="inline-flex items-center gap-2 text-label font-medium text-ink">
+                    <StatusDot tone={s.status.tone} />
+                    {s.status.label}
+                  </span>
+                  {s.managed && (
+                    <ManageDialog name={s.name} label="Review" description={dialogDescription(s)}>
+                      {manageContent(s)}
+                    </ManageDialog>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-        <Card as="section" padding="md" aria-labelledby="needs-attention" className={PAIR_CARD_CLASS}>
-          <h2 id="needs-attention" className="text-heading font-semibold text-ink">
-            Needs attention
-          </h2>
-          {attention.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center text-center">
-              <p className="max-w-xs text-sm text-ink-muted">Nothing needs attention. Every connected service is set up.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-hairline">
-              {attention.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-start justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink">{s.name}</p>
-                    <p className="mt-1 text-label text-ink-muted">{s.issue}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-2 text-label font-medium text-ink">
-                      <StatusDot tone={s.status.tone} />
-                      {s.status.label}
-                    </span>
-                    {s.managed && (
-                      <ManageDialog name={s.name} label="Review" description={dialogDescription(s)}>
-                        {manageContent(s)}
-                      </ManageDialog>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      <BrandColour accent={profile?.brandColor ?? ""} textColor={profile?.brandTextColor ?? ""} canModify={canModify} />
-
-      {/* Only connected (or started) tools get a card; everything else waits in the picker. */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-heading font-semibold text-ink">Connected tools</h2>
-          <p className="mt-2 text-sm text-ink-muted">Where Alevo books meetings, sends messages, posts alerts and writes leads back.</p>
-        </div>
-        {canModify && (
-          <ConnectTool
-            groups={SERVICE_GROUPS}
-            tools={connectable.map((s) => ({
-              id: s.id,
-              group: s.group,
-              name: s.name,
-              hint: s.hint,
-              icon: s.icon,
-              managed: s.managed,
-              unavailable: s.status.label,
-              dialogDescription: dialogDescription(s),
-            }))}
-            panels={Object.fromEntries(connectable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
-          />
-        )}
+      <div>
+        <h2 className="text-title font-semibold text-ink">Connected tools</h2>
+        <p className="mt-2 text-sm text-ink-muted">Where Alevo books meetings, sends messages, posts alerts and writes leads back.</p>
       </div>
 
       {SERVICE_GROUPS.map((group) => {
-        const cards = listed.filter((s) => s.group === group.id);
+        const rows = listed.filter((s) => s.group === group.id);
+        const addable = connectable.filter((s) => s.group === group.id);
         return (
-          <section key={group.id} aria-labelledby={`services-${group.id}`} className="space-y-4">
-            <div>
-              <h2 id={`services-${group.id}`} className="text-heading font-semibold text-ink">
-                {group.title}
-              </h2>
-              <p className="mt-2 text-sm text-ink-muted">{group.hint}</p>
-            </div>
-            {cards.length === 0 ? (
-              <p className="rounded-md border border-dashed border-hairline p-4 text-sm text-ink-muted">Nothing connected yet.</p>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {cards.map((s) => (
-                  <ServiceCard key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
-                ))}
+          <section key={group.id} id={group.id} aria-labelledby={`services-${group.id}`} className="-mt-4 scroll-mt-6">
+            {/* The add picker is a sibling of the title row inside this wrapping row, so it opens right under it. */}
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
+              <div className="min-w-0 flex-1">
+                <h3 id={`services-${group.id}`} className="text-heading font-semibold text-ink">
+                  {group.title}
+                </h3>
+                <p className="mt-1.5 text-sm text-ink-muted">{group.hint}</p>
+                <div className="mt-3 h-[3px] w-7 rounded-sm bg-gradient-to-r from-brand to-violet" aria-hidden="true" />
               </div>
+              {canModify && addable.length > 0 && (
+                <AddTool
+                  label={group.add}
+                  title={group.pick}
+                  tools={addable.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    icon: s.icon,
+                    managed: s.managed,
+                    unavailable: s.status.label,
+                    dialogDescription: dialogDescription(s),
+                  }))}
+                  panels={Object.fromEntries(addable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
+                />
+              )}
+            </div>
+            {rows.length === 0 ? (
+              <p className="mt-3 border-y border-hairline px-3 py-5 text-sm text-ink-muted">Nothing connected yet.</p>
+            ) : (
+              <ul className="mt-3 border-y border-hairline">
+                {rows.map((s) => (
+                  <ServiceRow key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
+                ))}
+              </ul>
             )}
           </section>
         );
       })}
+
+      <HealthSection health={health} />
     </div>
   );
 }

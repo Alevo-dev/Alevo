@@ -25,7 +25,7 @@ export async function applyVoice(args: {
 }): Promise<VoiceApplied> {
   const { org, profile, afterHours } = args;
   if (!profile || !profile.companyName || !profile.offering || !profile.idealCustomer) {
-    return { ok: false, error: "Fill in the company name, offering and ideal customer under Business profile first." };
+    return { ok: false, error: "Fill in the company name, offering and ideal customer under Profile first." };
   }
   if (!profile.smsFromNumber) return { ok: false, error: "Add the organization's SMS number first." };
   if (!isVapiConfigured()) return { ok: false, error: "Phone calls aren't set up on this environment yet." };
@@ -42,17 +42,17 @@ export async function applyVoice(args: {
     secret,
   });
   const vapiAssistantId = profile.vapiAssistantId
-    ? (await updateAssistant(profile.vapiAssistantId, body), profile.vapiAssistantId)
-    : (await createAssistant(body)).id;
+    ? (await updateAssistant(org.id, profile.vapiAssistantId, body), profile.vapiAssistantId)
+    : (await createAssistant(org.id, body)).id;
 
   const routing = { serverUrl: voiceServerUrl(appUrl), secretHeader: VOICE_SECRET_HEADER, secret };
   let vapiPhoneNumberId = profile.vapiPhoneNumberId;
   if (!vapiPhoneNumberId) {
-    vapiPhoneNumberId = (await importTwilioNumber({ number: profile.smsFromNumber, name: `${org.name} inbound`, ...routing })).id;
+    vapiPhoneNumberId = (await importTwilioNumber({ orgId: org.id, number: profile.smsFromNumber, name: `${org.name} inbound`, ...routing })).id;
   } else {
     // A number that has an assistant attached (dashboard edit, older import)
     // never asks us which assistant to use — every call gets the stale one.
-    await detachAssistantFromNumber({ phoneNumberId: vapiPhoneNumberId, ...routing });
+    await detachAssistantFromNumber({ orgId: org.id, phoneNumberId: vapiPhoneNumberId, ...routing });
   }
   await releaseVapiNumber(org.id, vapiPhoneNumberId);
   return { ok: true, vapiAssistantId, vapiPhoneNumberId };

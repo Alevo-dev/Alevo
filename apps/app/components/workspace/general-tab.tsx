@@ -9,16 +9,17 @@ import { initials } from "@/lib/format";
 import { nextWorkspace } from "@/lib/orgs/next-workspace";
 import { toast } from "@/lib/ui/use-action-toast";
 import { deleteOrg, leaveOrg, loadOrgIdentity } from "@/app/(app)/workspace/org-actions";
-import { AccountRow, LinkButton, Pane } from "@/components/account/rows";
+import { AccountRow, LinkButton } from "@/components/account/rows";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
-/** General workspace settings: profile (name + logo), leave, delete. */
-export function GeneralTab() {
+/** General workspace settings: profile (name + logo), leave, delete. Only admins and owners edit or delete; anyone may leave. */
+export function GeneralTab({ canEdit }: { canEdit: boolean }) {
   const clerk = useClerk();
   const { organization, isLoaded } = useOrganization();
   const [editing, setEditing] = useState(false);
@@ -67,7 +68,9 @@ export function GeneralTab() {
   }
 
   return (
-    <Pane title="General">
+    <Card>
+      <CardHeader title="General" />
+      <div className="mt-2 divide-y divide-hairline">
       <AccountRow label="Workspace profile">
         {editing && organization ? (
           <ProfileEditor
@@ -83,9 +86,11 @@ export function GeneralTab() {
                 {organization?.name ?? (isLoaded ? "—" : "…")}
               </span>
             </span>
-            <LinkButton onClick={() => setEditing(true)} disabled={!organization}>
-              Update profile
-            </LinkButton>
+            {canEdit && (
+              <LinkButton onClick={() => setEditing(true)} disabled={!organization}>
+                Update profile
+              </LinkButton>
+            )}
           </div>
         )}
       </AccountRow>
@@ -100,11 +105,14 @@ export function GeneralTab() {
         </LinkButton>
       </AccountRow>
 
-      <AccountRow label="Delete workspace">
-        <LinkButton danger onClick={() => setDeleteOpen(true)} disabled={!organization}>
-          Delete workspace
-        </LinkButton>
-      </AccountRow>
+      {canEdit && (
+        <AccountRow label="Delete workspace">
+          <LinkButton danger onClick={() => setDeleteOpen(true)} disabled={!organization}>
+            Delete workspace
+          </LinkButton>
+        </AccountRow>
+      )}
+      </div>
 
       <ConfirmDialog
         open={leaveOpen}
@@ -126,7 +134,7 @@ export function GeneralTab() {
         onConfirm={remove}
         onCancel={() => setDeleteOpen(false)}
       />
-    </Pane>
+    </Card>
   );
 }
 

@@ -14,13 +14,14 @@ import {
 import {
   deleteActiveOrg,
   getCurrentOrg,
+  getCurrentRole,
   getCurrentUser,
   leaveActiveOrg,
   requireRole,
   withOrg,
 } from "@alevo/auth";
 
-/** A member row for the Manage → Members tab (mirrors the old members page). */
+/** A member row for the Workspace → Manage page (mirrors the old members page). */
 export type MemberView = {
   userId: string;
   clerkUserId: string;
@@ -48,13 +49,17 @@ function fail(error: unknown): { error: string } {
 }
 
 /**
- * Load the active org's members + pending invites for the Manage dialog.
- * Admin-only. Both reads are scoped explicitly to the active org (a platform
- * admin bypasses RLS, so RLS is the backstop, not the selector).
+ * Load the active org's members (+ pending invites) for the Manage page.
+ * Any member may read the list; pending invites and the Clerk ids the edit
+ * forms need go to admins and owners only. Both reads are scoped explicitly to
+ * the active org (a platform admin bypasses RLS, so RLS is the backstop, not
+ * the selector).
  */
 export async function loadMembers(): Promise<MembersResult> {
   try {
-    await requireRole("admin");
+    await requireRole("viewer");
+    const role = await getCurrentRole();
+    const isAdmin = role === "admin" || role === "owner";
     const inActiveOrg = (col: typeof memberships.orgId | typeof orgInvitations.orgId) =>
       sql`${col} = (select app.current_org_id())`;
 
@@ -75,23 +80,25 @@ export async function loadMembers(): Promise<MembersResult> {
           .innerJoin(users, eq(users.id, memberships.userId))
           .where(inActiveOrg(memberships.orgId)),
       ),
-      withOrg((tx) =>
-        tx
-          .select({
-            id: orgInvitations.id,
-            email: orgInvitations.email,
-            role: orgInvitations.role,
-            clerkInvitationId: orgInvitations.clerkInvitationId,
-          })
-          .from(orgInvitations)
-          .where(and(eq(orgInvitations.status, "pending"), inActiveOrg(orgInvitations.orgId))),
-      ),
+      !isAdmin
+        ? []
+        : withOrg((tx) =>
+            tx
+              .select({
+                id: orgInvitations.id,
+                email: orgInvitations.email,
+                role: orgInvitations.role,
+                clerkInvitationId: orgInvitations.clerkInvitationId,
+              })
+              .from(orgInvitations)
+              .where(and(eq(orgInvitations.status, "pending"), inActiveOrg(orgInvitations.orgId))),
+          ),
     ]);
 
     return {
       members: rows.map((r) => ({
         userId: r.userId,
-        clerkUserId: r.clerkUserId,
+        clerkUserId: isAdmin ? r.clerkUserId : "",
         email: r.email,
         name: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
         role: r.role,

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // The website import (crawl + one model call) runs as a server action on this page.
 export const maxDuration = 60;
 
-export const metadata: Metadata = { title: "Business profile" };
+export const metadata: Metadata = { title: "Profile" };
 
 export default async function BusinessProfilePage() {
   try {
@@ -34,8 +34,6 @@ export default async function BusinessProfilePage() {
     idealCustomer: row?.idealCustomer ?? "",
     qualifyingCriteria: row?.qualifyingCriteria ?? "",
     disqualifiers: row?.disqualifiers ?? "",
-    tone: row?.tone ?? "",
-    signoff: row?.signoff ?? "",
   };
 
   return <BusinessProfileForm initial={initial} agentOn={row?.enabled ?? false} />;

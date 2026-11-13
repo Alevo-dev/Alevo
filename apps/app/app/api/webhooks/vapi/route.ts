@@ -9,6 +9,7 @@ import { numberMatches } from "@/lib/voice/number";
 import { bookingLinked, voiceModeNow } from "@/lib/voice/schedule";
 import { dispatchVoiceTool, type VoiceToolContext } from "@/lib/voice/tools";
 import { overAllowance } from "@/lib/usage/limits";
+import { trackDeliveries } from "@/lib/webhooks/track";
 
 /**
  * Vapi server URL for inbound calls. Vapi sends `message.type` events here:
@@ -76,7 +77,13 @@ function secondsBetween(startIso: string | null, endIso: string | null): number 
   return Number.isFinite(ms) && ms >= 0 ? Math.round(ms / 1000) : null;
 }
 
-export async function POST(req: Request) {
+export const POST = trackDeliveries("vapi", async (req, track) => {
+  // Every lookup of the org also attributes this delivery to it for Connection health.
+  const resolveOrg = async (...args: Parameters<typeof orgFor>) => {
+    const found = await orgFor(...args);
+    if (found) track.setOrg(found.profile.orgId);
+    return found;
+  };
   if (!authorized(req)) return new Response("Unauthorized", { status: 401 });
 
   const body = obj(await req.json().catch(() => null));
@@ -90,7 +97,7 @@ export async function POST(req: Request) {
   try {
     switch (type) {
       case "assistant-request": {
-        const org = await orgFor(phoneNumberId, assistantId, dialled);
+        const org = await resolveOrg(phoneNumberId, assistantId, dialled);
         const appUrl = process.env.NEXT_PUBLIC_APP_URL;
         const secret = process.env.VOICE_WEBHOOK_SECRET;
         // `error` is spoken to the caller, then Vapi ends the call.
@@ -119,7 +126,7 @@ export async function POST(req: Request) {
       }
 
       case "tool-calls": {
-        const org = await orgFor(phoneNumberId, assistantId, dialled);
+        const org = await resolveOrg(phoneNumberId, assistantId, dialled);
         const toolCalls = Array.isArray(message.toolCallList)
           ? message.toolCallList
           : Array.isArray(message.toolCalls)
@@ -158,7 +165,7 @@ export async function POST(req: Request) {
       }
 
       case "end-of-call-report": {
-        const org = await orgFor(phoneNumberId, assistantId, dialled);
+        const org = await resolveOrg(phoneNumberId, assistantId, dialled);
         const callRef = str(call.id);
         if (!org || !callRef) return new Response("ok (unmatched)", { status: 200 });
 
@@ -192,4 +199,4 @@ export async function POST(req: Request) {
     Sentry.captureException(err);
     return new Response("Processing error", { status: 500 });
   }
-}
+});

@@ -21,8 +21,6 @@ export type BusinessProfileValues = {
   idealCustomer: string;
   qualifyingCriteria: string;
   disqualifiers: string;
-  tone: string;
-  signoff: string;
 };
 export type BusinessProfileErrors = Partial<Record<"companyName" | "businessAddress" | "contactEmail" | "offering" | "idealCustomer", string>>;
 export type ActionState = {
@@ -44,8 +42,6 @@ function readValues(formData: FormData): BusinessProfileValues {
     idealCustomer: s("idealCustomer"),
     qualifyingCriteria: s("qualifyingCriteria"),
     disqualifiers: s("disqualifiers"),
-    tone: s("tone"),
-    signoff: s("signoff"),
   };
 }
 
@@ -86,8 +82,6 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
       idealCustomer: nullable(values.idealCustomer),
       qualifyingCriteria: nullable(values.qualifyingCriteria),
       disqualifiers: nullable(values.disqualifiers),
-      tone: nullable(values.tone),
-      signoff: nullable(values.signoff),
     };
     await withOrg((tx) =>
       tx

@@ -3,11 +3,16 @@
  * labels, percentiles, durations. No I/O, so `tests/dashboard.test.ts` covers it.
  */
 
-export const WINDOWS = [7, 30, 90] as const;
+export const WINDOWS = [1, 7, 30, 90] as const;
 export type Window = (typeof WINDOWS)[number];
 export const DEFAULT_WINDOW: Window = 7;
 
-export type Bucket = "day" | "week";
+export type Bucket = "hour" | "day" | "week";
+
+/** "Today" for the one-day window, otherwise "Last 7 days". */
+export function windowLabel(days: Window): string {
+  return days === 1 ? "Today" : `Last ${days} days`;
+}
 
 /** `?window=` → one of the allowed windows; anything else is the default. */
 export function parseWindow(value: unknown): Window {
@@ -15,14 +20,15 @@ export function parseWindow(value: unknown): Window {
   return (WINDOWS as readonly number[]).includes(n) ? (n as Window) : DEFAULT_WINDOW;
 }
 
-/** 7 and 30 days read per day; 90 days reads per week (13 bars, not 90). */
+/** Today reads per hour (24 bars); 7 and 30 days per day; 90 days per week (13 bars, not 90). */
 export function bucketFor(days: Window): Bucket {
-  return days >= 90 ? "week" : "day";
+  return days <= 1 ? "hour" : days >= 90 ? "week" : "day";
 }
 
 /** How many bars the window draws. */
 export function bucketCount(days: Window): number {
-  return bucketFor(days) === "week" ? Math.ceil(days / 7) : days;
+  const b = bucketFor(days);
+  return b === "hour" ? 24 : b === "week" ? Math.ceil(days / 7) : days;
 }
 
 /** Days the query must reach back so every bucket is complete (today inclusive). */
@@ -39,8 +45,12 @@ function shift(todayIso: string, minusDays: number): Date {
   return d;
 }
 
-/** One label per bucket, oldest first: "Oct 21" per day, "Oct 15 – Oct 21" per week. */
+/** 0 → "12 AM", 13 → "1 PM": the hour bars of Today. */
+const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
+
+/** One label per bucket, oldest first: "1 PM" per hour, "Oct 21" per day, "Oct 15 – Oct 21" per week. */
 export function bucketLabels(todayIso: string, days: Window): string[] {
+  if (bucketFor(days) === "hour") return Array.from({ length: 24 }, (_, h) => hourLabel(h));
   const n = bucketCount(days);
   const out: string[] = [];
   for (let i = n - 1; i >= 0; i--) {
@@ -57,6 +67,7 @@ export function bucketLabels(todayIso: string, days: Window): string[] {
 
 /** Short axis labels, one per bucket: the day ("Oct 21"), or a week's last day. */
 export function bucketShortLabels(todayIso: string, days: Window): string[] {
+  if (bucketFor(days) === "hour") return bucketLabels(todayIso, days);
   const n = bucketCount(days);
   const step = bucketFor(days) === "day" ? 1 : 7;
   const out: string[] = [];
