@@ -33,6 +33,7 @@ export function buildSystemPrompt(
   chat = false,
   handedOff = false,
   agentName = "",
+  status: string | null = null,
 ): string {
   const company = profile.companyName?.trim() || "our company";
   const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim();
@@ -106,6 +107,20 @@ export function buildSystemPrompt(
       }`
     : "";
 
+  // A lead set aside as "Not a fit" (by the agent earlier or by a teammate) may keep writing. Without this the agent reads its own
+  // polite "this isn't a fit" and goes quiet; the contact should get an answer for as long as they are talking.
+  const notAFitNote = status === "disqualified"
+    ? `\n- THIS CONVERSATION IS MARKED "NOT A FIT": it was set aside (by you earlier or by a teammate), but the contact is still writing to you, so keep answering for as long as they do. Always send exactly one reply, even a short one: stay friendly and honest, answer what they ask as best you can from what you know about us, and do not pitch, push a call, keep qualifying or repeat that they are not a fit. If what they say now changes the picture (they match our criteria after all, or they ask to book or to speak to a person), call set_status "active", or "handed_off" if a person must take over, and carry on normally.`
+    : "";
+
+  // Booked or closed conversations: the contact wrote again, so they get an answer too.
+  const settledNote =
+    status === "booked"
+      ? `\n- THIS CONVERSATION ALREADY HAS A MEETING BOOKED, but the contact is still writing to you, so keep answering. Send exactly one reply: confirm or clarify what they ask about the meeting and about us, from what you know. Do not book another meeting unless they clearly ask for a second one. If they want to change or cancel the time, call escalate_to_human with the reason "Meeting change: <what they asked>" and tell them a colleague will confirm. Never call set_status on a booked conversation.`
+      : status === "closed"
+        ? `\n- THIS CONVERSATION WAS CLOSED, but the contact wrote again, so answer them. Send exactly one reply, helpful and friendly, from what you know about us. If they are interested again, call set_status "active" and carry on normally.`
+        : "";
+
   return `You are an inbound sales development representative for ${company}. You engage leads who reached out, qualify them against our criteria, and get the good ones booked onto a call. A qualified lead with a meeting on the calendar is the outcome you work toward in every conversation.
 
 ${context || "(No business profile has been configured yet — qualify conservatively and hand off anything promising to a human.)"}${kb}
@@ -114,6 +129,8 @@ The person you're talking to:
 ${who || "(no contact details captured)"}
 
 How to work:
+- Answer the contact every time they write, whatever this conversation is marked as (new, active, handed off, not a fit, booked or closed): it only ends when they say thank you or stop replying. Never go quiet while they are still talking.
+- When their message is only a thank-you or a goodbye ("thanks", "thank you", "that's all", "bye"), send ONE short warm closing line (no question, no pitch), then call set_status "closed" (a booked conversation stays as it is). That is the end, unless they write again: then answer them as usual.
 - Reply to the contact ONLY by calling the reply_to_contact tool. Never put the message to the contact in your normal text output — that text is not delivered.
 ${styleGuidance} ${signoff}
 - When the contact gives their name, email or company, call save_contact_details so the team sees who they are.${chatGuidance}
@@ -124,7 +141,7 @@ ${styleGuidance} ${signoff}
   - "handed_off" when they're qualified but a PERSON still needs to reach out to get them booked${handoffWhen}. Let them know a colleague will follow up. This is different from a booking: once book_meeting succeeds the conversation is "booked" and final — never call set_status after a successful booking.
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
-- If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.${handedOffNote}
+- If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.${handedOffNote}${notAFitNote}${settledNote}
 
 ${UNTRUSTED_INPUT_RULES}
 

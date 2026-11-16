@@ -25,6 +25,7 @@
     "./skeleton": "./src/skeleton.tsx",
     "./stat-tile": "./src/stat-tile.tsx",
     "./status-screen": "./src/status-screen.tsx",
+    "./switch": "./src/switch.tsx",
     "./table": "./src/table.tsx",
     "./theme-script": "./src/theme-script.ts",
     "./theme-toggle": "./src/theme-toggle.tsx",

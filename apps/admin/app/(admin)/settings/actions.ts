@@ -41,6 +41,21 @@ export async function saveInternalWebhook(_prev: SettingsState, formData: FormDa
   }
 }
 
+/** Fast cadence on or off (platform-wide, for testing): a "1" setting while on, none while off. Read by the app's Inngest functions. */
+export async function saveFastCadence(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
+  try {
+    const me = await requirePlatformAdmin();
+    const on = formData.get("fast") === "on";
+    if (on) await setPlatformSecret("cadence_fast", "1");
+    else await deletePlatformSecret("cadence_fast");
+    await recordAudit({ orgId: null, actorUserId: me.id, action: on ? "platform.cadence_fast_on" : "platform.cadence_fast_off", target: "cadence_fast" });
+    revalidatePath("/settings");
+    return { ok: true };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 /** Post a test line to the saved webhook, so the channel is confirmed before the watch needs it. */
 export async function sendTestInternal(_prev: SettingsState, _formData: FormData): Promise<SettingsState> {
   try {

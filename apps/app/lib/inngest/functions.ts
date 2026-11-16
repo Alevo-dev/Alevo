@@ -5,12 +5,13 @@ import { notifyInternal } from "@/lib/alerts/internal";
 import { slowOrgs, speedDigest } from "@/lib/alerts/speed-digest";
 import { ensureActivity, ensureCompany, ensureContact, ensureOpportunity, loadWritebackContext } from "@/lib/psa/writeback";
 import { notifyUnansweredLead } from "@/lib/notifications/lead-events";
-import { NO_REPLY_AFTER } from "@/lib/qualifier/unanswered";
+import { noReplyAfter } from "@/lib/qualifier/unanswered";
+import { isFastCadence } from "@/lib/cadence/fast";
 import { checkUnanswered } from "@/lib/qualifier/watchdog";
 import { flagRunFailure } from "@/lib/qualifier/run-failure";
 import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
-import { FOLLOWUPS } from "@/lib/cadence/schedule";
+import { followupSchedule } from "@/lib/cadence/schedule";
 import { nextSendTime } from "@/lib/cadence/send-window";
 import { ingestDocument } from "@/lib/kb/ingest";
 import { summarizeCall } from "@/lib/qualifier/summarize-call";
@@ -169,6 +170,9 @@ export const conversationCadence = inngest.createFunction(
   async ({ event, step }) => {
     const { orgId, conversationId } = event.data as ConversationAwaitingReplyData;
 
+    // Decided once per run (a step, so a replay keeps it): the real schedule or the testing one.
+    const fast = await step.run("schedule", () => isFastCadence());
+    const FOLLOWUPS = followupSchedule(fast);
     for (const [i, followup] of FOLLOWUPS.entries()) {
       const isLast = i === FOLLOWUPS.length - 1;
       await step.sleep(`gap-${i}`, followup.after);
@@ -317,7 +321,7 @@ export const speedToLeadWatch = inngest.createFunction(
 
 /**
  * The no-reply fallback (plan.md risk 9: silent latency). Every inbound message
- * also starts this: wait `NO_REPLY_AFTER` (5 minutes; `CADENCE_FAST=1` → 30s),
+ * also starts this: wait `noReplyAfter` (5 minutes; 30s in fast cadence),
  * then if nothing went out to the contact after their latest message and the
  * lead is still being worked, mark it handed off and tell the org's Slack who
  * to reach. `singleton` per conversation (mode: cancel) so a newer message
@@ -334,7 +338,8 @@ export const replyWatchdog = inngest.createFunction(
   },
   async ({ event, step }) => {
     const { orgId, conversationId } = event.data as ConversationMessageReceivedData;
-    await step.sleep("wait-for-reply", NO_REPLY_AFTER);
+    const fast = await step.run("schedule", () => isFastCadence());
+    await step.sleep("wait-for-reply", noReplyAfter(fast));
     return step.run("check", () => checkUnanswered(orgId, conversationId));
   },
 );

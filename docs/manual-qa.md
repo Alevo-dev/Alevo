@@ -1381,8 +1381,21 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 
 ## Chat avatar
 
-- [ ] Integrations → Chat widget: Avatar → Upload image with a large photo. The field and the chat preview show it in a circle and the footer reads "1 unsaved change: Avatar". Small / Medium / Large change its diameter (44 / 60 / 80px) in the preview; Large is not clipped.
+- [ ] Integrations → Chat widget: Avatar → Upload image with a large photo. The field and the chat preview show it in a circle filled edge to edge and the footer reads "1 unsaved change: Avatar". Small / Medium / Large change its diameter (44 / 60 / 80px) in the preview; Large is not clipped.
 - [ ] Save changes: the window closes. Open `/api/chat/<workspace id>` and `avatarUrl` is set (it can lag up to a minute: the response is cached). The image URL returns a small WebP (typically 10 to 30 KB).
 - [ ] On a page with the chat snippet, open the bubble: the picture is in the header at the chosen size. With no picture, a circle with the first letter.
-- [ ] Replace image, then Remove: the old file is deleted from R2 (its old URL now returns 404). A wide logo is shown whole inside the circle, nothing cut off.
+- [ ] Replace image, then Remove: the old file is deleted from R2 (its old URL now returns 404). A wide logo fills the circle and its left and right sides are cut off, nothing is stretched.
 - [ ] The code in the Website form and Chat widget windows has one attribute per line, scrolls sideways when long, and Copy copies it as shown.
+
+## Not a fit: the agent keeps answering
+
+- [ ] In a chat or email thread, mark the lead Not a fit (Conversations → the thread → Not a fit), then reply as the contact with a question. The agent answers once, friendly, without pitching or repeating that they are not a fit.
+- [ ] Reply again, and again: it answers every time, one reply each. It does not go quiet.
+- [ ] Then say you do want to book (or that you match the criteria): the thread goes back to Active (or Handed off) and the agent carries on normally.
+- [ ] SMS: text the workspace number from a lead marked Not a fit. The message lands in the SAME thread (no new conversation) and gets a reply.
+
+## Always answer, and fast cadence
+
+- [ ] On a chat or email thread, send questions after each of: marked Not a fit, Handed off, Booked, Closed. The agent answers every time, once, and does not go quiet. On a Booked thread it does not book a second meeting.
+- [ ] Reply with only "thank you": one short closing line, the thread becomes Closed (a Booked one stays Booked) and no follow-up nudges are sent. Write again afterwards: it answers.
+- [ ] Admin console → Settings → Testing: turn Fast cadence on, Save changes. Within about 15 seconds a quiet lead is nudged after 20s, 30s and 40s, and an unanswered message alerts after 30s. Turn it off again.

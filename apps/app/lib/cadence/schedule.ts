@@ -3,14 +3,14 @@
  * Standard SDR spacing: three nudges over about a week, then disqualify the lead.
  *
  * Each `after` is the gap since the previous message (the reply or prior nudge).
- * `CADENCE_FAST=1` collapses the schedule to seconds so the full loop is
- * testable locally in the Inngest dev server without waiting days.
+ * Fast cadence (`CADENCE_FAST=1`, or the switch in the admin console's Settings) collapses it to seconds so the
+ * full loop can be tested without waiting days.
  */
-const FAST = process.env.CADENCE_FAST === "1";
+export const FOLLOWUPS: ReadonlyArray<{ after: string }> = [{ after: "1d" }, { after: "3d" }, { after: "3d" }];
+export const FAST_FOLLOWUPS: ReadonlyArray<{ after: string }> = [{ after: "20s" }, { after: "30s" }, { after: "40s" }];
 
-export const FOLLOWUPS: ReadonlyArray<{ after: string }> = FAST
-  ? [{ after: "20s" }, { after: "30s" }, { after: "40s" }]
-  : [{ after: "1d" }, { after: "3d" }, { after: "3d" }];
+/** The schedule to run: the real one, or the seconds-long one while fast cadence is on (see `lib/cadence/fast.ts`). */
+export const followupSchedule = (fast: boolean) => (fast ? FAST_FOLLOWUPS : FOLLOWUPS);
 
 /**
  * The instruction handed to the Qualifier for a nudge. It's internal context,

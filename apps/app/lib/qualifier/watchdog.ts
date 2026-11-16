@@ -2,12 +2,13 @@ import "server-only";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { conversations, messages, withService } from "@alevo/db";
 import { notifyUnansweredLead } from "@/lib/notifications/lead-events";
-import { isAnswered, NO_REPLY_LABEL } from "./unanswered";
+import { isFastCadence } from "@/lib/cadence/fast";
+import { isAnswered, noReplyLabel } from "./unanswered";
 
 export type WatchdogResult = { alerted: boolean; reason: string };
 
 /**
- * Run by the `reply-watchdog` Inngest function once `NO_REPLY_AFTER` has passed
+ * Run by the `reply-watchdog` Inngest function once `noReplyAfter` has passed
  * since a lead's message. If the conversation is still being worked and nothing
  * went out to the contact after their latest message — the agent failed, never
  * answered, or was off — a person is alerted on the org's Slack and the lead is
@@ -21,7 +22,7 @@ export async function checkUnanswered(orgId: string, conversationId: string): Pr
   if (row.status !== "new" && row.status !== "active") return { alerted: false, reason: `status:${row.status}` };
   if (isAnswered(row.lastInbound, row.lastOutbound)) return { alerted: false, reason: "answered" };
 
-  const alerted = await notifyUnansweredLead(orgId, conversationId, "no-reply", NO_REPLY_LABEL);
+  const alerted = await notifyUnansweredLead(orgId, conversationId, "no-reply", noReplyLabel(await isFastCadence()));
   return { alerted, reason: alerted ? "no-reply" : "already-handled" };
 }
 

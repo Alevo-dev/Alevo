@@ -30,8 +30,6 @@ import { overAllowance } from "@/lib/usage/limits";
 const MODEL = "claude-sonnet-5";
 /** Guard against a runaway tool loop; a normal turn is 1–2 iterations. */
 const MAX_TURNS = 6;
-/** Conversations the Qualifier should never touch. */
-const TERMINAL: ReadonlySet<ConversationStatus> = new Set(["booked", "closed"]);
 
 export type QualifierContext = {
   orgId: string;
@@ -70,7 +68,8 @@ export async function loadQualifierContext(
       .where(and(eq(conversations.id, conversationId), eq(conversations.orgId, orgId)))
       .limit(1);
     if (!conv) return null;
-    if (TERMINAL.has(conv.status)) return { skip: `status:${conv.status}` };
+    // No status stops the agent from answering a contact who is still talking (booked, closed, handed off, not a fit):
+    // the conversation ends when they say thank you or stop replying. Only the org's own switches below can pause it.
 
     const [profile] = await tx
       .select()
@@ -207,7 +206,7 @@ export async function runQualifier(
   // conversational (one question at a time).
   const emailStyle =
     (ctx.channel === "form" || ctx.channel === "email") && Boolean(ctx.contact.email);
-  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle, ctx.channel === "chat", ctx.status === "handed_off", ctx.profile.chatAgentName ?? "");
+  const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle, ctx.channel === "chat", ctx.status === "handed_off", ctx.profile.chatAgentName ?? "", ctx.status);
   // Cal.com / Google / M365 are API booking (slots + book); Calendly is link mode.
   const bookingTools =
     ctx.bookingMode === "calcom" || ctx.bookingMode === "google" || ctx.bookingMode === "m365"

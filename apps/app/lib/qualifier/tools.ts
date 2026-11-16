@@ -14,7 +14,7 @@ import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details"
 import { chatVisitorPresent } from "@/lib/chat/service";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
-const SETTABLE_STATUS = ["active", "disqualified", "handed_off"] as const;
+const SETTABLE_STATUS = ["active", "disqualified", "handed_off", "closed"] as const;
 type SettableStatus = (typeof SETTABLE_STATUS)[number];
 
 /** Claude tool surface for the Qualifier (MVP: reply, score, route, escalate). */
@@ -52,7 +52,7 @@ export const QUALIFIER_TOOLS: Anthropic.Tool[] = [
   {
     name: "set_status",
     description:
-      "Route the conversation: 'disqualified' (not a fit), 'handed_off' (qualified, ready for a human), or 'active' (still qualifying).",
+      "Route the conversation: 'disqualified' (not a fit), 'handed_off' (qualified, ready for a human), 'active' (still qualifying), or 'closed' (the contact said thank you or goodbye and the conversation is finished).",
     input_schema: {
       type: "object",
       properties: {

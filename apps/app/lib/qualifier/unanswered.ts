@@ -3,12 +3,10 @@
  * watchdog in `watchdog.ts` applies them; `tests/lead-messages.test.ts` covers them.
  */
 
-const FAST = process.env.CADENCE_FAST === "1";
-
-/** How long a lead's message may sit without an outbound reply before a person is alerted. */
-export const NO_REPLY_AFTER = FAST ? "30s" : "5m";
+/** How long a lead's message may sit without an outbound reply before a person is alerted (30s while fast cadence is on). */
+export const noReplyAfter = (fast: boolean) => (fast ? "30s" : "5m");
 /** The same wait, as the Slack message says it. */
-export const NO_REPLY_LABEL = FAST ? "30 seconds" : "5 minutes";
+export const noReplyLabel = (fast: boolean) => (fast ? "30 seconds" : "5 minutes");
 
 /**
  * Answered = something went out to the contact after their latest message.

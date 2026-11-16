@@ -3,8 +3,8 @@ import { AVATAR_PIXELS, MAX_AVATAR_BYTES } from "./avatar";
 const toBlob = (canvas: HTMLCanvasElement, quality: number) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
 
 /**
- * Make the picture small before it leaves the browser: never cropped, its longest side 256px (it keeps its own
- * proportions; the widget fits the whole picture inside the circle), WebP (keeps a transparent background), lowering
+ * Make the picture small before it leaves the browser: its longest side 256px, never cropped or stretched here (it keeps its
+ * own proportions; the widget and the preview crop it to the circle from the centre), WebP (keeps a transparent background), lowering
  * the quality until it is under the limit. A typical result is 10 to 30 KB, whatever was chosen.
  */
 export async function toAvatarWebp(file: File): Promise<File> {

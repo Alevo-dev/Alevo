@@ -86,7 +86,7 @@ function Preview({ name, greeting, accent, text, position, on, avatar, avatarPx 
         <div className="flex items-center gap-2 px-3 py-[9px] text-[13px] font-semibold" style={{ background: accent, color: text }}>
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element -- a local or same-origin preview, not an optimised page image
-            <img src={avatar} alt="" className="shrink-0 rounded-full object-contain" style={{ width: avatarPx, height: avatarPx }} />
+            <img src={avatar} alt="" className="shrink-0 rounded-full object-cover" style={{ width: avatarPx, height: avatarPx }} />
           ) : (
             <span className="flex shrink-0 items-center justify-center rounded-full bg-black/15 text-[11px]" style={{ width: avatarPx, height: avatarPx }}>
               {name.slice(0, 1).toUpperCase()}
@@ -239,11 +239,11 @@ export function ChatWidgetForm({
           </div>
           <div>
             <div className="mb-0.5 font-semibold text-ink">Avatar</div>
-            <p className="mb-2 text-[13px] leading-[19px] text-ink-muted">A picture at the top of the chat window instead of the first letter, shown in a circle with a transparent background. We resize and compress it for you, and never stretch it. Best: a square picture (1:1), at least 256 × 256 px. PNG, JPEG or WebP.</p>
+            <p className="mb-2 text-[13px] leading-[19px] text-ink-muted">A picture at the top of the chat window instead of the first letter, always shown in a circle, filled edge to edge from the centre (anything outside the circle is cut off, nothing is stretched). Best: a square picture (1:1) with the subject in the middle, at least 256 × 256 px. PNG, JPEG or WebP.</p>
             <div className="flex items-center gap-3">
               {shownAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element -- a local or same-origin preview
-                <img src={shownAvatar} alt="Current avatar" className="size-14 shrink-0 rounded-full border border-hairline object-contain" />
+                <img src={shownAvatar} alt="Current avatar" className="size-14 shrink-0 rounded-full border border-hairline object-cover" />
               ) : (
                 <span className="flex size-14 shrink-0 items-center justify-center rounded-full border border-hairline bg-raised text-lg font-semibold text-ink-muted" aria-hidden="true">
                   {shownName.slice(0, 1).toUpperCase()}

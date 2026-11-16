@@ -96,7 +96,7 @@
       ".alevo-chat.is-open .alevo-chat-panel{display:flex}" +
       ".alevo-chat-head{background:var(--a);color:var(--on);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}" +
       ".alevo-chat-head strong{display:block;font-size:15px}.alevo-chat-head span{display:block;font-size:12px;opacity:.85;margin-top:2px}" +
-      ".alevo-chat-who{display:flex;align-items:center;gap:10px;min-width:0}.alevo-chat-av{flex:none;border-radius:50%;object-fit:contain}" +
+      ".alevo-chat-who{display:flex;align-items:center;gap:10px;min-width:0}.alevo-chat-av{flex:none;border-radius:50%;object-fit:cover;object-position:center}" +
       ".alevo-chat-who .alevo-chat-ini{flex:none;border-radius:50%;background:rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;opacity:1;margin:0}" +
       ".alevo-chat-close{background:transparent;border:0;color:var(--on);cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}.alevo-chat-close:hover{background:rgba(128,128,128,.25)}" +
       ".alevo-chat-log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f6f7f9}" +

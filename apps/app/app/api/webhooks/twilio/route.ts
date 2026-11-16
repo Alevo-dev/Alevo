@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
   contacts,
@@ -80,6 +80,7 @@ export const POST = trackDeliveries("twilio", async (req, track) => {
     const { id: contactId } = await resolveContact(orgId, { phone: fromPhone }, { source: "sms" });
 
     const result = await withService(async (tx) => {
+      // The latest SMS thread, whatever it is marked as (closed, booked, not a fit): the agent keeps answering while they text.
       const [open] = await tx
         .select({ id: conversations.id })
         .from(conversations)
@@ -88,7 +89,6 @@ export const POST = trackDeliveries("twilio", async (req, track) => {
             eq(conversations.orgId, orgId),
             eq(conversations.contactId, contactId),
             eq(conversations.channel, "sms"),
-            sql`${conversations.status} not in ('closed','disqualified','booked')`,
           ),
         )
         .orderBy(desc(conversations.createdAt))

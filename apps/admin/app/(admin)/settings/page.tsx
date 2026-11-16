@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { platformSecretStatus } from "@alevo/db";
+import { getPlatformSecret, platformSecretStatus } from "@alevo/db";
 import { Card, CardHeader } from "@alevo/ui/card";
 import { PageHeader } from "@alevo/ui/page-header";
 import { fmtWhen } from "@/lib/metrics-format";
+import { FastCadenceForm } from "./fast-cadence-form";
 import { InternalAlertsForm } from "./internal-alerts-form";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Settings" };
 /** Platform-level settings: Alevo's own credentials, stored encrypted, never shown again. */
 export default async function SettingsPage() {
   const webhook = await platformSecretStatus("internal_alerts_slack_webhook");
+  const fastCadence = (await getPlatformSecret("cadence_fast")) === "1";
 
   return (
     <div className="space-y-6">
@@ -22,6 +24,12 @@ export default async function SettingsPage() {
         />
         <div className="mt-6">
           <InternalAlertsForm isSet={webhook.isSet} savedAt={webhook.updatedAt ? fmtWhen(webhook.updatedAt) : null} />
+        </div>
+      </Card>
+      <Card className="max-w-2xl">
+        <CardHeader title="Testing" hint="Switches for trying the agent's timing without waiting. Off by default." />
+        <div className="mt-6">
+          <FastCadenceForm initial={fastCadence} />
         </div>
       </Card>
     </div>
