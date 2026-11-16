@@ -15,7 +15,7 @@ export default async function ManagePage() {
   return (
     <>
       <PageHeader title="Manage" />
-      <div className="max-w-[920px] space-y-3.5">
+      <div className="max-w-[920px] space-y-5">
         <GeneralTab canEdit={canEdit} />
         <MembersTab canEdit={canEdit} />
       </div>

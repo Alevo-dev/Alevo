@@ -20,7 +20,7 @@ import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { Pill } from "@/components/ui/pill";
-import { Seg } from "@/components/ui/nav-kit";
+import { Tabs } from "@/components/ui/nav-kit";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
 
@@ -110,7 +110,8 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
       {/* Toolbar: Members / Invitations switch, search, Invite. */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-3.5 py-2.5">
         {canEdit && (
-          <Seg
+          <Tabs
+            className="border-b-0"
             label="Members and invitations"
             value={tab}
             options={[

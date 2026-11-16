@@ -1,7 +1,6 @@
 import { Check, FileText, Mail, MessageCircle, MessageSquare, Phone, Users, X } from "lucide-react";
 import type { Channel, ConversationStatus } from "@alevo/db";
 import { MiniBars, type MiniBarsTone } from "@alevo/ui/mini-bars";
-import { CardFooter } from "@alevo/ui/card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { InfoStrip, Tabs } from "@/components/ui/nav-kit";
 import { PageHeader } from "@/components/ui/page-header";
@@ -44,7 +43,7 @@ export function ScreenHeader({
   );
 }
 
-/** A panel: sunken header band (title, hint, right slot), body, optional footer band. */
+/** A flat panel, as in the boards: heading row with a hairline under it, body, optional footer under a hairline. No box. */
 export function Panel({
   title,
   hint,
@@ -65,10 +64,10 @@ export function Panel({
   children?: React.ReactNode;
 } & Omit<React.HTMLAttributes<HTMLElement>, "title">) {
   return (
-    <Card boxed padding="none" className={className} {...rest}>
+    <Card padding="none" className={className} {...rest}>
       <CardHeader title={title} hint={hint} aside={right} />
-      {children != null && <div className={flush ? undefined : "p-3.5"}>{children}</div>}
-      {footer && <CardFooter>{footer}</CardFooter>}
+      {children != null && <div className={flush ? undefined : "py-3.5"}>{children}</div>}
+      {footer && <div className="flex items-center justify-between gap-3 border-t border-hairline pt-[9px] text-label text-ink-muted">{footer}</div>}
     </Card>
   );
 }
@@ -115,7 +114,7 @@ export function Kpi({
   tone: MiniBarsTone;
 }) {
   return (
-    <div className="relative min-h-[100px] overflow-hidden rounded-sm border border-hairline bg-surface px-3.5 py-3">
+    <div className="relative min-h-[100px] overflow-hidden border-l border-hairline px-4 py-3 first:border-l-0 first:pl-0 max-lg:nth-[odd]:border-l-0 max-lg:nth-[odd]:pl-0">
       <div className="text-[13px] font-[550] text-ink-muted">{label}</div>
       <div className="tabular mt-0.5 font-mono text-[28px] font-medium leading-[34px] tracking-[-0.02em] text-ink">
         <CountUp value={value} />
@@ -164,8 +163,8 @@ const STATUS_ICON: Record<ConversationStatus, { Icon: typeof Check; cls: string 
   new: { Icon: MessageSquare, cls: "bg-brand/15 text-brand-ink" },
   active: { Icon: MessageSquare, cls: "bg-brand/15 text-brand-ink" },
   booked: { Icon: Check, cls: "bg-success/15 text-success" },
-  handed_off: { Icon: Users, cls: "bg-violet/15 text-violet-ink" },
-  disqualified: { Icon: X, cls: "bg-raised text-ink-muted" },
+  handed_off: { Icon: Users, cls: "bg-warning/15 text-warning" },
+  disqualified: { Icon: X, cls: "bg-danger/15 text-danger" },
   closed: { Icon: X, cls: "bg-raised text-ink-muted" },
 };
 

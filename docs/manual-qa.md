@@ -1353,3 +1353,12 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 - [ ] Change your Clerk role or re-sync (membership.updated): you stay Owner.
 - [ ] "Back to support" returns the row to "Alevo support" and removes the seat.
 - [ ] A non-admin member row shows no button.
+
+## Support button
+
+- [ ] The top bar has a Support icon beside the avatar (hover shows "Support"). It opens "Report a problem".
+- [ ] Send it empty: red field errors under "What is the problem?" and "What happened?", nothing is sent.
+- [ ] Fill it in, add a screenshot by choosing a file and another by pasting (Ctrl+V), remove one with the x. A 4th is refused.
+- [ ] Send: a toast says thanks and the dialog closes. Alevo's internal Slack channel (Admin → Settings → Internal alerts) gets a message with who, workspace, page, browser, the text and the screenshots. Nothing goes to the workspace's own Slack.
+- [ ] With no internal webhook saved, sending shows "We could not send your report just now" inside the dialog.
+- [ ] Send 6 reports within an hour: the 6th says to wait a little.

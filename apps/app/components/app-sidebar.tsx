@@ -66,7 +66,7 @@ export function NavGroupList({ pathname, onNavigate }: { pathname: string; onNav
 export function AppSidebar() {
   const pathname = usePathname();
   return (
-    <aside className="sticky top-[46px] flex h-[calc(100dvh-46px)] w-[236px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-hairline bg-rail px-2.5 pb-4 pt-3">
+    <aside className="fixed left-0 top-[46px] flex h-[calc(100dvh-46px)] w-[236px] flex-col gap-0.5 overflow-y-auto border-r border-hairline bg-rail px-2.5 pb-4 pt-3">
       <div className="mb-2">
         <WorkspaceSwitcher />
       </div>

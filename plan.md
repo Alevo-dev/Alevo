@@ -591,3 +591,4 @@ Each metric is instrumented as its underlying feature ships (capture then, don't
 | Multichannel lift, cross-channel attribution, cohort retention | multi-channel + revenue data | internal | Post-MVP |
 
 MVP dashboards (Sprint 5 customer, Sprint 7 prospecting) carry the north-star funnel plus deliverability/engagement basics. Advanced analytics — attribution, multichannel lift, cohort retention / NRR, seed inbox-placement, and the two internal dashboards — are Post-MVP (§5, *Admin reporting expansion*).
+- [x] Support button in the app's top bar: report a problem with steps and screenshots, posted to Alevo's internal Slack (2026-11-16).

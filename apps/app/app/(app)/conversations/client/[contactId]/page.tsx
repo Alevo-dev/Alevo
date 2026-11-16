@@ -8,7 +8,7 @@ import { CallCard } from "@/components/conversations/call-card";
 import { CHANNEL_ICON, FitCard, FitMeter, Panel, ScreenHeader, Strip, TabLinks } from "@/components/conversations/kit";
 import { buttonClass } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
-import { Seg } from "@/components/ui/nav-kit";
+import { Tabs } from "@/components/ui/nav-kit";
 import { Pill } from "@/components/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { CLIENT_CONVERSATIONS_CAP, clientDetail, type ClientConversation, type ClientDetail } from "@/lib/clients/detail";
@@ -162,7 +162,8 @@ export default async function ClientPage({
           title="Conversations"
           hint={`Every thread with ${contact.firstName ?? "this client"}, newest first`}
           right={
-            <Seg
+            <Tabs
+              className="border-b-0"
               label="Show"
               value={show}
               options={[
@@ -227,7 +228,7 @@ export default async function ClientPage({
 
       {tab === "psa" && d.psa.length > 0 && (
         <div className="flex flex-col gap-3.5">
-          <Panel title="ConnectWise Manage" hint="What Alevo wrote for this client">
+          <Panel title="ConnectWise" hint="What Alevo wrote for this client">
             <div className="flex flex-wrap items-center gap-2">
               <Pill tone="success">Synced</Pill>
               <span className="text-ink-muted">Last write {fmtShort(d.psa.at(-1)!.createdAt, tz)}</span>

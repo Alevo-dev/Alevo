@@ -4,13 +4,14 @@
  *
  *   organizations/{orgId}/files/{uuid}-{filename}      general uploads (reserved)
  *   organizations/{orgId}/knowledge/{uuid}-{filename}  knowledge-base PDFs
+ *   organizations/{orgId}/support/{uuid}-{filename}    screenshots on a Support report (linked from Slack)
  *   organizations/{orgId}/images/…  avatars/…  logos/…  reserved for later
  *
  * The uuid prefix keeps names unique without a folder per file. Older objects
  * at `org/{orgId}/{uuid}/{filename}` stay valid — rows reference the full key.
  */
 
-export const UPLOAD_PURPOSES = ["file", "knowledge", "image", "avatar", "logo"] as const;
+export const UPLOAD_PURPOSES = ["file", "knowledge", "image", "avatar", "logo", "support"] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 
 const FOLDER: Record<UploadPurpose, string> = {
@@ -19,6 +20,7 @@ const FOLDER: Record<UploadPurpose, string> = {
   image: "images",
   avatar: "avatars",
   logo: "logos",
+  support: "support",
 };
 
 export function isUploadPurpose(value: unknown): value is UploadPurpose {

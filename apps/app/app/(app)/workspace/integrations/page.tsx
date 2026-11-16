@@ -22,6 +22,7 @@ import { CalendlyForm } from "./calendly-form";
 import { ChatWidgetForm } from "./chat-widget-form";
 import { ConnectResult } from "./connect-result";
 import { ConnectWiseForm } from "./connectwise-form";
+import { IntegrationTabs } from "./integration-tabs";
 import { ToolSection } from "./tool-section";
 import { TeamCalendars, type CalendarMember } from "./team-calendars";
 import { displayName } from "@/lib/format";
@@ -210,7 +211,7 @@ export default async function SecretsPage({
         ]}
       />
 
-      <div className="mt-3.5 space-y-3.5">
+      <div className="mt-5 space-y-5">
         {/* Slim: only when something needs doing, one line each. */}
         {attention.length > 0 && (
           <section aria-label="Needs attention" className="flex flex-col gap-1.5 rounded-sm border border-warning/55 bg-warning/[0.07] px-3 py-[9px] text-[13.5px] text-ink">
@@ -225,42 +226,49 @@ export default async function SecretsPage({
           </section>
         )}
 
-        {SERVICE_GROUPS.map((group) => {
-          const rows = listed.filter((s) => s.group === group.id);
-          const addable = canModify ? connectable.filter((s) => s.group === group.id) : [];
-          return (
-            <ToolSection
-              key={group.id}
-              id={group.id}
-              title={group.title}
-              hint={group.hint}
-              add={group.add}
-              pick={group.pick}
-              tools={addable.map((s) => ({
-                id: s.id,
-                name: s.name,
-                icon: s.icon,
-                managed: s.managed,
-                unavailable: s.status.label === "Coming soon" ? "Soon" : s.status.label,
-                dialogDescription: dialogDescription(s),
-              }))}
-              panels={Object.fromEntries(addable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
-            >
-              {rows.length === 0 ? (
-                <p className="px-3.5 py-3.5 text-ink-muted">Nothing connected yet.</p>
-              ) : (
-                <ul>
-                  {rows.map((s) => (
-                    <ServiceRow key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
-                  ))}
-                </ul>
-              )}
-              {group.id === "booking" && team.length > 0 && <TeamCalendars calendar={sharedCalendar} me={team.find((m) => m.id === me?.id)} members={team} />}
-            </ToolSection>
-          );
-        })}
-
-        <HealthSection health={health} />
+        <IntegrationTabs
+          tabs={[
+            ...SERVICE_GROUPS.map((group) => {
+              const rows = listed.filter((s) => s.group === group.id);
+              const addable = canModify ? connectable.filter((s) => s.group === group.id) : [];
+              return {
+                key: group.id,
+                label: group.title,
+                count: rows.length,
+                content: (
+                  <ToolSection
+                    id={group.id}
+                    title={group.title}
+                    hint={group.hint}
+                    add={group.add}
+                    pick={group.pick}
+                    tools={addable.map((s) => ({
+                      id: s.id,
+                      name: s.name,
+                      icon: s.icon,
+                      managed: s.managed,
+                      unavailable: s.status.label === "Coming soon" ? "Soon" : s.status.label,
+                      dialogDescription: dialogDescription(s),
+                    }))}
+                    panels={Object.fromEntries(addable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
+                  >
+                    {rows.length === 0 ? (
+                      <p className="px-3.5 py-3.5 text-ink-muted">Nothing connected yet.</p>
+                    ) : (
+                      <ul>
+                        {rows.map((s) => (
+                          <ServiceRow key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
+                        ))}
+                      </ul>
+                    )}
+                    {group.id === "booking" && team.length > 0 && <TeamCalendars calendar={sharedCalendar} me={team.find((m) => m.id === me?.id)} members={team} />}
+                  </ToolSection>
+                ),
+              };
+            }),
+            { key: "health", label: "Connection health", content: <HealthSection health={health} /> },
+          ]}
+        />
       </div>
     </div>
   );

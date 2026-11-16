@@ -18,7 +18,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-6">
       <PageHeader title="Activity" description={`The audit log across every organization. Newest first, ${PAGE_SIZE} per page.`} />
-      <Card boxed padding="none">
+      <Card padding="none">
         <ActivityTable
           rows={page.rows}
           actor

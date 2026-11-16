@@ -141,11 +141,11 @@ export function AgentForm({ initial, booking, connected, profileReady, slackConn
         if (t.id === "smsFromNumber") setTyped(t.value);
       }}
       onChange={recheck}
-      className="space-y-3.5"
+      className="space-y-5"
     >
       <SubTabs label="Agent settings" value={tab} options={TABS.map((t) => ({ key: t.key, label: t.label, onSelect: () => setTab(t.key) }))} />
 
-      <div {...show("general")} className="space-y-3.5">
+      <div {...show("general")} className="space-y-5">
         <Card padding="none">
           <CardHeader title="Agent" aside={dirty ? <Pill tone="warning">Unsaved</Pill> : <Pill tone="success">Saved</Pill>} />
           <PanelRow

@@ -49,13 +49,13 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
   const href = cursorHref("/organizations", { q: q || undefined, window: String(days) });
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-5">
       <PageHeader title="Organizations">
         <WindowSwitch value={days} windows={WINDOWS} basePath="/organizations" />
         <NewOrgDialogButton plans={plans} />
       </PageHeader>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Platform totals">
+      <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-4" aria-label="Platform totals">
         <StatTile label="Organizations" value={total} delta={totals.recent ? `${totals.recent} new in last ${days} days` : undefined} hint={totals.recent ? undefined : `None new in last ${days} days`} />
         <StatTile
           label="Leads"
@@ -73,7 +73,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
 
       <OrgToolbar q={q} days={days} />
 
-      <Card boxed padding="none">
+      <Card padding="none">
         <CardHeader title="Organizations" hint="Newest first; p95 over 60 seconds is flagged" />
         <OrgsListTable
           rows={page.rows}

@@ -75,7 +75,7 @@ export function MiniBars({
             <span
               className={cx(
                 "animate-grow-y w-full rounded-t-[2px] transition-opacity duration-150 ease-out",
-                v > 0 ? BAR[tone] : "bg-raised",
+                v > 0 ? BAR[tone] : "bg-ink-muted/40",
                 active != null && active !== i && "opacity-50",
               )}
               style={{

@@ -53,18 +53,15 @@ export function WindowSwitch({
   });
 
   return (
-    <div className="inline-flex items-center gap-2">
-      <span className="text-label text-ink-muted" aria-hidden="true">
-        Last:
-      </span>
-      <Select
-        size="sm"
-        inline
-        aria-label="Last: time window"
-        value={String(value)}
-        onChange={(v) => go(Number(v))}
-        options={windows.map((d, i) => ({ value: String(d), label: optionLabel(d), hint: `Alt+${i + 1}` }))}
-      />
-    </div>
+    <Select
+      size="sm"
+      inline
+      variant="menu"
+      prefix="Last:"
+      aria-label="Last: time window"
+      value={String(value)}
+      onChange={(v) => go(Number(v))}
+      options={windows.map((d, i) => ({ value: String(d), label: optionLabel(d), hint: `Alt+${i + 1}` }))}
+    />
   );
 }

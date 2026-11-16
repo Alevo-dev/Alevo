@@ -18,6 +18,8 @@ export type ServiceIcon =
   | "zoho"
   | "connectwise"
   | "halopsa"
+  | "autotask"
+  | "zendesk"
   | "facebook";
 
 /** The page is split into these sections, in this order. */
@@ -76,6 +78,8 @@ const AGENT = JUMP.agentChannels;
 /** PSA / CRM write-back still to come. Cards only, nothing to manage yet. */
 const CRM_PLACEHOLDERS: { id: string; name: string; hint: string; icon: ServiceIcon }[] = [
   { id: "halopsa", name: "HaloPSA", hint: "Tickets, clients and opportunities", icon: "halopsa" },
+  { id: "autotask", name: "Autotask", hint: "Tickets, companies and opportunities", icon: "autotask" },
+  { id: "zendesk", name: "Zendesk", hint: "Tickets, contacts and notes", icon: "zendesk" },
   { id: "zoho", name: "Zoho CRM", hint: "Leads, contacts and deals", icon: "zoho" },
   { id: "hubspot", name: "HubSpot", hint: "Contacts, deals and timeline notes", icon: "hubspot" },
 ];
@@ -221,7 +225,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
     {
       id: "connectwise",
       group: "crm",
-      name: "ConnectWise Manage",
+      name: "ConnectWise",
       hint: "Company, contact, activity and opportunity",
       icon: "connectwise",
       status: cwMissing === null ? CONNECTED : cwStarted ? NEEDS_SETUP : NOT_CONNECTED,

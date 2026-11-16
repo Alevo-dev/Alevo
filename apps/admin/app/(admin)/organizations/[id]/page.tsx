@@ -57,7 +57,7 @@ export default async function OrganizationPage({ params, searchParams }: Props) 
 
       <SetupCard orgId={org.id} clerkOrgId={org.clerkId} items={items} />
 
-      <Card boxed padding="none">
+      <Card padding="none">
         <CardHeader title="Members" hint={`${org.members.filter((m) => !m.support).length} seat${org.members.filter((m) => !m.support).length === 1 ? "" : "s"} in use`} />
         <Table>
           <thead>

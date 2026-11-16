@@ -14,6 +14,7 @@ const RULES: Record<UploadPurpose, { types: readonly string[]; maxBytes: number 
   image: { types: IMAGES, maxBytes: 10 * MB },
   logo: { types: IMAGES, maxBytes: 10 * MB },
   avatar: { types: IMAGES, maxBytes: 5 * MB },
+  support: { types: ["image/png", "image/jpeg", "image/webp"], maxBytes: 5 * MB },
 };
 
 /** An error message for a person, or null when the upload is allowed. */

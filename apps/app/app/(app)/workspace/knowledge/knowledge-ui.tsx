@@ -4,9 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KbDocStatus, KbSourceType } from "@alevo/db";
 import { AlignLeft, Check, Clock, FileText, Info, Link2, Loader2, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
-import { CardFooter } from "@alevo/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, FieldError, Input, Textarea } from "@/components/ui/field";
@@ -166,7 +164,7 @@ export function KnowledgeView({ docs, model }: { docs: DocView[]; model: string 
   const passages = docs.reduce((n, d) => n + (d.status === "ready" ? d.chunkCount : 0), 0);
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-1.5">
         <Button variant="primary" onClick={() => setAdding("text")}>
           <Plus className="size-3.5" aria-hidden="true" />
@@ -211,11 +209,11 @@ export function KnowledgeView({ docs, model }: { docs: DocView[]; model: string 
         <div>The agent reads the closest passages to each lead message. Deleting a document removes its file, its index and its passages.</div>
       </div>
 
-      <Card boxed padding="none">
-        <CardHeader
-          title="Documents"
-          hint={`${docs.length} ${docs.length === 1 ? "document" : "documents"}, ${passages} passages`}
-        />
+      <section className="space-y-2">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-heading font-medium text-ink">Documents</h2>
+          <span className="text-label text-ink-muted">{`${docs.length} ${docs.length === 1 ? "document" : "documents"}, ${passages} passages`}</span>
+        </div>
         <Table>
           <thead>
             <tr>
@@ -240,10 +238,8 @@ export function KnowledgeView({ docs, model }: { docs: DocView[]; model: string 
             )}
           </tbody>
         </Table>
-        <CardFooter>
-          <span>Search model: {model}, 1024 dimensions</span>
-        </CardFooter>
-      </Card>
+        <p className="text-label text-ink-muted">Search model: {model}, 1024 dimensions</p>
+      </section>
 
       {adding && <AddDialog kind={adding} onClose={() => setAdding(null)} />}
     </div>

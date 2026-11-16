@@ -42,7 +42,7 @@ export default async function BusinessProfilePage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader title="Profile" />
       <StatusStrip row={row} tz={tz} />
       <BusinessProfileForm initial={initial} />

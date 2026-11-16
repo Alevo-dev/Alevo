@@ -18,7 +18,7 @@ export default async function SettingsPage() {
       <Card className="max-w-2xl">
         <CardHeader
           title="Internal alerts"
-          hint="Where Alevo's own signals go: today the daily speed-to-lead digest (orgs whose p95 first reply missed 60 seconds)."
+          hint="Where Alevo's own signals go: the daily speed-to-lead digest (orgs whose p95 first reply missed 60 seconds) and the Support reports people send from the app's top bar."
         />
         <div className="mt-6">
           <InternalAlertsForm isSet={webhook.isSet} savedAt={webhook.updatedAt ? fmtWhen(webhook.updatedAt) : null} />

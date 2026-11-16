@@ -27,7 +27,7 @@ export function SkeletonPageHeader({ action = false, delay = 0 }: { action?: boo
  *  and with `chart` the row of mini bars the dashboard tiles carry. */
 export function SkeletonStatTile({ delay = 0, hint = true, chart = false }: { delay?: number; hint?: boolean; chart?: boolean }) {
   return (
-    <div className={cx("rounded-sm border border-hairline bg-surface px-3.5 py-3", chart && "relative min-h-[78px]")}>
+    <div className={cx("border-l border-hairline px-4 py-3 first:border-l-0 first:pl-0", chart && "relative min-h-[100px]")}>
       <div>
         <Skeleton className="h-3 w-24 rounded-sm" delay={delay} />
         <Skeleton className="mt-1 h-[34px] w-20 rounded-xs" delay={delay + 40} />

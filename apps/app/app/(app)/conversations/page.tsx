@@ -115,7 +115,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
   const pages = pageCount(total);
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-5">
       <ScreenHeader title="Conversations" sub="One row per person, across every channel">
         <WindowSwitch value={days} />
         <RefreshButton />
@@ -133,19 +133,19 @@ export default async function ConversationsPage({ searchParams }: { searchParams
 
       <TabLinks label="Client groups" tabs={TABS.map((x) => ({ label: x.label, href: tabHref(x.key), count: tabs[x.key], active: x.key === filter }))} />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Key figures">
+      <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-4" aria-label="Key figures">
         <Kpi label="New clients" value={t.clients} delta={deltaOf(t.clients, ov.prior.clients, vs)} series={ov.series.clients} seriesLabels={labels} unit="clients" period={bucket} tone="brand" />
         <Kpi label="Conversations" value={t.conversations} delta={deltaOf(t.conversations, ov.prior.conversations, vs)} series={ov.series.conversations} seriesLabels={labels} unit="conversations" period={bucket} tone="violet" />
         <Kpi label="Booked" value={t.booked} delta={deltaOf(t.booked, ov.prior.booked, vs)} series={ov.series.booked} seriesLabels={labels} unit="booked" period={bucket} tone="success" />
         <Kpi label="Handed to a person" value={t.handed} delta={deltaOf(t.handed, ov.prior.handed, vs)} series={ov.series.handed} seriesLabels={labels} unit="handed off" period={bucket} tone="warning" />
       </section>
 
-      <section className="grid gap-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" aria-label="Clients over time">
-        <Card boxed>
+      <section className="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" aria-label="Clients over time">
+        <Card>
           <CardHeader title={`Clients per ${bucket}`} hint={windowLabel(days)} />
           <TrendChart points={points} unit="clients" kind="area" tone="brand" />
         </Card>
-        <Card boxed>
+        <Card>
           <CardHeader title="Where clients end up" hint={windowLabel(days)} />
           {endsRows.length === 0 ? <p className="text-sm text-ink-muted">No new clients in this window.</p> : <Donut rows={endsRows} unit="clients" />}
         </Card>

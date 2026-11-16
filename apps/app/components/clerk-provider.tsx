@@ -31,7 +31,7 @@ const LIGHT = {
   colorWarning: "#9a5b00",
   colorBackground: "#ffffff",
   colorText: "#0b1224",
-  colorTextSecondary: "#515d80",
+  colorTextSecondary: "#3a4566",
   colorInputBackground: "#f6f8fc",
   colorInputText: "#0b1224",
   colorNeutral: "#0b1224",

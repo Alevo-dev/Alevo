@@ -36,15 +36,15 @@ export function StatusDot({ tone, live = false }: { tone: Tone; live?: boolean }
   );
 }
 
-/** Outlined status pill (boards: ok / warn / bad / blue / vio / off): tone text,
- *  a 1px tone border and an 8% tint. Brand / violet text use the *-ink tokens so
- *  it stays legible in both themes. */
+/** Status pill. Blue / green / yellow / red are the SAME pastel fill with deep text in light and dark
+ *  (a light chip reads on both grounds, so no per-theme shades). Violet and muted stay outlined tints;
+ *  violet text uses the *-ink token so it is legible in both themes. */
 const TINT: Record<Tone, string> = {
-  brand: "border-brand/60 bg-brand/10 text-brand-ink",
+  brand: "border-transparent bg-[#d9edfd] text-[#0f5c99]",
   violet: "border-violet/60 bg-violet/10 text-violet-ink",
-  success: "border-success/55 bg-success/10 text-success",
-  warning: "border-warning/55 bg-warning/10 text-warning",
-  danger: "border-danger/55 bg-danger/10 text-danger",
+  success: "border-transparent bg-[#d3f3e7] text-[#0a6a4e]",
+  warning: "border-transparent bg-[#fdecc2] text-[#7a4a00]",
+  danger: "border-transparent bg-[#fddcda] text-[#a3201a]",
   muted: "border-control bg-transparent text-ink-muted",
 };
 

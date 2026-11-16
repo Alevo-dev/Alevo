@@ -63,7 +63,7 @@ export default async function AgentPage() {
   const minutesUsed = voice && voice.allowance > 0 ? `${voice.used} of ${voice.allowance} minutes used` : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader title="Agent" />
       <StatusStrip row={row} tz={tz} />
       <AgentForm

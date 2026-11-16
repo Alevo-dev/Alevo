@@ -111,25 +111,8 @@ export function Tabs({ options, value, label, className }: { options: NavOption[
   );
 }
 
-/** Secondary pills (`.subtabs`): 13.5px, active = brand-soft with a brand border. */
-export function SubTabs({ options, value, label, className }: { options: NavOption[]; value: string; label?: string; className?: string }) {
-  return (
-    <nav aria-label={label} className={cx("flex flex-wrap gap-1", className)}>
-      {options.map((o) => (
-        <Item
-          key={o.key}
-          o={o}
-          on={o.key === value}
-          className={cx(
-            "flex items-center gap-1.5 rounded-xs border px-2.5 py-1 text-[13.5px] font-[550] transition-colors duration-150 ease-out",
-            FOCUS,
-            o.key === value ? "border-brand/60 bg-brand-soft text-ink" : "border-transparent text-ink-muted hover:bg-raised hover:text-ink",
-          )}
-        />
-      ))}
-    </nav>
-  );
-}
+/** Sub-tabs look exactly like the page tabs: ink text + 2px brand rule; a count circle only when there is a count. */
+export const SubTabs = Tabs;
 
 /** Bordered row of label / value cells (`.info`): sunken ground, 8px radius. */
 export function InfoStrip({ items, className }: { items: { label: string; value: ReactNode }[]; className?: string }) {

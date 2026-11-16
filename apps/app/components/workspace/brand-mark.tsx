@@ -2,7 +2,7 @@ import Image from "next/image";
 import { BRAND_ICONS, LETTER_MARKS, MICROSOFT_SQUARES, SLACK_PIECES, type BrandIcon } from "@/lib/integrations/brand-icons";
 import type { ServiceIcon } from "@/lib/integrations/services";
 
-const MARK: Record<Exclude<ServiceIcon, "alevo" | "calendar" | "google" | "microsoft" | "slack" | "calcom" | keyof typeof LETTER_MARKS>, BrandIcon> = {
+const MARK: Record<Exclude<ServiceIcon, "alevo" | "calendar" | "google" | "microsoft" | "slack" | "calcom" | "autotask" | "zendesk" | "connectwise" | "halopsa" | keyof typeof LETTER_MARKS>, BrandIcon> = {
   calendly: BRAND_ICONS.calendly,
   resend: BRAND_ICONS.resend,
   twilio: BRAND_ICONS.twilio,
@@ -80,6 +80,38 @@ export function BrandMark({ icon, size = "md" }: { icon: ServiceIcon; size?: "sm
       </span>
     );
   }
+  if (icon === "autotask") {
+    // The supplied logo is a full red square: let it fill the tile.
+    return (
+      <span aria-hidden="true" className={`${tile} overflow-hidden`}>
+        <Image src="/integrations/autotask.png" alt="" width={80} height={80} className="size-full object-cover" />
+      </span>
+    );
+  }
+  if (icon === "halopsa") {
+    // A red circle on white: a 2px inset keeps it off the tile edge.
+    return (
+      <span aria-hidden="true" className={`${tile} overflow-hidden p-[2px]`}>
+        <Image src="/integrations/halopsa.jpg" alt="" width={80} height={80} className="size-full object-contain" />
+      </span>
+    );
+  }
+  if (icon === "connectwise") {
+    // The owl on a white square: enlarge it so it fills the tile like the other marks.
+    return (
+      <span aria-hidden="true" className={`${tile} relative overflow-hidden`}>
+        <Image src="/integrations/connectwise.jpg" alt="" width={200} height={200} className="absolute max-w-none" style={{ width: "150%", left: "-25%", top: "-25%" }} />
+      </span>
+    );
+  }
+  if (icon === "zendesk") {
+    // The supplied image is the mark above the wordmark: crop to the mark and centre it in the tile.
+    return (
+      <span aria-hidden="true" className={`${tile} relative overflow-hidden`}>
+        <Image src="/integrations/zendesk.jpg" alt="" width={443} height={451} className="absolute max-w-none" style={{ width: "130%", left: "-14.6%", top: "1.7%", clipPath: "inset(0 0 38% 0)" }} />
+      </span>
+    );
+  }
   if (icon === "calcom") {
     // Square tile like the others. The wordmark is wide, so crop to its ink and fill the tile's width.
     return (
@@ -99,6 +131,14 @@ export function BrandMark({ icon, size = "md" }: { icon: ServiceIcon; size?: "sm
     );
   }
   const mark = MARK[icon as keyof typeof MARK];
+  // A tool with no mark yet gets a neutral lettered tile, never a crash.
+  if (!mark) {
+    return (
+      <span aria-hidden="true" className={tile}>
+        <span className="font-display text-sm font-bold leading-none text-ink-muted">{icon.slice(0, 1).toUpperCase()}</span>
+      </span>
+    );
+  }
   return (
     <span aria-hidden="true" className={`${tile} ${sm ? "p-[5px]" : "p-2"}`}>
       <Glyph path={mark.path} fill={`#${mark.hex}`} className="size-full" />

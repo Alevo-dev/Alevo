@@ -25,7 +25,7 @@ const NOTE = {
 export function UsageMeter({ rows, plan, month }: { rows: UsageRow[]; plan: string | null; month: string }) {
   const metered = rows.filter((r) => r.allowance > 0);
   return (
-    <Card boxed>
+    <Card>
       <CardHeader
         title="Plan usage"
         hint={`${MONTH.format(new Date(`${month}T00:00:00Z`))}${plan ? `, ${plan} plan` : ""}`}

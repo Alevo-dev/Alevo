@@ -30,7 +30,7 @@ export function SpeedCard({
 }) {
   const level = speedLevel(p95);
   return (
-    <Card boxed>
+    <Card>
       <CardHeader title="Speed to lead" hint="Lead received to first reply" />
       <div className="flex items-end gap-6">
         <div>

@@ -57,7 +57,7 @@ export default async function KnowledgePage() {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader title="Knowledge" />
       <StatusStrip row={profile} tz={tz} />
       <KnowledgeView docs={docs} model={EMBEDDING_MODEL} />

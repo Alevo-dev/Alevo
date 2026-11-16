@@ -22,7 +22,8 @@ const nextConfig: NextConfig = {
   },
   // `forbidden()` / `unauthorized()` → app/(app)/forbidden.tsx + unauthorized.tsx
   // (lib/auth-interrupts.ts maps @alevo/auth errors onto them).
-  experimental: { authInterrupts: true },
+  // The Support dialog posts up to three compressed screenshots through a server action.
+  experimental: { authInterrupts: true, serverActions: { bodySizeLimit: "8mb" } },
   // "Settings" became "Workspace" (2026-10-20); keep old links and bookmarks alive.
   async redirects() {
     return [

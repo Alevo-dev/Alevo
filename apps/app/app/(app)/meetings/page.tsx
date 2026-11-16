@@ -8,7 +8,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { cursorHref, Pager } from "@/components/ui/pager";
 import { Pill } from "@/components/ui/pill";
-import { StatTile } from "@/components/ui/stat-tile";
+import { Kpi } from "@/components/conversations/kit";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { bookingSnapshot, connectedBookingTools, isBookingTool } from "@/lib/booking/connected";
 import { readWindow } from "@/lib/dashboard/window-pref";
@@ -180,7 +180,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
   const nextName = next ? displayName(next.firstName, next.lastName, next.email) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader title="Meetings" description={`Booked by the agent, with the outcome your reps record. Times in ${tzLabel(tz)}`}>
         <WindowSwitch value={days} />
       </PageHeader>
@@ -236,11 +236,11 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
         </div>
       </dl>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Meeting figures">
+      <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-4" aria-label="Meeting figures">
         {tiles.map((t) => {
           const d = deltaView(sum(series[t.key]), was[t.key], t.good, versus);
           return (
-            <StatTile
+            <Kpi
               key={t.key}
               label={t.label}
               value={sum(series[t.key])}
@@ -249,26 +249,25 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Pro
               seriesLabels={labels}
               unit="meetings"
               period={bucket}
-              delta={d.favourable ? d.text : undefined}
-              hint={d.favourable ? undefined : d.text}
+              delta={{ text: d.text, tone: d.favourable ? "success" : "muted" }}
             />
           );
         })}
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Card boxed>
+      <section className="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Card>
           <CardHeader title={`Booked per ${bucket}`} hint={days === 1 ? "Today" : `Last ${days} days`} />
           <TrendChart points={points} unit="meetings" kind="columns" tone="brand" width={640} />
         </Card>
-        <Card boxed>
+        <Card>
           <CardHeader title="Booked by rep" hint={days === 1 ? "Today" : `Last ${days} days`} />
           {repRows.length === 0 ? <p className="text-sm text-ink-muted">No meetings booked in this window.</p> : <Donut rows={repRows} unit="meetings" />}
         </Card>
       </section>
 
-      <Card boxed padding="none">
-        <div className="flex flex-wrap items-center gap-x-2 border-b border-hairline bg-sunken px-3.5 py-[9px]">
+      <Card padding="none">
+        <div className="flex flex-wrap items-center gap-x-2 border-b border-hairline pb-[9px]">
           <h2 className="font-display text-[14px] font-semibold leading-5 text-ink">Meetings</h2>
           <p className="text-label text-ink-muted">Latest start first, {PAGE_SIZE} per page.</p>
         </div>

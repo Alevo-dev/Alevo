@@ -85,6 +85,10 @@
   .skeleton {
     position: relative;
     overflow: hidden;
+    /* Light mode: a clear grey-blue block (raised is nearly the canvas colour); dark keeps raised. */
+    background: color-mix(in oklab, var(--ds-ink) 11%, var(--ds-surface));
+  }
+  .dark .skeleton {
     background: var(--ds-surface-raised);
   }
   .skeleton::after {
@@ -95,11 +99,14 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      color-mix(in oklab, var(--ds-ink) 7%, transparent) 50%,
+      color-mix(in oklab, var(--ds-surface) 70%, transparent) 50%,
       transparent 100%
     );
     animation: ds-shimmer 1.6s ease-in-out infinite;
     animation-delay: inherit;
+  }
+  .dark .skeleton::after {
+    background: linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--ds-ink) 7%, transparent) 50%, transparent 100%);
   }
   @media (prefers-reduced-motion: reduce) {
     .animate-rise,

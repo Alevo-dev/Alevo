@@ -4,7 +4,9 @@ import { ShieldCheck } from "lucide-react";
 import type { UsageRow } from "@alevo/db";
 import { AgentStatus } from "./agent-status";
 import { MobileMenu } from "./mobile-menu";
+import { NotificationBell } from "./notification-bell";
 import { QuickSearch } from "./quick-search";
+import { SupportButton } from "./support/support-button";
 import { UserMenu } from "./user-menu";
 import { adminUrl } from "@/lib/admin-url";
 
@@ -61,6 +63,8 @@ export function TopBar({
             <span className="font-mono">{used}%</span>
           </Link>
         )}
+        <SupportButton />
+        <NotificationBell />
         <UserMenu />
       </div>
       </div>

@@ -236,7 +236,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const noShow = outcomes?.noShow ?? 0;
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-5">
       <AutoRefresh />
       <PageHeader title="Dashboard">
         <WindowSwitch value={days} />
@@ -268,23 +268,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {checklist && <GettingStarted items={checklist} />}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Key figures">
+      <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-4" aria-label="Key figures">
         <Kpi label="Leads" value={totals.leads} delta={deltaOf(totals.leads, prior?.leads ?? 0, vs)} series={series.leads} seriesLabels={labels} unit="leads" period={bucket} tone="brand" />
         <Kpi label="Qualified" value={totals.qualified} delta={deltaOf(totals.qualified, prior?.qualified ?? 0, vs)} series={series.qualified} seriesLabels={labels} unit="qualified" period={bucket} tone="violet" />
         <Kpi label="Meetings booked" value={totals.meetings} delta={deltaOf(totals.meetings, priorMeetings?.n ?? 0, vs)} series={series.meetings} seriesLabels={labels} unit="meetings" period={bucket} tone="success" />
         <Kpi label="Handed to a person" value={totals.handed} delta={deltaOf(totals.handed, prior?.handed ?? 0, vs)} series={series.handed} seriesLabels={labels} unit="handed off" period={bucket} tone="warning" />
       </section>
 
-      <section className="grid gap-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" aria-label="Leads and response time">
-        <Card boxed>
+      <section className="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" aria-label="Leads and response time">
+        <Card>
           <CardHeader title={`Leads ${per}`} hint={span} />
           <TrendChart points={points(series.leads)} unit="leads" kind="area" tone="brand" />
         </Card>
         <SpeedCard p50={speed?.p50 ?? null} p95={speed?.p95 ?? null} replied={speed?.replied ?? 0} excluded={skipped?.n ?? 0} />
       </section>
 
-      <section className="grid gap-3.5 lg:grid-cols-3" aria-label="Meetings, sources and usage">
-        <Card boxed padding="none">
+      <section className="grid gap-x-8 gap-y-5 lg:grid-cols-3" aria-label="Meetings, sources and usage">
+        <Card padding="none">
           <CardHeader
             title="Meetings booked"
             hint={`${per[0]!.toUpperCase()}${per.slice(1)}`}
@@ -301,16 +301,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               )
             }
           />
-          <div className="p-3.5">
+          <div className="py-3.5">
             <TrendChart points={points(series.meetings)} unit="meetings" kind="columns" tone="violet" width={400} />
           </div>
-          <div className="flex items-center gap-2 border-t border-hairline bg-sunken px-3.5 py-[7px] text-[13px] text-ink-muted">
+          <div className="flex items-center gap-2 border-t border-hairline pt-[9px] text-[13px] text-ink-muted">
             <span>
               Showed {showed} · No-show {noShow}
             </span>
           </div>
         </Card>
-        <Card boxed>
+        <Card>
           <CardHeader title="Where leads come from" hint={span} />
           {byChannel.length === 0 ? (
             <p className="text-sm text-ink-muted">No new leads in this window.</p>

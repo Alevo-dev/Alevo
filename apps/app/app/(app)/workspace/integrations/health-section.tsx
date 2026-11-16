@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { cx } from "@/lib/cx";
-import { Card, CardHeader } from "@/components/ui/card";
 import type { ConnectionHealth, ProviderHealth } from "@/lib/integrations/health";
 
 const W = 640;
@@ -53,13 +52,16 @@ export function HealthSection({ health }: { health: ConnectionHealth }) {
   const ticks = [0, 1, 2, 3].map((i) => ({ y: YT + (i * (YB - YT)) / 3, label: `${Math.round(100 - (i * (100 - lo)) / 3)}%` }));
 
   return (
-    <Card boxed as="section" padding="none" aria-label="Connection health">
-      <CardHeader title="Connection health" hint="Delivery rate per tool, last 24 hours. Select a tool to isolate it; select it again to show all." />
+    <section aria-label="Connection health" className="space-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <h2 className="text-heading font-medium text-ink">Connection health</h2>
+        <span className="text-label text-ink-muted">Delivery rate per tool, last 24 hours. Select a tool to isolate it; select it again to show all.</span>
+      </div>
 
       {health.providers.length === 0 ? (
-        <p className="p-3.5 text-ink-muted">Nothing to show yet. Each tool you connect appears here, and fills in as it sends webhooks or we call it.</p>
+        <p className="text-ink-muted">Nothing to show yet. Each tool you connect appears here, and fills in as it sends webhooks or we call it.</p>
       ) : (
-        <div className="p-3.5">
+        <div>
           <div className="grid items-center gap-7 md:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
             <div>
               <div className="text-ink-muted">{chosen ? chosen.name : "All tools"}</div>
@@ -141,6 +143,6 @@ export function HealthSection({ health }: { health: ConnectionHealth }) {
           </div>
         </div>
       )}
-    </Card>
+    </section>
   );
 }

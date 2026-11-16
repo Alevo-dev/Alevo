@@ -75,7 +75,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <WindowSwitch value={days} windows={WINDOWS} />
       </PageHeader>
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-5" aria-label="Platform totals">
+      <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-5" aria-label="Platform totals">
         <StatTile label="Leads in" value={totals.leads} delta={`Last ${days} days`} series={series.leads} unit="leads" period={days >= 90 ? "week" : "day"} featured />
         <StatTile label="Qualified" value={totals.qualified} delta={totals.leads ? `${pct(totals.qualified, totals.leads)} of leads` : "Booked or handed off"} series={series.qualified} unit="qualified" period={days >= 90 ? "week" : "day"} tone="violet" />
         <StatTile label="Meetings booked" value={totals.meetings} delta={totals.leads ? `${pct(totals.meetings, totals.leads)} conversion` : `Last ${days} days`} series={series.meetings} unit="meetings" period={days >= 90 ? "week" : "day"} tone="success" />
@@ -83,7 +83,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatTile label="Over 60s" value={slow} hint={slow ? "Orgs replying slower than target" : "Every org on target"} tone="danger" />
       </section>
 
-      <Card boxed padding="none">
+      <Card padding="none">
         <CardHeader
           title="Funnel per organization"
           hint={`What each tenant's dashboard shows for the last ${days} days. Speed to lead is the p95 first reply against the 60-second promise.`}
@@ -144,8 +144,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         {moreOrgs && <ViewAll href="/organizations">All organizations</ViewAll>}
       </Card>
 
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" aria-label="Organizations and activity">
-        <Card boxed padding="none">
+      <section className="grid gap-x-8 gap-y-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" aria-label="Organizations and activity">
+        <Card padding="none">
           <CardHeader title="Organizations" aside={`${counts.total} total`} />
           <OrgsTable rows={newest.rows} empty="No organizations yet." />
           {newest.older && (
@@ -155,7 +155,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </Card>
 
-        <Card boxed padding="none">
+        <Card padding="none">
           <CardHeader title="Recent activity" hint="The audit log across every org, newest first." />
           <ActivityTable rows={activity.rows} empty="No activity yet." />
           {activity.older && (

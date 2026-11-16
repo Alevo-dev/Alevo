@@ -26,8 +26,6 @@ export const BRAND_ICONS = {
 /** Marks Simple Icons doesn't carry: a lettered tile in the brand's colour until
  *  the real logo is dropped in. */
 export const LETTER_MARKS = {
-  connectwise: { text: "CW", fill: "#1D3F6E" },
-  halopsa: { text: "H", fill: "#00A99D" },
   facebook: { text: "f", fill: "#1877F2" },
 } as const;
 

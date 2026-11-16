@@ -23,6 +23,9 @@ type Props = {
   inline?: boolean;
   disabled?: boolean;
   size?: "sm" | "md";
+  /** The board menu (time window): a 220px menu, a gradient chosen row, shortcuts as key caps, a muted `prefix` inside the trigger. */
+  variant?: "menu";
+  prefix?: string;
   className?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
@@ -50,6 +53,8 @@ export function Select({
   inline,
   disabled,
   size = "md",
+  variant,
+  prefix,
   className,
   ...aria
 }: Props) {
@@ -193,7 +198,10 @@ export function Select({
         )}
         {...aria}
       >
-        <span className={cx("truncate", !selected && "text-ink-muted")}>{selected?.label ?? placeholder}</span>
+        <span className={cx("truncate", !selected && "text-ink-muted")}>
+          {prefix && <span className="mr-1.5 font-medium text-ink-muted">{prefix}</span>}
+          <span className={cx(variant && "font-semibold text-ink")}>{selected?.label ?? placeholder}</span>
+        </span>
         <ChevronDown
           className={cx("size-4 shrink-0 text-ink-muted transition-transform duration-150 ease-out motion-reduce:transition-none", open && "rotate-180")}
           strokeWidth={1.75}
@@ -213,7 +221,7 @@ export function Select({
               top: pos.top,
               left: pos.left,
               right: pos.right,
-              minWidth: pos.width,
+              minWidth: Math.max(pos.width, variant ? 220 : 0),
               maxHeight: MENU_MAX,
               transform: pos.up ? "translateY(-100%)" : undefined,
             }}
@@ -232,11 +240,20 @@ export function Select({
                   onClick={() => choose(o.value)}
                   className={cx(
                     "flex h-[34px] cursor-pointer items-center justify-between gap-3 whitespace-nowrap rounded-xs px-2.5 text-sm text-ink",
-                    isSelected ? "bg-brand-soft font-semibold ring-1 ring-inset ring-brand/50" : i === active && "bg-raised",
+                    isSelected
+                      ? variant
+                        ? "bg-[linear-gradient(100deg,color-mix(in_srgb,var(--color-brand-sky)_40%,transparent),color-mix(in_srgb,var(--color-violet-light)_14%,transparent))] font-semibold ring-1 ring-inset ring-[color-mix(in_srgb,var(--color-brand-sky)_60%,transparent)] dark:bg-[linear-gradient(100deg,color-mix(in_srgb,var(--color-brand-sky)_36%,transparent),color-mix(in_srgb,var(--color-violet-light)_40%,transparent))] dark:ring-[color-mix(in_srgb,var(--color-violet-light)_45%,transparent)]"
+                        : "bg-brand-soft font-semibold ring-1 ring-inset ring-brand/50"
+                      : i === active && "bg-raised",
                   )}
                 >
                   <span className="flex-1">{o.label}</span>
-                  {o.hint && <span className="text-label text-ink-muted">{o.hint}</span>}
+                  {o.hint &&
+                    (variant ? (
+                      <kbd className={cx("rounded-[4px] border bg-black px-1.5 font-mono text-xs font-bold leading-[18px] text-white", isSelected ? "border-white/60" : "border-control")}>{o.hint}</kbd>
+                    ) : (
+                      <span className="text-label text-ink-muted">{o.hint}</span>
+                    ))}
                 </li>
               );
             })}
