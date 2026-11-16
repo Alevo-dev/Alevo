@@ -17,10 +17,8 @@ export function SetupCard({ orgId, clerkOrgId, items }: { orgId: string; clerkOr
   const done = items.filter((i) => i.done).length;
   return (
     <Card padding="none">
-      <div className="px-6 pt-6">
-        <CardHeader title="Setup" hint={isReady(items) ? "Ready — every item is in place." : `${done} of ${items.length} done`} />
-      </div>
-      <ul className="mt-4 divide-y divide-hairline">
+      <CardHeader title="Setup" hint={isReady(items) ? "Ready — every item is in place." : `${done} of ${items.length} done`} />
+      <ul className="divide-y divide-hairline">
         {items.map((item) => (
           <li key={item.key} className="flex flex-wrap items-center gap-3 px-6 py-3">
             <StatusDot tone={item.done ? "success" : "warning"} />

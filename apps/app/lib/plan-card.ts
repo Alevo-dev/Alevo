@@ -4,7 +4,7 @@ import { withOrg } from "@alevo/auth";
 
 export type PlanCard = { name: string; renews: string | null } | null;
 
-/** The active org's plan for Settings (explicitly scoped to the active org). */
+/** The active org's plan for Preferences (explicitly scoped to the active org). */
 export async function loadPlan(): Promise<PlanCard> {
   const [row] = await withOrg((tx) =>
     tx

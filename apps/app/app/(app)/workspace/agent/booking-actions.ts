@@ -33,7 +33,7 @@ function length(formData: FormData, key: string, fallback: number): number {
 function readValues(formData: FormData): BookingValues {
   const tool = String(formData.get("tool") ?? "").trim();
   return {
-    enabled: Boolean(formData.get("enabled")),
+    enabled: Boolean(formData.get("bookingEnabled")),
     tool: isBookingTool(tool) ? tool : null,
     bookingLengthMin: length(formData, "bookingLengthMin", 30),
     bookingHoursStart: hour(formData, "bookingHoursStart", 9),

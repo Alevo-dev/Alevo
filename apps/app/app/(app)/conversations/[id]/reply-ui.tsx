@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { FieldError, Label, Textarea } from "@/components/ui/field";
@@ -39,22 +40,23 @@ export function ReplyAsContact({
       ref={formRef}
       action={action}
       noValidate
-      className="mt-auto flex flex-col gap-3 border-t border-hairline pt-6"
+      className="flex flex-col gap-2 border-t border-hairline bg-sunken px-3.5 py-3"
     >
       <input type="hidden" name="conversationId" value={conversationId} />
-      <Label htmlFor="reply-body">Reply as the contact (test)</Label>
+      <Label htmlFor="reply-body">Reply as contact (testing)</Label>
       <Textarea
         id="reply-body"
         name="body"
-        rows={3}
+        rows={2}
         defaultValue={state.value ?? ""}
         invalid={!!bodyError}
-        placeholder="Type what the contact would say. It's recorded as an inbound message."
+        placeholder="Write a message as the contact. It fires the same event as a real reply."
       />
       <FieldError>{bodyError}</FieldError>
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {state.error && <p className="text-sm text-danger">{state.error}</p>}
-        <Button type="submit" variant="primary" loading={pending}>
+        <Button type="submit" variant="primary" size="sm" loading={pending}>
+          {!pending && <Send className="size-[15px]" strokeWidth={1.75} aria-hidden="true" />}
           {pending ? "Sending…" : "Send as contact"}
         </Button>
       </div>

@@ -10,6 +10,7 @@
     "./confirm-dialog": "./src/confirm-dialog.tsx",
     "./chart-tooltip": "./src/chart-tooltip.tsx",
     "./count-up": "./src/count-up.tsx",
+    "./nav-kit": "./src/nav-kit.tsx",
     "./mini-bars": "./src/mini-bars.tsx",
     "./cx": "./src/cx.ts",
     "./dialog": "./src/dialog.tsx",

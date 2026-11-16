@@ -1,4 +1,4 @@
-/** Page title row: title + one-line context on the left, actions on the right. */
+/** Page title row: title + one-line context on the same row, actions pushed right. */
 export function PageHeader({
   title,
   description,
@@ -9,12 +9,10 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="text-title font-semibold text-ink">{title}</h1>
-        {description && <div className="mt-2 flex items-center gap-2 text-sm text-ink-muted">{description}</div>}
-      </div>
-      {children && <div className="flex flex-wrap items-center gap-3">{children}</div>}
+    <header className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-3 pt-2">
+      <h1 className="font-display text-[22px] font-semibold leading-7 tracking-[-0.01em] text-ink">{title}</h1>
+      {description && <div className="flex min-w-0 items-center gap-2 text-[13.5px] text-ink-muted">{description}</div>}
+      {children && <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>}
     </header>
   );
 }

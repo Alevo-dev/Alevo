@@ -1,25 +1,20 @@
 "use client";
 
-import { Settings } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { FieldError } from "@/components/ui/field";
+import { Pill } from "@/components/ui/pill";
 import { Select } from "@/components/ui/select";
-import { SettingRow } from "@/components/ui/setting-row";
 import { Switch } from "@/components/ui/switch";
-import { LeaveDialog, UnsavedBar, useUnsavedForm } from "@/components/ui/unsaved-changes";
+import { PanelRow } from "@/components/workspace/panel-row";
 import { BrandMark } from "@/components/workspace/brand-mark";
 import type { ConnectedTool, BookingTool } from "@/lib/booking/connected";
 import type { ServiceIcon } from "@/lib/integrations/services";
 import { cx } from "@/lib/cx";
 import { JUMP } from "@/lib/jump";
-import { useActionToast } from "@/lib/ui/use-action-toast";
+import type { BookingState, BookingValues } from "./booking-actions";
 import { HourRange, LENGTH_OPTIONS } from "./agent-ui";
-import { saveBookingSettings, type BookingState, type BookingValues } from "./booking-actions";
 
-const INITIAL: BookingState = {};
 const ICON: Record<BookingTool, ServiceIcon> = { calcom: "calcom", google: "google", m365: "microsoft", calendly: "calendly" };
 const HOW: Record<BookingTool, string> = {
   calcom: "Cal.com's own availability rules apply.",
@@ -28,147 +23,109 @@ const HOW: Record<BookingTool, string> = {
   calendly: "The agent sends your scheduling link for the lead to self-book.",
 };
 const INTEGRATIONS = JUMP.integrationsBooking;
+const LINK = "rounded-xs font-[550] text-link outline-none hover:underline focus-visible:[box-shadow:var(--ds-focus-ring)]";
 
-type Props = { initial: BookingValues; connected: ConnectedTool[] };
+type Props = { initial: BookingValues; connected: ConnectedTool[]; state?: BookingState; touch: () => void };
 
 /**
- * Booking behaviour: a switch, the connected tool the agent books through, and
- * only that tool's settings beneath. Connecting a tool happens under
- * Integrations; this section only offers what is already connected.
+ * The Booking panel of the Agent form: a switch, the connected tool the agent books through,
+ * and only that tool's settings beneath. Connecting a tool happens under Integrations; this
+ * only offers what is already connected. Saved by the page's one Save.
  */
-export function BookingForm({ initial, connected }: Props) {
-  const [state, action, pending] = useActionState(saveBookingSettings, INITIAL);
-  useActionToast(state, "Booking settings saved.");
-  const { formRef, formKey, dirty, recheck, touch, discard, guard } = useUnsavedForm(state);
-
+export function BookingPanel({ initial, connected, state, touch }: Props) {
   const none = connected.length === 0;
   const [on, setOn] = useState(initial.enabled && !none);
   const [tool, setTool] = useState<BookingTool | null>(initial.tool);
-  const discardAll = () => {
-    setOn(initial.enabled && !none);
-    setTool(initial.tool);
-    discard();
-  };
 
-  const e = (key: keyof NonNullable<BookingState["errors"]>) => state.errors?.[key];
-  const v = <K extends keyof BookingValues>(key: K): BookingValues[K] => (state.values?.[key] ?? initial[key]) as BookingValues[K];
+  const e = (key: keyof NonNullable<BookingState["errors"]>) => state?.errors?.[key];
+  const v = <K extends keyof BookingValues>(key: K): BookingValues[K] => (state?.values?.[key] ?? initial[key]) as BookingValues[K];
 
   // The tool in play: the saved/selected one if it is still connected, else the only (or first) connected one.
   const current = connected.find((c) => c.tool === tool) ?? connected[0] ?? null;
   const calendar = current?.tool === "google" || current?.tool === "m365";
 
   return (
-    <form key={formKey} ref={formRef} action={action} noValidate onInput={recheck} onChange={recheck} className="space-y-6">
-      <Card id="booking">
-        <CardHeader
-          title="Booking"
-          hint={
-            none
-              ? "When on, the agent offers times and books meetings through a connected tool. Nothing is connected yet."
-              : "When on, the agent offers times and books meetings through the connected tool. Off means qualified leads are handed to a person to book."
-          }
-          control={<Switch id="bookingEnabled" name="enabled" checked={on} disabled={none} onChange={(ev) => setOn(ev.target.checked)} />}
-          controlId="bookingEnabled"
-        />
-        <FieldError>{e("tool")}</FieldError>
+    <Card id="booking" padding="none">
+      <CardHeader title="Booking" />
+      <PanelRow
+        label="Book meetings"
+        htmlFor="bookingEnabled"
+        hint={none ? "Nothing is connected yet" : "Off means qualified leads are handed to a person to book"}
+        error={e("tool")}
+      >
+        <Switch id="bookingEnabled" name="bookingEnabled" checked={on} disabled={none} onChange={(ev) => setOn(ev.target.checked)} />
+        {none && <Pill tone="muted">Not connected</Pill>}
+      </PanelRow>
 
+      <PanelRow label="Book into" hint="Each tool is connected under Integrations">
         {none && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-4">
-            <p className="text-sm text-ink-muted">Connect Cal.com, Google Calendar, Microsoft 365 or Calendly under Integrations first.</p>
-            <Link href={INTEGRATIONS} className={buttonClass("primary", "sm")}>
+          <>
+            <span className="text-ink-muted">Cal.com, Google Calendar, Microsoft 365 or Calendly</span>
+            <Link href={INTEGRATIONS} className={LINK}>
               Connect a booking tool
             </Link>
-          </div>
+          </>
         )}
-
-        {/* The connected tool stays visible with the switch off, so you can see what
-            the agent would book through before turning it on. */}
-        {current && (connected.length === 1 || !on) && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-md border border-hairline p-4">
+        {current && connected.length === 1 && (
+          <>
             {on && <input type="hidden" name="tool" value={current.tool} />}
-            <div className="flex min-w-0 items-center gap-3">
-              <BrandMark icon={ICON[current.tool]} />
-              <p className="min-w-0 text-sm">
-                <span className="font-semibold text-ink">
-                  {on ? "Books through" : "Connected:"} {current.label}
+            <BrandMark icon={ICON[current.tool]} />
+            <span>
+              <span className="font-[550] text-ink">{current.label}</span>
+              {current.detail && <span className="text-ink-muted">, {current.detail}</span>}
+              <span className="block text-label text-ink-muted">{HOW[current.tool]}</span>
+            </span>
+          </>
+        )}
+        {current && connected.length > 1 && (
+          <div role="radiogroup" aria-label="Book into" className="flex flex-wrap gap-2">
+            {connected.map((c) => (
+              <label key={c.tool} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="tool"
+                  value={c.tool}
+                  checked={current.tool === c.tool}
+                  disabled={!on}
+                  onChange={() => setTool(c.tool)}
+                  className="peer sr-only"
+                />
+                <span
+                  className={cx(
+                    "inline-flex h-8 items-center gap-2 rounded-xs border px-2.5 text-[13.5px] font-[550] transition-colors duration-150 ease-out peer-focus-visible:[box-shadow:var(--ds-focus-ring)] peer-disabled:opacity-50",
+                    current.tool === c.tool ? "border-brand bg-brand-soft text-ink" : "border-control text-ink-muted hover:bg-raised hover:text-ink",
+                  )}
+                >
+                  {c.label}
                 </span>
-                {current.detail && <span className="text-ink-muted">, {current.detail}</span>}
-                <span className="block text-label text-ink-muted">
-                  {on
-                    ? HOW[current.tool]
-                    : connected.length > 1
-                      ? `Also connected: ${connected.filter((c) => c.tool !== current.tool).map((c) => c.label).join(", ")}. Turn booking on to pick one.`
-                      : `Turn booking on and the agent books through it. ${HOW[current.tool]}`}
-                </span>
-              </p>
-            </div>
-            <Link href={INTEGRATIONS} className="text-label font-semibold text-link hover:underline">
-              {on ? "Change" : <><Settings className="size-4" strokeWidth={1.75} aria-hidden="true" /><span className="sr-only">Booking settings</span></>}
-            </Link>
+              </label>
+            ))}
           </div>
         )}
-
-        {on && current && connected.length > 1 && (
-          <fieldset className="mt-6 space-y-3">
-            <legend className="text-sm font-semibold text-ink">Books through</legend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {connected.map((c) => (
-                <label key={c.tool} className="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="tool"
-                    value={c.tool}
-                    checked={current.tool === c.tool}
-                    onChange={() => setTool(c.tool)}
-                    className="peer sr-only"
-                  />
-                  <span
-                    className={cx(
-                      "flex items-start gap-3 rounded-md border p-4 peer-focus-visible:ring-2 peer-focus-visible:ring-brand",
-                      current.tool === c.tool ? "border-brand bg-brand-soft" : "border-control hover:bg-raised",
-                    )}
-                  >
-                    <BrandMark icon={ICON[c.tool]} />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-ink">{c.label}</span>
-                      <span className="mt-1 block text-label text-ink-muted">{c.detail ?? HOW[c.tool]}</span>
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            <p className="text-label text-ink-muted">
-              Only connected tools are listed.{" "}
-              <Link href={INTEGRATIONS} className="font-semibold text-link hover:underline">
-                Connection settings
-              </Link>
-            </p>
-          </fieldset>
+        {current && (
+          <Link href={INTEGRATIONS} className={LINK}>
+            Manage calendars
+          </Link>
         )}
+      </PanelRow>
 
-        {on && calendar && (
-          <div className="mt-6 border-t border-hairline pt-5">
-            <SettingRow label="Meeting length" htmlFor="bookingLengthMin">
-              <Select id="bookingLengthMin" name="bookingLengthMin" options={LENGTH_OPTIONS} defaultValue={String(v("bookingLengthMin"))} onChange={touch} />
-            </SettingRow>
-            <SettingRow label="Working hours" hint="Earliest and latest start for a booked meeting, in the agent's default timezone." error={e("bookingHours")}>
-              <HourRange
-                startId="bookingHoursStart"
-                endId="bookingHoursEnd"
-                startValue={v("bookingHoursStart")}
-                endValue={v("bookingHoursEnd")}
-                invalid={!!e("bookingHours")}
-                onChange={touch}
-              />
-            </SettingRow>
-          </div>
-        )}
-
-        <FieldError>{state.error}</FieldError>
-      </Card>
-
-      <UnsavedBar visible={dirty} pending={pending} error={state.error} onDiscard={discardAll} />
-      <LeaveDialog open={guard.pendingHref !== null} what="your booking changes" onStay={guard.stay} onLeave={guard.leave} />
-    </form>
+      {on && calendar && (
+        <>
+          <PanelRow label="Meeting length" htmlFor="bookingLengthMin" hint="Only for Google and Microsoft 365">
+            <Select id="bookingLengthMin" name="bookingLengthMin" inline className="min-w-36" options={LENGTH_OPTIONS} defaultValue={String(v("bookingLengthMin"))} onChange={touch} />
+          </PanelRow>
+          <PanelRow label="Working hours" hint="Earliest and latest start, in the default timezone" error={e("bookingHours")}>
+            <HourRange
+              startId="bookingHoursStart"
+              endId="bookingHoursEnd"
+              startValue={v("bookingHoursStart")}
+              endValue={v("bookingHoursEnd")}
+              invalid={!!e("bookingHours")}
+              onChange={touch}
+            />
+          </PanelRow>
+        </>
+      )}
+    </Card>
   );
 }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
-import { isDeclineKey, memberships, orgInvitations, organizations, recordAudit, setSetupDecline, withService } from "@alevo/db";
+import { isDeclineKey, memberships, orgInvitations, organizations, recordAudit, setSetupDecline, users, withService } from "@alevo/db";
 import { addMemberToOrg, ClerkRejectedError, createOrganizationAs, inviteToOrg, removeFromOrg, requirePlatformAdmin, revokeOrgInvitation } from "@alevo/auth";
 import { activePlans } from "@/lib/plans";
 import { setOrgPlan } from "@/lib/subscriptions";
@@ -144,6 +144,35 @@ export async function joinAsSupport(_prev: OrgActionState, formData: FormData): 
       .onConflictDoUpdate({ target: [memberships.orgId, memberships.userId], set: { role: "admin", support: true, clerkMembershipId, updatedAt: new Date() } }),
   );
   await recordAudit({ orgId: org.id, actorUserId: me.id, action: "support.joined" });
+  });
+}
+
+/**
+ * One platform admin's standing in one workspace: "Alevo support" (admin role, no seat)
+ * or a real "Owner" (counts as a seat, receives owner emails). The choice is per workspace
+ * and survives the Clerk webhook mirror. Only platform admins' own rows can be switched.
+ */
+export async function setMemberMode(_prev: OrgActionState, formData: FormData): Promise<OrgActionState> {
+  return orgAction(formData, async (me, org, formData) => {
+  const userId = String(formData.get("userId") ?? "");
+  const owner = formData.get("mode") === "owner";
+  const [target] = await withService((tx) =>
+    tx
+      .select({ id: users.id, isPlatformAdmin: users.isPlatformAdmin })
+      .from(memberships)
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, userId)))
+      .limit(1),
+  );
+  if (!target) throw new Error("That person is not a member of this workspace.");
+  if (!target.isPlatformAdmin) throw new Error("Only platform admins can switch between support and owner.");
+  await withService((tx) =>
+    tx
+      .update(memberships)
+      .set({ role: owner ? "owner" : "admin", support: !owner, updatedAt: new Date() })
+      .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, userId))),
+  );
+  await recordAudit({ orgId: org.id, actorUserId: me.id, action: owner ? "membership.made_owner" : "membership.made_support", target: userId });
   });
 }
 

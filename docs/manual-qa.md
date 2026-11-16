@@ -298,6 +298,14 @@ https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1). Hand-check each screen at de
 - [x] **Cancel** asks "Cancel the meeting with â€¦?" first; **Keep meeting** closes without change; Escape / backdrop click also close.
 - [x] Confirmation dialogs also guard: Members â†’ Remove / Revoke, Knowledge â†’ Delete, Integrations â†’ Clear, Qualifier â†’ Disconnect calendar.
 
+### Meetings, board layout (2026-11-13)
+- [ ] "Last:" window menu (Today / 7 / 30 / 90 days, Alt+1..4) changes the four tiles, their bars and the chart; the list below does not change.
+- [ ] Info strip shows show rate (or "Nothing marked yet"), next meeting, and the booking calendar with a Connected pill; the gear opens Integrations.
+- [ ] Tiles show a green delta when the move is good (more booked, fewer no-shows) and a plain grey line otherwise.
+- [ ] Outcome is a Pending / Showed / No-show segmented control; picking saves and toasts; Converted toggles with its check.
+- [ ] Reschedule and Cancel are icon buttons with names for screen readers; Cancel still asks first, Reschedule still opens the dialog.
+- [ ] Preferences (`/preferences`): Appearance and Plan cards at 760px, Compare plans has an arrow.
+- [ ] Sign in / Create account: unchanged flow; the "or" divider appears once.
 ## Settings
 - [x] **Qualifier**: Booking calendar card shows a Connected / Not connected pill; the form is split into cards (The agent â†’ toggle; Your business; Follow-up; Channels and booking; Calendar booking) with label-left / control-right rows; per-field errors render under the control; **Save changes** bottom-right.
 - [x] **Qualifier â€“ save bar**: no Save button until you change something; then a **floating "Unsaved changes" bar** slides in bottom-right with Discard + Save changes. Discard puts every field (dropdowns included) back to the saved values and hides the bar. Save shows the toast and hides the bar. A form-level error shows inside the bar.
@@ -1249,8 +1257,8 @@ Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voi
 - [ ] Open `/workspace/agent#booking` straight in the address bar (a full page load): the page scrolls to the Booking card and it flashes.
 - [ ] With "reduce motion" on in your system settings the section is still scrolled to, just without the flash.
 
-## Settings tab and gear icons
-- [ ] The sidebar has no plan card and no theme switch. **Settings** (gear) sits at the bottom, above "Agent: Online", and opens `/preferences` with an **Appearance** card (Light / Dark / System, applies at once and survives refresh) and a **Plan** card (plan name, renewal date, Compare plans). The phone menu has the same Settings link.
+## Preferences and gear icons
+- [ ] The sidebar has no plan card and no theme switch. **Preferences** (gear) sits at the bottom, above "Agent: Online", and opens `/preferences` with an **Appearance** card (Light / Dark / System, applies at once and survives refresh) and a **Plan** card (plan name, renewal date, Compare plans). The phone menu has the same Settings link.
 - [ ] "Manage" is a gear icon everywhere, each with a screen-reader name: by the agent status, in the workspace picker (opens the workspace dialog), on the Agent booking card (when booking is off), on Brand colour, on connection cards under Integrations, and in the Meetings table header.
 
 ## Workspace → Manage tab (replaces the workspace picker's Manage dialog; the earlier "Manage workspace dialog" section above is superseded)
@@ -1261,9 +1269,9 @@ Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voi
 - [ ] `/workspace/members` (old link) lands on Manage; the "See who can help" button on the 403 page does too.
 
 ## Brand colour moved to Business profile (supersedes the Integrations lines in "Brand colour, embed colours…" above)
-- [ ] Integrations has no Brand colour card any more. Workspace → **Settings** (sub-menu, after Manage) holds the **Brand colour** card: two swatches (Colour, Font colour, each showing its hex or "Default (…)") and a gear at the top right. It has no button-shaped preview.
+- [ ] Integrations has no Brand colour card any more. Workspace → **Brand** (sub-menu, after Manage) holds the **Brand colour** card: two swatches (Colour, Font colour, each showing its hex or "Default (…)") and a gear at the top right. It has no button-shaped preview.
 - [ ] Gear opens the same dialog as before; Save → toast, the swatches update, the form and chat bubble use the new colour. The dialog's preview is a small rectangle "Aa Sample text", not a pill.
-- [ ] Settings also has **Tone and sign-off** (Tone, Sign off as; Save and Cancel appear only after a change; saving shows a toast and keeps the value after reload). The Profile page no longer has a tone or sign-off field, saving Profile leaves them as they were, and the website import no longer suggests them. Settings is admins-only like Profile.
+- [ ] Brand also has **Tone and sign-off** (Tone, Sign off as; Save and Cancel appear only after a change; saving shows a toast and keeps the value after reload). The Profile page no longer has a tone or sign-off field, saving Profile leaves them as they were, and the website import no longer suggests them. Settings is admins-only like Profile.
 
 - [ ] The Workspace page formerly called Business profile is now **Profile**: sub-menu entry, page title, save toast ("Profile saved."), the Agent page's "Profile first" link, and the Getting started row.
 
@@ -1273,3 +1281,75 @@ Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voi
 - [ ] Connection health is the last section: one coloured line per service, a chip per service with its 24h rate. Press a chip: only that line, the big rate and failed count switch to it; press again: all. A connected tool with no activity shows "No data".
 - [ ] With data (`supabase/seed-dev-health.sql`, dev only): quiet hours are gaps in a line, not interpolated; a failing tool pulls the axis floor down; all nine possible services have different colours, none red.
 - [ ] Recording: send a Slack test, an agent email/SMS, a booking, a call setup: each adds an outbound row for that service; webhooks from Resend, Twilio, Cal.com, Calendly and Vapi add inbound rows. Check `select provider, direction, outcome, count(*) from webhook_deliveries group by 1,2,3`.
+
+## Profile, Agent and Knowledge restyled to the boards (Profile v2, Agent, Knowledge)
+
+- [ ] Profile: status strip on top; sections Company / Who you sell to / Contact details with bare underline fields; the underline turns to the brand gradient on focus; counters read "n of 600" and stop typing at 600.
+- [ ] Profile: "On this page" list on the right (hidden under 980px) highlights the section in view; a green dot marks a finished one; clicking jumps to the section.
+- [ ] Profile: type in a field -> a bottom bar slides in ("Unsaved changes", Discard, Save changes). Discard restores; Save toasts. Leaving the page asks first.
+- [ ] Profile: with the agent on, clear Company name -> error in red under that field, not a toast.
+- [ ] Profile: Import from website still fills the fields and shows "Filled N fields. Review them, then save."
+- [ ] Agent: four sub-tabs (General, Booking, Channels, Notifications); typing in one tab and switching keeps it; ONE bottom Save covers every tab.
+- [ ] Agent: a link to `/workspace/agent#booking` or `#channels` opens that tab and flashes the panel.
+- [ ] Agent: Voices are chips (at least one stays on); Play sample plays the voice you touched last; Voice names shows a box per voice that is on, a name on a switched-off voice is kept.
+- [ ] Agent: turn booking on with a calendar connected -> Meeting length and Working hours appear; save; reload shows the same.
+- [ ] Knowledge: Add text and Add URL open a dialog, Upload PDF opens the file chooser; the new row shows Indexing then Ready.
+- [ ] Knowledge: Filter documents narrows the table; a failed document shows its reason under the title and a Retry button; Delete asks first.
+
+## Dashboard, Conversations, Client and thread restyled to the boards
+
+- [ ] Dashboard: title row has "Last:" menu (Alt+1..4) and an icon Refresh button; the info strip reads Agent, Open leads, Median reply, Window (dates), Timezone, Plan.
+- [ ] Dashboard: as an owner with setup left, a blue note says "Getting started: N of M done"; "Open checklist" expands the panel with a progress bar, each step linking to its page; an x skips a skippable step; "Close checklist" folds it.
+- [ ] Dashboard: four tiles (Leads, Qualified, Meetings booked, Handed to a person) each with "▲/▼ n vs prior ..." in green or red; speed card shows median, 95th percentile, a bar against 60s, "N leads answered"; plan usage shows the month and plan; live activity table has the Live chip and "View all conversations".
+- [ ] Conversations: info strip, tabs with counts (All, Open, Handed off, Booked, Not a fit) filter the table; the window menu changes the tiles and both charts; "Filter clients" searches name, company, email, phone (Enter); `%` matches nothing odd.
+- [ ] Conversations: rows show status icon, channel icons, pill, fit meter; footer reads "Showing a-b of N clients" with Previous/Next that keep the tab and search.
+- [ ] Client: header pill, best-fit card (ring, verdict, scale), "Open latest thread"; tabs Overview, Conversations (All/Open/Closed), Calls (play recording is admin only), Meetings, PSA (only with ConnectWise records).
+- [ ] Thread: company title, status pill, info strip with First reply; blue/grey bubbles; meeting note under the thread; Reply as contact still sends and the agent answers; Fit score, Details, In ConnectWise and Timeline panels on the right.
+- [ ] Light theme: all four screens stay readable (text, pills, bars).
+
+## Integrations, Manage and Settings restyled to the boards
+
+- [ ] Integrations: full width; title, then an info strip (Connected tools, Booking tool, Webhooks 24h); four panels with a header bar (title, grey hint, add button at the right).
+- [ ] Integrations: an add button opens the picker under the header (search, tool chips, "Soon" on placeholders); picking a tool opens its dialog; the button stays highlighted while open.
+- [ ] Integrations: rows show a 30px mark, name and one-line hint, a state dot + label, then the gear; a connected, chosen calendar reads "In use for bookings".
+- [ ] Integrations: rows show no test buttons, only the gear (and "Finish setup" for a half-set-up tool, which opens the dialog). Slack "Send test" and "Test connection" (Google, Microsoft 365, ConnectWise) are inside each Manage dialog and show their result there (no toast).
+- [ ] Integrations: Needs attention is one amber note with a pill per issue; hidden when nothing is wrong.
+- [ ] Integrations: Connection health chips dim the other lines (not remove them); press the chip again to restore; keyboard works (Tab, Space).
+- [ ] Manage: General rows (profile, ID with copy button, Leave, Delete) with grey one-line descriptions; Delete hidden for non-admins; Leave and Delete still confirm.
+- [ ] Manage: Members panel has the Members / Invitations switch with counts, search, Invite; role is a dropdown for admins, a pill for viewers; the trash button asks to confirm.
+- [ ] Brand (admin): title row says "Owners and admins only"; Discard and Save appear after editing Tone or Sign off and disappear after saving; an error shows under its field.
+- [ ] Brand: Brand colour shows two swatches with hex and a gear that opens the same dialog as before.
+- [ ] Light theme: the three pages stay readable.
+
+
+## Meeting reps, Calendar panel, Website field, Soon placeholders, Brand / Preferences names
+Run `npx supabase db push --remote` first (migrations 0046 and 0047).
+- [ ] Meetings: a Rep column sits between Status and Source; new agent bookings read Unassigned.
+- [ ] Meetings (rep / admin / owner): pick a member in the Rep dropdown; a toast says "Rep updated.", the donut and column update. Support staff are not in the list. Viewer: plain text, no dropdown.
+- [ ] Meetings: "Booked by rep" donut next to the chart shows counts per rep plus Unassigned for the selected window and changes with the window switch; empty window says no meetings.
+- [ ] Integrations: Calendar panel ends with Your calendar and Team calendars; with a calendar connected everyone shows Connected, with none connected everyone shows Not connected. No Send reminder.
+- [ ] Integrations: Add lead source lists Facebook Lead Ads, Webhook and Custom API with a Soon chip; clicking does nothing.
+- [ ] Profile > Company: a Website field. `acme.com` saves as https://acme.com; `http://` is upgraded; `not a url`, `ftp://x.com` and `localhost` show a red error under the field and nothing saves. Blank is fine.
+- [ ] Profile: Import from website opens with the saved website filled in.
+- [ ] The workspace rail item and page title read Brand (tone, brand colour); the sidebar bottom item and its page title read Preferences; Cmd+K lists Preferences. No "Settings" left in the app.
+
+## Conversations: actions, export, columns, status words
+- [ ] Status words match everywhere (list, client, thread, dashboard): Active, Booked, Handed off (violet), Not a fit (grey, not red), Closed. "Where clients end up" shows Not a fit in grey.
+- [ ] Thread (rep+): "Hand off to a person" sets Handed off, a toast confirms, Slack and email alert the team once, ConnectWise write-back is requested; the button disappears once handed off. Viewer sees no action buttons.
+- [ ] Thread (rep+): "Mark as not a fit" asks first, then the status reads Not a fit and the agent sends no more follow-ups. Not offered on a booked conversation.
+- [ ] Thread (admin+): "Delete" asks first ("cannot be undone"), then lands on the list; the conversation, its messages and call rows are gone and an audit entry exists. A rep does not see Delete.
+- [ ] Client (rep+): "Mark as not a fit" appears only with open conversations; the dialog says how many; afterwards they all read Not a fit.
+- [ ] Thread: Calls and Meetings tabs appear only when there are any; Calls shows just the calls; Meetings lists each with Outcome buttons and Reschedule / Cancel for reps. Details show Timezone and Consent source.
+- [ ] Client: Meetings tab has Outcome buttons and Reschedule / Cancel (rep+; viewers read text); the info strip shows Timezone; Consent lists "via hosted_form" etc.
+- [ ] List: Export downloads a CSV of the current tab and search (name, company, email, phone, channels, status, fit, open, timezone, consent source, last activity); a name starting with `=` opens as text in Excel.
+- [ ] List: Columns menu ticks columns on and off (Client always stays); the choice survives a reload; Timezone and Consent source are off by default.
+- [ ] List: clicking a header sorts the loaded page (arrow shows direction; a third click restores the activity order); paging still goes by activity.
+- [ ] List: one Refresh only (the header one); the "Open now" strip stays.
+
+## Platform admin as owner
+
+- [ ] Admin console → Organizations → a workspace you joined as support → Members: your row shows "Alevo support" and a "Make owner" button. Click it: the role pill reads Owner, the seat count goes up by one.
+- [ ] In the product app, Workspace → Manage lists you as Owner (not "Alevo support"), and owner-only actions work.
+- [ ] Change your Clerk role or re-sync (membership.updated): you stay Owner.
+- [ ] "Back to support" returns the row to "Alevo support" and removes the seat.
+- [ ] A non-admin member row shows no button.

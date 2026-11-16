@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getCurrentRole } from "@alevo/auth";
+import { PageHeader } from "@/components/ui/page-header";
 import { GeneralTab } from "@/components/workspace/general-tab";
 import { MembersTab } from "@/components/workspace/members-tab";
 
@@ -12,12 +13,12 @@ export default async function ManagePage() {
   const role = await getCurrentRole();
   const canEdit = role === "admin" || role === "owner";
   return (
-    <div className="max-w-3xl space-y-6">
-      {!canEdit && (
-        <p className="text-sm text-ink-muted">You can see who is in this workspace. Only owners and admins can change it.</p>
-      )}
-      <GeneralTab canEdit={canEdit} />
-      <MembersTab canEdit={canEdit} />
-    </div>
+    <>
+      <PageHeader title="Manage" />
+      <div className="max-w-[920px] space-y-3.5">
+        <GeneralTab canEdit={canEdit} />
+        <MembersTab canEdit={canEdit} />
+      </div>
+    </>
   );
 }

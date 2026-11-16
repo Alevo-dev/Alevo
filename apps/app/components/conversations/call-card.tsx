@@ -43,18 +43,18 @@ export function CallCard({ call, tz, canPlay }: { call: CallCardData; tz: string
 
   return (
     <li className="flex max-w-[720px] flex-col self-start">
-      <div className="mb-1.5 text-label text-ink-muted">Phone call{call.startedAt ? `, ${fmtTime(call.startedAt, tz)}` : ""}</div>
-      <div className="rounded-md border border-hairline bg-surface p-4">
+      <div className="mb-[3px] font-mono text-xs text-ink-muted">Phone call{call.startedAt ? `, ${fmtTime(call.startedAt, tz)}` : ""}</div>
+      <div className="rounded-sm border border-hairline bg-surface p-3.5">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-raised text-ink-muted">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xs border border-hairline bg-sunken text-ink-muted">
             <Phone className="size-4" strokeWidth={1.75} aria-hidden="true" />
           </span>
-          <span className="text-sm font-semibold text-ink">Phone call</span>
-          <span className="tabular font-mono text-label text-ink-muted">{fmtDuration(call.durationSec)}</span>
+          <span className="text-[15px] font-semibold text-ink">Phone call</span>
+          <span className="tabular font-mono text-sm text-ink-muted">{fmtDuration(call.durationSec)}</span>
           <Pill tone={outcome.tone}>{outcome.label}</Pill>
           {call.messageTaken && <Pill tone="muted">Message taken</Pill>}
         </div>
-        <p className="mt-3 whitespace-pre-wrap text-base leading-6 text-ink">{call.summary?.trim() || "No summary"}</p>
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-[21px] text-ink">{call.summary?.trim() || "No summary"}</p>
         {(call.hasRecording || call.transcript) && (
           <div className="mt-4 flex flex-col gap-3">
             {call.hasRecording && canPlay && !url && (
@@ -62,7 +62,7 @@ export function CallCard({ call, tz, canPlay }: { call: CallCardData; tz: string
                 {error ? "Try again" : "Play recording"}
               </Button>
             )}
-            {url && <audio controls preload="none" src={url} className="w-full" aria-label="Call recording" />}
+            {url && <audio controls preload="none" src={url} className="w-full rounded-sm" aria-label="Call recording" />}
             {error && <p className="text-label text-ink-muted">{error}</p>}
             {call.transcript && (
               <details className="text-sm">

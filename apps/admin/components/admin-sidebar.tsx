@@ -1,18 +1,13 @@
 import { ThemeToggle } from "@alevo/ui/theme-toggle";
-import { AdminNav, OpenApp } from "./admin-nav";
-import { Brand } from "./brand";
+import { AdminNav } from "./admin-nav";
 
-/** Left rail on desktop (the phone shell uses `MobileMenu`): brand on top, pages, theme and the app link at the bottom. */
+/** Left rail on desktop (the phone gets the same links in `MobileMenu`): the pages, theme at the bottom. */
 export function AdminSidebar() {
   return (
-    <aside className="sticky top-0 hidden h-dvh w-58 shrink-0 flex-col gap-6 border-r border-hairline px-4 py-6 md:flex">
-      <div className="px-1">
-        <Brand />
-      </div>
+    <aside className="sticky top-[46px] flex h-[calc(100dvh-46px)] w-[236px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-hairline bg-rail px-2.5 pb-4 pt-3">
       <AdminNav />
-      <div className="mt-auto flex flex-col gap-4 px-1">
+      <div className="mt-auto pt-2.5">
         <ThemeToggle />
-        <OpenApp className="border-t border-hairline pt-4" />
       </div>
     </aside>
   );

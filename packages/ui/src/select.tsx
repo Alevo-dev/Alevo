@@ -185,8 +185,8 @@ export function Select({
           invalid,
           cx(
             "flex items-center justify-between gap-2 text-left",
-            size === "sm" ? "h-8 py-0 text-label" : "h-10 py-0",
-            open && !invalid && "border-brand",
+            size === "sm" ? "text-label" : "text-sm",
+            open && !invalid && "border-brand-sky bg-brand-soft",
             className,
           ),
           inline,
@@ -195,7 +195,7 @@ export function Select({
       >
         <span className={cx("truncate", !selected && "text-ink-muted")}>{selected?.label ?? placeholder}</span>
         <ChevronDown
-          className={cx("size-4 shrink-0 text-ink-muted transition-transform", open && "rotate-180")}
+          className={cx("size-4 shrink-0 text-ink-muted transition-transform duration-150 ease-out motion-reduce:transition-none", open && "rotate-180")}
           strokeWidth={1.75}
           aria-hidden="true"
         />
@@ -217,7 +217,7 @@ export function Select({
               maxHeight: MENU_MAX,
               transform: pos.up ? "translateY(-100%)" : undefined,
             }}
-            className="fixed z-50 overflow-y-auto rounded-md border border-hairline bg-raised p-1 shadow-float"
+            className="fixed z-50 overflow-y-auto rounded-sm border border-control bg-surface p-1 shadow-float"
           >
             {options.map((o, i) => {
               const isSelected = o.value === current;
@@ -231,8 +231,8 @@ export function Select({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(o.value)}
                   className={cx(
-                    "flex h-9 cursor-pointer items-center justify-between gap-3 whitespace-nowrap rounded-sm px-3 text-sm text-ink",
-                    isSelected ? "bg-brand-soft font-semibold" : i === active && "bg-surface",
+                    "flex h-[34px] cursor-pointer items-center justify-between gap-3 whitespace-nowrap rounded-xs px-2.5 text-sm text-ink",
+                    isSelected ? "bg-brand-soft font-semibold ring-1 ring-inset ring-brand/50" : i === active && "bg-raised",
                   )}
                 >
                   <span className="flex-1">{o.label}</span>

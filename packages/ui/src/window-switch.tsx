@@ -17,16 +17,23 @@ export function WindowSwitch({
   value,
   windows,
   basePath,
+  persistKey,
 }: {
   value: number;
   windows: readonly number[];
   basePath?: string;
+  /** Cookie name: the choice is saved there (one year) and the page refreshes, instead of `?window=`. */
+  persistKey?: string;
 }) {
   const router = useRouter();
   const current = usePathname();
   const path = basePath ?? current;
   const go = (days: number) => {
-    if (days !== value) router.push(`${path}?window=${days}`, { scroll: false });
+    if (days === value) return;
+    if (persistKey) {
+      document.cookie = `${persistKey}=${days}; path=/; max-age=31536000; samesite=lax`;
+      router.refresh();
+    } else router.push(`${path}?window=${days}`, { scroll: false });
   };
 
   useEffect(() => {

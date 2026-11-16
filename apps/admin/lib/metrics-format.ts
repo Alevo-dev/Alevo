@@ -8,9 +8,9 @@ import type { Tone } from "@alevo/ui/tone";
 export const WINDOWS = [7, 30, 90] as const;
 export type Window = (typeof WINDOWS)[number];
 
-export function parseWindow(value: unknown): Window {
+export function parseWindow(value: unknown, fallback: Window = 7): Window {
   const n = Number(value);
-  return (WINDOWS as readonly number[]).includes(n) ? (n as Window) : 7;
+  return (WINDOWS as readonly number[]).includes(n) ? (n as Window) : fallback;
 }
 
 /** Seconds → "42s" / "3m 10s" / "2h 5m"; "—" when there is nothing to show. */

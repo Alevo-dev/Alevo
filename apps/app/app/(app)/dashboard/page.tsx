@@ -1,24 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { and, desc, eq, sql, type SQLWrapper } from "drizzle-orm";
-import { calls, contacts, conversations, countsTowardSpeed, isReady, loadReadinessFacts, meetings, readiness } from "@alevo/db";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { calls, contacts, conversations, countsTowardSpeed, isReady, loadReadinessFacts, meetings, orgSubscriptions, plans, readiness } from "@alevo/db";
 import { getCurrentOrg, getCurrentRole, withOrg } from "@alevo/auth";
 import { getAgentOn } from "@/lib/agent-on";
+import { ChannelIcons, deltaOf, FitMeter, Kpi, Panel, Strip } from "@/components/conversations/kit";
+import { RefreshButton } from "@/components/conversations/refresh-button";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pill, StatusDot } from "@/components/ui/pill";
-import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, parseWindow, showRatePct, windowLabel } from "@/lib/dashboard/window";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
+import { readWindow } from "@/lib/dashboard/window-pref";
+import { bucketCount, bucketFor, bucketLabels, bucketShortLabels, coverDays, fmtDuration, parseWindow, priorLabel, showRatePct, windowLabel, windowRange } from "@/lib/dashboard/window";
 import { anonymousLabel, displayName, fmtShort } from "@/lib/format";
+import { windowSql } from "@/lib/dashboard/window-sql";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { getCurrentUsage } from "@/lib/usage/current";
-import { CHANNEL_LABEL, CONVERSATION_STATUS } from "@/lib/ui/status";
+import { CONVERSATION_STATUS } from "@/lib/ui/status";
 import { AutoRefresh } from "./auto-refresh";
 import { ChannelDonut } from "./channel-donut";
 import { GettingStarted } from "./getting-started";
-import { KpiTiles, toSeries } from "./kpi-tiles";
+import { toSeries } from "./kpi-tiles";
 import { SpeedCard } from "./speed-card";
 import { TrendChart } from "./trend-chart";
 import { UsageMeter } from "./usage-meter";
@@ -48,25 +53,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   // One window for the whole page (?window=7|30|90). 7 and 30 days bucket per
   // day, 90 per week; the usage meter alone is always the billing month.
-  const days = parseWindow(search.window);
+  const days = await readWindow();
   const bucket = bucketFor(days);
   const buckets = bucketCount(days);
   const per = `per ${bucket}`;
   const span = windowLabel(days);
 
-  // Calendar days in the org's timezone, so bars line up with what the user calls
-  // a day. Computed in SQL so the render stays pure (no clock reads).
+  // Calendar days in the org's timezone, so bars line up with what the user calls a day.
   const tz = await getOrgTimezone();
-  const today = sql`(now() at time zone ${tz})::date`;
-  const windowStart = sql`(${today} - ${coverDays(days) - 1}::int)::timestamp at time zone ${tz}`;
-  // Whole buckets ago (0 = today / this week) for a timestamptz column.
-  // Today's hours count back from the last bar (23 = the 11 PM bar, 0 ago).
-  const ago = (col: SQLWrapper) =>
-    bucket === "hour"
-      ? sql<number>`(23 - extract(hour from (${col} at time zone ${tz}))::int)`.mapWith(Number)
-      : bucket === "day"
-        ? sql<number>`(${today} - (${col} at time zone ${tz})::date)`.mapWith(Number)
-        : sql<number>`floor((${today} - (${col} at time zone ${tz})::date) / 7)`.mapWith(Number);
+  const { today, windowStart, priorStart, ago } = windowSql(days, tz);
   // Explicit active-org scope on every read (platform admins bypass RLS).
   const inOrg = (col: typeof conversations.orgId | typeof meetings.orgId | typeof calls.orgId) =>
     sql`${col} = (select app.current_org_id())`;
@@ -84,7 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const [org, role] = await Promise.all([getCurrentOrg(), getCurrentRole()]);
   const showSetup = org && (role === "admin" || role === "owner");
 
-  const [facts, [clock], convDaily, meetingDaily, [outcomes], callDaily, byChannel, [speed], speedDaily, recent, usage, agentOn, [skipped], [failed]] =
+  const [facts, [clock], convDaily, meetingDaily, [outcomes], byChannel, [speed], speedDaily, recent, usage, agentOn, [skipped], [failed], [prior], [priorMeetings], [open], [sub]] =
     await Promise.all([
       showSetup ? loadReadinessFacts(org.id) : null,
       withOrg((tx) => tx.select({ today: sql<string>`${today}::text` }).from(sql`(select 1) as t`)),
@@ -94,6 +89,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             ago: ago(conversations.createdAt).as("ago"),
             leads: count,
             qualified: sql<number>`count(*) filter (where ${conversations.status} in ('booked','handed_off'))`.mapWith(Number),
+            handed: sql<number>`count(*) filter (where ${conversations.status} = 'handed_off')`.mapWith(Number),
           })
           .from(conversations)
           .where(and(inOrg(conversations.orgId), sql`${conversations.createdAt} >= ${windowStart}`))
@@ -111,17 +107,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         tx
           .select({
             showed: sql<number>`count(*) filter (where ${meetings.outcome} = 'showed')`.mapWith(Number),
+            noShow: sql<number>`count(*) filter (where ${meetings.outcome} = 'no_show')`.mapWith(Number),
             held: count,
           })
           .from(meetings)
           .where(and(inOrg(meetings.orgId), sql`${meetings.startAt} >= ${windowStart}`, sql`${meetings.outcome} <> 'pending'`)),
-      ),
-      withOrg((tx) =>
-        tx
-          .select({ ago: ago(sql`coalesce(${calls.startedAt}, ${calls.createdAt})`).as("ago"), n: count })
-          .from(calls)
-          .where(and(inOrg(calls.orgId), sql`coalesce(${calls.startedAt}, ${calls.createdAt}) >= ${windowStart}`))
-          .groupBy(sql`ago`),
       ),
       withOrg((tx) =>
         tx
@@ -165,12 +155,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             lastName: contacts.lastName,
             email: contacts.email,
             company: contacts.company,
+            phone: contacts.phone,
           })
           .from(conversations)
           .innerJoin(contacts, eq(contacts.id, conversations.contactId))
           .where(inOrg(conversations.orgId))
           .orderBy(desc(conversations.createdAt))
-          .limit(8),
+          .limit(7),
       ),
       getCurrentUsage(),
       getAgentOn(),
@@ -188,13 +179,44 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           .from(conversations)
           .where(and(inOrg(conversations.orgId), sql`${conversations.replyFailedAt} is not null`)),
       ),
+      // The period before this window, for each tile's "vs prior" line.
+      withOrg((tx) =>
+        tx
+          .select({
+            leads: count,
+            qualified: sql<number>`count(*) filter (where ${conversations.status} in ('booked','handed_off'))`.mapWith(Number),
+            handed: sql<number>`count(*) filter (where ${conversations.status} = 'handed_off')`.mapWith(Number),
+          })
+          .from(conversations)
+          .where(and(inOrg(conversations.orgId), sql`${conversations.createdAt} >= ${priorStart}`, sql`${conversations.createdAt} < ${windowStart}`)),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({ n: count })
+          .from(meetings)
+          .where(and(inOrg(meetings.orgId), sql`${meetings.createdAt} >= ${priorStart}`, sql`${meetings.createdAt} < ${windowStart}`, sql`${meetings.status} <> 'cancelled'`)),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({ n: count })
+          .from(conversations)
+          .where(and(inOrg(conversations.orgId), sql`${conversations.status} in ('new','active')`)),
+      ),
+      withOrg((tx) =>
+        tx
+          .select({ name: plans.name })
+          .from(orgSubscriptions)
+          .innerJoin(plans, eq(plans.id, orgSubscriptions.planId))
+          .where(sql`${orgSubscriptions.orgId} = (select app.current_org_id())`)
+          .limit(1),
+      ),
     ]);
 
   const series = {
     leads: toSeries(convDaily.map((r) => ({ ago: r.ago, n: r.leads })), buckets),
     qualified: toSeries(convDaily.map((r) => ({ ago: r.ago, n: r.qualified })), buckets),
     meetings: toSeries(meetingDaily, buckets),
-    calls: toSeries(callDaily, buckets),
+    handed: toSeries(convDaily.map((r) => ({ ago: r.ago, n: r.handed })), buckets),
   };
   const showRate = showRatePct(outcomes?.showed ?? 0, outcomes?.held ?? 0);
   const todayIso = clock?.today ?? new Date().toISOString().slice(0, 10);
@@ -207,27 +229,36 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const setup = facts ? readiness(facts) : null;
   const checklist = setup && !isReady(setup) ? setup : null;
 
+  const vs = priorLabel(days);
+  const sum = (v: number[]) => v.reduce((x, y) => x + y, 0);
+  const totals = { leads: sum(series.leads), qualified: sum(series.qualified), meetings: sum(series.meetings), handed: sum(series.handed) };
+  const showed = outcomes?.showed ?? 0;
+  const noShow = outcomes?.noShow ?? 0;
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-3.5">
       <AutoRefresh />
-      <PageHeader
-        title="Dashboard"
-        description={
-          <>
-            <StatusDot tone={agentOn ? "success" : "muted"} live={agentOn} />
-            {agentOn ? "Live." : "The agent is off."} {org?.name ?? "Your workspace"}, {span.toLowerCase()}
-          </>
-        }
-      >
+      <PageHeader title="Dashboard">
         <WindowSwitch value={days} />
+        <RefreshButton />
         {!agentOn && (
-          <Link href="/workspace/agent" className={buttonClass("primary")}>
+          <Link href="/workspace/agent" className={buttonClass("primary", "sm")}>
             Turn the agent on
           </Link>
         )}
       </PageHeader>
 
-      {/* On wide screens the checklist is a right-hand rail as tall as the figures beside it; the key figures and the leads row sit to its left. */}
+      <Strip
+        items={[
+          { k: "Agent", v: <Pill tone={agentOn ? "success" : "muted"}>{agentOn ? "Online" : "Off"}</Pill> },
+          { k: "Open leads", v: <span className="tabular">{open?.n ?? 0}</span> },
+          { k: "Median reply", v: <span className="tabular font-mono">{speed?.p50 == null ? "—" : fmtDuration(speed.p50)}</span> },
+          { k: "Window", v: windowRange(todayIso, days) },
+          { k: "Timezone", v: tz },
+          { k: "Plan", v: sub?.name ?? "None" },
+        ]}
+      />
+
       {(failed?.n ?? 0) > 0 && (
         <Notice tone="danger">
           The agent could not complete a reply to {failed!.n} {failed!.n === 1 ? "lead" : "leads"} (a send failed or it hit an error). Open{" "}
@@ -235,117 +266,132 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </Notice>
       )}
 
-      <div className={checklist ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]" : "space-y-6"}>
-        {checklist && <GettingStarted items={checklist} className="xl:col-start-2 xl:row-start-1" />}
-        <div className="min-w-0 space-y-6 xl:col-start-1 xl:row-start-1">
-          <KpiTiles span={span} labels={labels} period={bucket} compact={!!checklist} {...series} />
+      {checklist && <GettingStarted items={checklist} />}
 
-          {/* Row 1 (mockup): leads area chart, 2/3; speed to lead, 1/3. */}
-          <section
-            className={checklist ? "grid gap-6 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"}
-            aria-label="Leads and response time"
-          >
-            <Card>
-              <CardHeader title={`Leads ${per}`} hint={span} />
-              <TrendChart points={points(series.leads)} unit="leads" kind="area" tone="brand" />
-            </Card>
-            <SpeedCard p50={speed?.p50 ?? null} p95={speed?.p95 ?? null} replied={speed?.replied ?? 0} excluded={skipped?.n ?? 0} trend={speedTrend} per={per} />
-          </section>
-        </div>
-      </div>
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Key figures">
+        <Kpi label="Leads" value={totals.leads} delta={deltaOf(totals.leads, prior?.leads ?? 0, vs)} series={series.leads} seriesLabels={labels} unit="leads" period={bucket} tone="brand" />
+        <Kpi label="Qualified" value={totals.qualified} delta={deltaOf(totals.qualified, prior?.qualified ?? 0, vs)} series={series.qualified} seriesLabels={labels} unit="qualified" period={bucket} tone="violet" />
+        <Kpi label="Meetings booked" value={totals.meetings} delta={deltaOf(totals.meetings, priorMeetings?.n ?? 0, vs)} series={series.meetings} seriesLabels={labels} unit="meetings" period={bucket} tone="success" />
+        <Kpi label="Handed to a person" value={totals.handed} delta={deltaOf(totals.handed, prior?.handed ?? 0, vs)} series={series.handed} seriesLabels={labels} unit="handed off" period={bucket} tone="warning" />
+      </section>
 
-      {/* Row 2 (mockup): meetings columns, lead sources, plan usage. */}
-      <section className="grid gap-6 lg:grid-cols-3" aria-label="Meetings, sources and usage">
-        <Card>
+      <section className="grid gap-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" aria-label="Leads and response time">
+        <Card boxed>
+          <CardHeader title={`Leads ${per}`} hint={span} />
+          <TrendChart points={points(series.leads)} unit="leads" kind="area" tone="brand" />
+        </Card>
+        <SpeedCard p50={speed?.p50 ?? null} p95={speed?.p95 ?? null} replied={speed?.replied ?? 0} excluded={skipped?.n ?? 0} />
+      </section>
+
+      <section className="grid gap-3.5 lg:grid-cols-3" aria-label="Meetings, sources and usage">
+        <Card boxed padding="none">
           <CardHeader
             title="Meetings booked"
-            hint={`${per[0]!.toUpperCase()}${per.slice(1)}, ${span.toLowerCase()}`}
+            hint={`${per[0]!.toUpperCase()}${per.slice(1)}`}
             aside={
               showRate != null ? (
-                <span className="text-label text-ink-muted">
+                <>
                   Show rate <strong className="tabular font-semibold text-ink">{showRate}%</strong>
-                  <span className="sr-only">, {outcomes?.showed ?? 0} of {outcomes?.held ?? 0} meetings held</span>
-                </span>
+                  <span className="sr-only">, {showed} of {outcomes?.held ?? 0} meetings held</span>
+                </>
               ) : (
-                <span className="text-label text-ink-muted">
+                <>
                   Show rate: <Link href="/meetings">mark outcomes</Link>
-                </span>
+                </>
               )
             }
           />
-          <TrendChart points={points(series.meetings)} unit="meetings" kind="columns" tone="brand" width={400} />
+          <div className="p-3.5">
+            <TrendChart points={points(series.meetings)} unit="meetings" kind="columns" tone="violet" width={400} />
+          </div>
+          <div className="flex items-center gap-2 border-t border-hairline bg-sunken px-3.5 py-[7px] text-[13px] text-ink-muted">
+            <span>
+              Showed {showed} · No-show {noShow}
+            </span>
+          </div>
         </Card>
-        <Card>
+        <Card boxed>
           <CardHeader title="Where leads come from" hint={span} />
           {byChannel.length === 0 ? (
-            <p className="mt-6 text-sm text-ink-muted">No new leads in this window.</p>
+            <p className="text-sm text-ink-muted">No new leads in this window.</p>
           ) : (
             <ChannelDonut rows={byChannel} />
           )}
         </Card>
-        <UsageMeter rows={usage} />
+        <UsageMeter rows={usage} plan={sub?.name ?? null} month={todayIso} />
       </section>
 
-      {/* Row 3 (mockup): the live feed, full width. */}
-      <Card>
-        <CardHeader
-          title="Live activity"
-          aside={
-            <span className="flex items-center gap-2 text-label text-ink-muted">
-              <StatusDot tone="success" live />
-              Updating
-            </span>
-          }
-        />
-        {recent.length === 0 ? (
-          <div className="mt-2">
-            <p className="text-sm text-ink-muted">
-              No leads yet. Share your hosted lead form, or send a test message from a conversation, and activity shows up here.
-            </p>
-            {org && (
-              <Link href={`/form/${org.id}`} className={buttonClass("secondary", "md", "mt-4")}>
-                Open your lead form
+      <Panel
+        title="Live activity"
+        hint="Refreshes every 30 seconds"
+        right={
+          <span className="inline-flex h-[22px] items-center gap-2 rounded-full border border-success/55 bg-success/10 px-2.5 text-[12.5px] font-[550] text-success">
+            <StatusDot tone="success" live />
+            Live
+          </span>
+        }
+        flush
+        footer={
+          recent.length > 0 && (
+            <>
+              <span>Showing the latest {recent.length}</span>
+              <Link href="/conversations" className="ml-auto">
+                View all conversations
               </Link>
+            </>
+          )
+        }
+      >
+        <Table>
+          <thead>
+            <tr>
+              <Th>Time</Th>
+              <Th>Client</Th>
+              <Th>Channel</Th>
+              <Th>Status</Th>
+              <Th className="text-right">Fit</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {recent.length === 0 ? (
+              <EmptyRow colSpan={5}>
+                No leads yet. Share your hosted lead form, or send a test message from a conversation, and activity shows up here.
+                {org && (
+                  <>
+                    {" "}
+                    <Link href={`/form/${org.id}`}>Open your lead form</Link>
+                  </>
+                )}
+              </EmptyRow>
+            ) : (
+              recent.map((c, i) => {
+                const status = CONVERSATION_STATUS[c.status];
+                const name = displayName(c.firstName, c.lastName, c.email ?? c.phone ?? anonymousLabel(c.channel) ?? "New lead");
+                return (
+                  <Tr key={c.id} style={{ animationDelay: `${i * 60}ms` }} className="animate-rise">
+                    <Td className="tabular whitespace-nowrap font-mono text-[12px] text-ink-muted">{fmtShort(c.createdAt, tz)}</Td>
+                    <Td>
+                      <Link href={`/conversations/${c.id}`} transitionTypes={["nav-forward"]} className="font-semibold text-ink no-underline hover:underline">
+                        {name}
+                      </Link>
+                      <span className="block text-[12.5px] text-ink-muted">{c.company ?? " "}</span>
+                    </Td>
+                    <Td>
+                      <ChannelIcons channels={[c.channel]} />
+                    </Td>
+                    <Td>
+                      <Pill tone={status.tone}>{status.label}</Pill>
+                    </Td>
+                    <Td className="text-right">
+                      <FitMeter score={c.fitScore} />
+                    </Td>
+                  </Tr>
+                );
+              })
             )}
-          </div>
-        ) : (
-          <ol className="mt-2 divide-y divide-hairline">
-            {recent.map((c, i) => {
-              const status = CONVERSATION_STATUS[c.status];
-              return (
-                <li
-                  key={c.id}
-                  style={{ animationDelay: `${i * 60}ms` }}
-                  className="animate-rise grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1 py-3 sm:grid-cols-[132px_minmax(0,1fr)_auto]"
-                >
-                  <span className="tabular font-mono text-label text-ink-muted">{fmtShort(c.createdAt, tz)}</span>
-                  <span className="min-w-0 truncate text-sm">
-                    <Link
-                      href={`/conversations/${c.id}`}
-                      transitionTypes={["nav-forward"]}
-                      className="font-medium text-ink no-underline hover:underline"
-                    >
-                      {displayName(c.firstName, c.lastName, c.email ?? anonymousLabel(c.channel))}
-                    </Link>
-                    <span className="text-ink-muted">
-                      {c.company ? `, ${c.company}` : ""}, {CHANNEL_LABEL[c.channel]}
-                      {c.fitScore != null ? `, score ${c.fitScore}` : ""}
-                    </span>
-                  </span>
-                  <span className="col-start-2 sm:col-start-3">
-                    <Pill tone={status.tone}>{status.label}</Pill>
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        {recent.length > 0 && (
-          <p className="mt-3 text-right text-label">
-            <Link href="/conversations">All conversations</Link>
-          </p>
-        )}
-      </Card>
+          </tbody>
+        </Table>
+      </Panel>
     </div>
   );
 }

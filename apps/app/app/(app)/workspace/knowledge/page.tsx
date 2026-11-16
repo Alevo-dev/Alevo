@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { desc, eq, sql } from "drizzle-orm";
-import { files, kbDocuments } from "@alevo/db";
-import { requireRole, withOrg } from "@alevo/auth";
+import { files, kbDocuments, orgProfiles } from "@alevo/db";
+import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { authInterrupt } from "@/lib/auth-interrupts";
 import { fmtDate, fmtSize } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
-import { AddDocumentForm, DocumentList, type DocView } from "./knowledge-ui";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusStrip } from "@/components/workspace/status-strip";
+import { EMBEDDING_MODEL } from "@/lib/kb/embeddings";
+import { KnowledgeView, type DocView } from "./knowledge-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +21,12 @@ export default async function KnowledgePage() {
     authInterrupt(error);
   }
 
-  const [tz, rows] = await Promise.all([
+  const org = await getCurrentOrg();
+  const [tz, [profile], rows] = await Promise.all([
     getOrgTimezone(),
+    org
+      ? withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1))
+      : Promise.resolve([]),
     withOrg((tx) =>
       tx
         .select({
@@ -50,9 +57,10 @@ export default async function KnowledgePage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <AddDocumentForm />
-      <DocumentList docs={docs} />
+    <div className="space-y-4">
+      <PageHeader title="Knowledge" />
+      <StatusStrip row={profile} tz={tz} />
+      <KnowledgeView docs={docs} model={EMBEDDING_MODEL} />
     </div>
   );
 }

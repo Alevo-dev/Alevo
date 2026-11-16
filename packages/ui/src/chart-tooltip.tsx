@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
-import { cx } from "./cx";
+import { TipPortal } from "./tip-portal";
 
 /**
  * The one tooltip every chart shows on hover / focus (dataviz: value leads,
  * label follows; it enhances, never gates — the sr-only table or the direct
  * labels carry the same numbers). Render it inside a `relative` box that wraps
  * the chart and give it the mark's position as fractions of that box, so it
- * scales with a responsive SVG. It sits just above the mark and flips its
- * anchor near the edges so it never wraps or leaves the card.
+ * scales with a responsive SVG. It is drawn on the page body (`TipPortal`), so no card can crop it; it sits just above the mark, flipping below when there is no room, and its anchor flips near the edges.
  */
 export function ChartTooltip({
   x,
@@ -34,24 +33,14 @@ export function ChartTooltip({
 }) {
   const anchor = x < 0.18 ? "start" : x > 0.82 ? "end" : "center";
   return (
-    <div
-      role="status"
-      className={cx(
-        "animate-rise pointer-events-none absolute z-10 rounded-md border border-hairline bg-raised px-3 py-2 text-xs leading-tight whitespace-nowrap shadow-float",
-        anchor === "start" && "-translate-y-[calc(100%+10px)]",
-        anchor === "center" && "-translate-x-1/2 -translate-y-[calc(100%+10px)]",
-        anchor === "end" && "-translate-x-full -translate-y-[calc(100%+10px)]",
-        className,
-      )}
-      style={{ left: `${x * 100}%`, top: `${y * 100}%` }}
-    >
+    <TipPortal x={x} y={y} anchor={anchor} className={className}>
       <div className="flex items-center gap-2">
         {swatch && <span aria-hidden className="inline-block h-0.5 w-3 rounded-full" style={{ background: swatch }} />}
         <span className="tabular font-mono text-sm font-semibold text-ink">{value}</span>
         <span className="text-ink-muted">{label}</span>
       </div>
       {detail && <div className="mt-1 text-ink-muted">{detail}</div>}
-    </div>
+    </TipPortal>
   );
 }
 

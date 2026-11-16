@@ -1,8 +1,9 @@
 /**
  * Human labels + colour tone for every status enum the UI shows. Sentence case,
- * no snake_case leaks. Tones follow the design system: brand = live/booked-in-
- * progress, success = done, warning = needs a human, danger = failed, muted =
- * closed/not a fit. Violet is reserved for outbound / AI-drafted things.
+ * no snake_case leaks. Tones follow the design system: brand = live, success = done, warning =
+ * needs a human, danger = failed, muted = closed/not a fit. Violet is outbound /
+ * AI-drafted things and a conversation handed off to a person (the Conversations
+ * board's words, used on every screen).
  */
 import type {
   BookingProvider,
@@ -18,10 +19,10 @@ import type { StatusView } from "@alevo/ui/tone";
 
 export const CONVERSATION_STATUS: Record<ConversationStatus, StatusView> = {
   new: { label: "New", tone: "brand" },
-  active: { label: "Qualifying", tone: "brand" },
-  booked: { label: "Meeting booked", tone: "success" },
-  handed_off: { label: "Handed to a rep", tone: "warning" },
-  disqualified: { label: "Not a fit", tone: "danger" },
+  active: { label: "Active", tone: "brand" },
+  booked: { label: "Booked", tone: "success" },
+  handed_off: { label: "Handed off", tone: "violet" },
+  disqualified: { label: "Not a fit", tone: "muted" },
   closed: { label: "Closed", tone: "muted" },
 };
 

@@ -9,10 +9,11 @@ const COLS = "grid-cols-[1.6fr_1.2fr_0.9fr_0.8fr_1fr_0.8fr]";
 
 export default function Loading() {
   return (
-    <div aria-busy="true" aria-live="polite" className="space-y-8">
+    <div aria-busy="true" aria-live="polite" className="space-y-4">
       <SkeletonPageHeader />
+      <Skeleton className="h-[58px] w-full rounded-sm" delay={100} />
 
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <SkeletonStatTile key={i} delay={140 + i * 70} hint={false} />
         ))}

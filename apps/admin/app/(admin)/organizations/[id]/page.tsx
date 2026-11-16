@@ -11,7 +11,7 @@ import { EmptyRow, Table, Td, Th, Tr } from "@alevo/ui/table";
 import { fmtWhen } from "@/lib/metrics-format";
 import { orgDetail } from "@/lib/org-detail";
 import { activePlans } from "@/lib/plans";
-import { resendOwnerInvite } from "../actions";
+import { resendOwnerInvite, setMemberMode } from "../actions";
 import { ActionForm } from "./action-form";
 import { OrgActionsBar } from "./org-actions-bar";
 import { PlanCard } from "./plan-card";
@@ -57,25 +57,31 @@ export default async function OrganizationPage({ params, searchParams }: Props) 
 
       <SetupCard orgId={org.id} clerkOrgId={org.clerkId} items={items} />
 
-      <Card padding="none">
-        <div className="px-6 pt-6">
-          <CardHeader title="Members" hint={`${org.members.filter((m) => !m.support).length} seat${org.members.filter((m) => !m.support).length === 1 ? "" : "s"} in use`} />
-        </div>
-        <Table className="mt-4">
+      <Card boxed padding="none">
+        <CardHeader title="Members" hint={`${org.members.filter((m) => !m.support).length} seat${org.members.filter((m) => !m.support).length === 1 ? "" : "s"} in use`} />
+        <Table>
           <thead>
             <tr>
               <Th>Name</Th>
               <Th>Email</Th>
               <Th>Role</Th>
+              <Th className="text-right">Platform admin</Th>
             </tr>
           </thead>
           <tbody>
-            {org.members.length === 0 && org.invites.length === 0 && <EmptyRow colSpan={3}>No members yet.</EmptyRow>}
+            {org.members.length === 0 && org.invites.length === 0 && <EmptyRow colSpan={4}>No members yet.</EmptyRow>}
             {org.members.map((m) => (
               <Tr key={m.userId}>
                 <Td className="font-medium text-ink">{m.name ?? "—"}</Td>
                 <Td className="text-ink-muted">{m.email ?? "—"}</Td>
                 <Td>{m.support ? <Pill tone="muted">Alevo support</Pill> : <Pill tone="brand">{m.role[0]!.toUpperCase() + m.role.slice(1)}</Pill>}</Td>
+                <Td className="text-right">
+                  {m.isPlatformAdmin ? (
+                    <ActionForm action={setMemberMode} fields={{ orgId: org.id, userId: m.userId, mode: m.support ? "owner" : "support" }}>
+                      {m.support ? "Make owner" : "Back to support"}
+                    </ActionForm>
+                  ) : null}
+                </Td>
               </Tr>
             ))}
             {org.invites
@@ -84,7 +90,7 @@ export default async function OrganizationPage({ params, searchParams }: Props) 
                 <Tr key={i.id}>
                   <Td className="text-ink-muted">Invited</Td>
                   <Td className="text-ink-muted">{i.email}</Td>
-                  <Td>
+                  <Td colSpan={2}>
                     <Pill tone={i.status === "pending" ? "warning" : "success"}>
                       {i.role[0]!.toUpperCase() + i.role.slice(1)} · {i.status}
                     </Pill>

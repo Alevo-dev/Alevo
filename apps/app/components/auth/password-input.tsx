@@ -17,7 +17,7 @@ export function PasswordInput(props: Omit<ComponentProps<typeof Input>, "type">)
         aria-pressed={show}
         className="absolute right-1 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-sm text-ink-muted hover:text-ink"
       >
-        {show ? <EyeOff className="size-4" strokeWidth={1.75} /> : <Eye className="size-4" strokeWidth={1.75} />}
+        {show ? <EyeOff className="size-[18px]" strokeWidth={1.75} /> : <Eye className="size-[18px]" strokeWidth={1.75} />}
       </button>
     </div>
   );

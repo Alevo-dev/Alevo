@@ -4,8 +4,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { cx } from "@alevo/ui/cx";
 import { ThemeToggle } from "@alevo/ui/theme-toggle";
-import { AdminNav, OpenApp } from "./admin-nav";
-import { Brand } from "./brand";
+import { AdminNav } from "./admin-nav";
 
 /** Burger + slide-out drawer on phones, carrying the same rail as the desktop sidebar. */
 export function MobileMenu() {
@@ -22,22 +21,20 @@ export function MobileMenu() {
 
       <div
         className={cx(
-          "fixed left-0 top-0 z-50 flex h-dvh w-58 flex-col bg-canvas transition-transform duration-300 ease-in-out md:hidden",
+          "fixed left-0 top-0 z-50 flex h-dvh w-58 flex-col bg-rail transition-transform duration-300 ease-in-out md:hidden",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-hairline px-4 py-4">
-          <Brand />
+        <div className="flex shrink-0 items-center justify-end border-b border-hairline px-4 py-3">
           <button type="button" onClick={close} className="shrink-0 p-1" aria-label="Close menu">
             <X className="size-4 text-ink-muted" strokeWidth={2} />
           </button>
         </div>
-        <div className="px-4 py-4">
+        <div className="overflow-y-auto px-2.5 py-3">
           <AdminNav onNavigate={close} />
         </div>
-        <div className="mt-auto flex flex-col gap-4 border-t border-hairline px-4 py-4">
+        <div className="mt-auto border-t border-hairline px-2.5 py-3">
           <ThemeToggle />
-          <OpenApp className="border-t border-hairline pt-4" />
         </div>
       </div>
     </>

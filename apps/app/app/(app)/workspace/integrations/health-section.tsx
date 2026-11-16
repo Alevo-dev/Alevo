@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cx } from "@/lib/cx";
+import { Card, CardHeader } from "@/components/ui/card";
 import type { ConnectionHealth, ProviderHealth } from "@/lib/integrations/health";
 
 const W = 640;
@@ -47,37 +48,26 @@ const pct = (n: number | null) => (n === null ? "No data" : `${(n * 100).toFixed
 export function HealthSection({ health }: { health: ConnectionHealth }) {
   const [sel, setSel] = useState<string | null>(null);
   const chosen = health.providers.find((p) => p.provider === sel) ?? null;
-  const shown = chosen ? [chosen] : health.providers;
   const head = chosen ?? health;
   const lo = axisFloor(health.providers);
   const ticks = [0, 1, 2, 3].map((i) => ({ y: YT + (i * (YB - YT)) / 3, label: `${Math.round(100 - (i * (100 - lo)) / 3)}%` }));
 
   return (
-    <section aria-labelledby="connection-health">
-      <h2 id="connection-health" className="text-heading font-semibold text-ink">
-        Connection health
-      </h2>
-      <p className="mt-2 text-sm text-ink-muted">
-        How often each tool succeeded over the last 24 hours, counting the webhooks it sent us and the calls we made to it. Select a tool to look at it on its own; select it again to show all.
-      </p>
-      <div className="mt-3 h-[3px] w-7 rounded-sm bg-gradient-to-r from-brand to-violet" aria-hidden="true" />
+    <Card boxed as="section" padding="none" aria-label="Connection health">
+      <CardHeader title="Connection health" hint="Delivery rate per tool, last 24 hours. Select a tool to isolate it; select it again to show all." />
 
       {health.providers.length === 0 ? (
-        <p className="mt-6 rounded-md border border-dashed border-hairline p-4 text-sm text-ink-muted">
-          Nothing to show yet. Each tool you connect appears here, and fills in as it sends webhooks or we call it.
-        </p>
+        <p className="p-3.5 text-ink-muted">Nothing to show yet. Each tool you connect appears here, and fills in as it sends webhooks or we call it.</p>
       ) : (
-        <>
-          <div className="mt-6 grid items-center gap-10 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
+        <div className="p-3.5">
+          <div className="grid items-center gap-7 md:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
             <div>
-              <div className="text-label text-ink-muted">{chosen ? chosen.name : "All tools"}</div>
-              <div className="mt-1.5 bg-gradient-to-r from-brand to-violet bg-clip-text font-mono text-5xl font-medium tracking-tight text-transparent">
-                {pct(head.successRate)}
-              </div>
-              <div className="mt-1.5 text-label text-ink-muted">Calls and webhooks that succeeded</div>
-              <div className="mt-5 flex items-baseline gap-2">
-                <span className="font-mono text-2xl text-ink">{head.failed}</span>
-                <span className="text-label text-ink-muted">failed</span>
+              <div className="text-ink-muted">{chosen ? chosen.name : "All tools"}</div>
+              <div className="mt-1 font-mono text-[32px] font-medium leading-[38px] tracking-[-0.02em] text-ink">{pct(head.successRate)}</div>
+              <div className="mt-0.5 text-ink-muted">Calls and webhooks that succeeded</div>
+              <div className="mt-3.5 flex items-baseline gap-2">
+                <span className="font-mono text-xl text-ink">{head.failed}</span>
+                <span className="text-ink-muted">failed</span>
               </div>
             </div>
 
@@ -88,7 +78,7 @@ export function HealthSection({ health }: { health: ConnectionHealth }) {
               aria-label={`Success rate per tool over the last 24 hours. ${chosen ? chosen.name : "All tools"} shown.`}
               className="block overflow-visible"
             >
-              <g fontSize="12" className="fill-ink-muted">
+              <g fontSize="13" className="fill-ink-muted">
                 {ticks.map((t) => (
                   <g key={t.label}>
                     <line x1={X0} x2={X1} y1={t.y} y2={t.y} className="stroke-hairline" />
@@ -101,28 +91,31 @@ export function HealthSection({ health }: { health: ConnectionHealth }) {
                 <text x={(X0 + X1) / 2} y={206} textAnchor="middle">12h</text>
                 <text x={X1} y={206} textAnchor="end">Now</text>
               </g>
-              {shown.map((p) =>
-                runs(p, lo).map((run, i) =>
-                  run.length > 1 ? (
-                    <polyline
-                      key={`${p.provider}-${i}`}
-                      points={run.map((pt) => `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(" ")}
-                      fill="none"
-                      stroke={p.color}
-                      strokeWidth={chosen ? 4 : 2.5}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                  ) : (
-                    // A single hour with traffic has no line to draw: show it as a dot.
-                    <circle key={`${p.provider}-${i}`} cx={run[0]!.x} cy={run[0]!.y} r={chosen ? 4 : 3} fill={p.color} />
-                  ),
-                ),
-              )}
+              {/* Isolating dims the other lines (the board's 12%) rather than removing them. */}
+              {health.providers.map((p) => (
+                <g key={p.provider} className="transition-opacity duration-200 ease-out motion-reduce:transition-none" style={{ opacity: !chosen || chosen === p ? 1 : 0.12 }}>
+                  {runs(p, lo).map((run, i) =>
+                    run.length > 1 ? (
+                      <polyline
+                        key={i}
+                        points={run.map((pt) => `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(" ")}
+                        fill="none"
+                        stroke={p.color}
+                        strokeWidth={chosen === p ? 4 : 2.5}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    ) : (
+                      // A single hour with traffic has no line to draw: show it as a dot.
+                      <circle key={i} cx={run[0]!.x} cy={run[0]!.y} r={chosen === p ? 4 : 3} fill={p.color} />
+                    ),
+                  )}
+                </g>
+              ))}
             </svg>
           </div>
 
-          <div role="group" aria-label="Isolate a tool" className="mt-4 flex flex-wrap gap-2">
+          <div role="group" aria-label="Isolate a tool" className="mt-3 flex flex-wrap gap-1.5">
             {health.providers.map((p) => {
               const on = sel === p.provider;
               return (
@@ -132,20 +125,22 @@ export function HealthSection({ health }: { health: ConnectionHealth }) {
                   aria-pressed={on}
                   onClick={() => setSel(on ? null : p.provider)}
                   className={cx(
-                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-label font-medium text-ink transition-colors",
-                    on ? "bg-brand-soft" : "border-hairline hover:bg-raised",
+                    "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[13.5px] font-[550] text-ink transition-[background-color,border-color] duration-200 ease-out motion-reduce:transition-none",
+                    on ? "bg-brand-soft" : "border-hairline bg-transparent",
                   )}
-                  style={on ? { borderColor: p.color } : undefined}
+                  style={{ borderColor: on ? p.color : undefined }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = p.color)}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = on ? p.color : "")}
                 >
-                  <span className="size-2.5 rounded-[3px]" style={{ background: p.color }} aria-hidden="true" />
+                  <span className="size-[9px] rounded-[3px]" style={{ background: p.color }} aria-hidden="true" />
                   {p.name}
-                  <span className="font-mono text-ink-muted">{pct(p.successRate)}</span>
+                  <span className="font-mono text-[12.5px] text-ink-muted">{pct(p.successRate)}</span>
                 </button>
               );
             })}
           </div>
-        </>
+        </div>
       )}
-    </section>
+    </Card>
   );
 }

@@ -33,19 +33,23 @@ function Microsoft({ className }: { className: string }) {
 }
 
 const TILE = "inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-white";
+/** The 30px row mark of the Integrations list (boards: 30px, 8px radius, hairline). */
+const TILE_SM = "inline-flex size-[30px] shrink-0 items-center justify-center rounded-[8px] border border-hairline bg-white";
 
 /** A brand's real mark in its own colours, on a white tile so dark marks stay visible on navy. */
-export function BrandMark({ icon }: { icon: ServiceIcon }) {
+export function BrandMark({ icon, size = "md" }: { icon: ServiceIcon; size?: "sm" | "md" }) {
+  const sm = size === "sm";
+  const tile = sm ? TILE_SM : TILE;
   if (icon === "alevo") {
     return (
-      <span aria-hidden="true" className={`${TILE} p-2`}>
+      <span aria-hidden="true" className={`${tile} ${sm ? "p-[5px]" : "p-2"}`}>
         <Image src="/alevo-mark.png" alt="" width={24} height={24} className="size-full object-contain" />
       </span>
     );
   }
   if (icon === "calendar") {
     return (
-      <span aria-hidden="true" className={`${TILE} gap-1 p-1.5`}>
+      <span aria-hidden="true" className={`${tile} gap-1 ${sm ? "p-1" : "p-1.5"}`}>
         <GoogleCalendar className="size-4" />
         <Microsoft className="size-4" />
       </span>
@@ -53,21 +57,21 @@ export function BrandMark({ icon }: { icon: ServiceIcon }) {
   }
   if (icon === "google") {
     return (
-      <span aria-hidden="true" className={`${TILE} p-2`}>
+      <span aria-hidden="true" className={`${tile} ${sm ? "p-[5px]" : "p-2"}`}>
         <GoogleCalendar className="size-full" />
       </span>
     );
   }
   if (icon === "microsoft") {
     return (
-      <span aria-hidden="true" className={`${TILE} p-2`}>
+      <span aria-hidden="true" className={`${tile} ${sm ? "p-[5px]" : "p-2"}`}>
         <Microsoft className="size-full" />
       </span>
     );
   }
   if (icon === "slack") {
     return (
-      <span aria-hidden="true" className={`${TILE} p-2`}>
+      <span aria-hidden="true" className={`${tile} ${sm ? "p-[5px]" : "p-2"}`}>
         <svg viewBox="0 0 122.8 122.8" className="size-full" aria-hidden="true" focusable="false">
           {SLACK_PIECES.map((piece) => (
             <path key={piece.fill} d={piece.path} fill={piece.fill} />
@@ -79,7 +83,7 @@ export function BrandMark({ icon }: { icon: ServiceIcon }) {
   if (icon === "calcom") {
     // Square tile like the others. The wordmark is wide, so crop to its ink and fill the tile's width.
     return (
-      <span aria-hidden="true" className={`${TILE} p-1`}>
+      <span aria-hidden="true" className={`${tile} ${sm ? "p-[3px]" : "p-1"}`}>
         <svg viewBox="0 9.5 24 5" className="w-full" aria-hidden="true" focusable="false">
           <path d={BRAND_ICONS.calcom.path} fill={`#${BRAND_ICONS.calcom.hex}`} />
         </svg>
@@ -89,14 +93,14 @@ export function BrandMark({ icon }: { icon: ServiceIcon }) {
   if (icon in LETTER_MARKS) {
     const { text, fill } = LETTER_MARKS[icon as keyof typeof LETTER_MARKS];
     return (
-      <span aria-hidden="true" className={TILE} style={{ backgroundColor: fill }}>
+      <span aria-hidden="true" className={tile} style={{ backgroundColor: fill }}>
         <span className="font-display text-sm font-bold leading-none text-white">{text}</span>
       </span>
     );
   }
   const mark = MARK[icon as keyof typeof MARK];
   return (
-    <span aria-hidden="true" className={`${TILE} p-2`}>
+    <span aria-hidden="true" className={`${tile} ${sm ? "p-[5px]" : "p-2"}`}>
       <Glyph path={mark.path} fill={`#${mark.hex}`} className="size-full" />
     </span>
   );

@@ -21,7 +21,7 @@ export type OrgDetail = {
   planName: string | null;
   status: string | null;
   agentOn: boolean;
-  members: { userId: string; clerkUserId: string; name: string | null; email: string | null; role: AppRole; support: boolean }[];
+  members: { userId: string; clerkUserId: string; name: string | null; email: string | null; role: AppRole; support: boolean; isPlatformAdmin: boolean }[];
   invites: { id: string; email: string; role: AppRole; status: InvitationStatus; clerkInvitationId: string | null }[];
 };
 
@@ -60,6 +60,7 @@ export async function orgDetail(id: string): Promise<OrgDetail | null> {
           email: users.email,
           role: memberships.role,
           support: memberships.support,
+          isPlatformAdmin: users.isPlatformAdmin,
         })
         .from(memberships)
         .innerJoin(users, eq(users.id, memberships.userId))

@@ -36,18 +36,19 @@ export function StatusDot({ tone, live = false }: { tone: Tone; live?: boolean }
   );
 }
 
-/** Solid status fills use the vivid (dark-theme) hues in BOTH themes; the text
- *  follows the theme (white on light, navy on dark). */
-const FILL: Record<Tone, string> = {
-  brand: "bg-vivid-brand text-on-vivid",
-  violet: "bg-vivid-violet text-on-vivid",
-  success: "bg-vivid-success text-on-vivid",
-  warning: "bg-vivid-warning text-on-vivid",
-  danger: "bg-vivid-danger text-on-vivid",
-  muted: "border border-hairline bg-raised text-ink-muted",
+/** Outlined status pill (boards: ok / warn / bad / blue / vio / off): tone text,
+ *  a 1px tone border and an 8% tint. Brand / violet text use the *-ink tokens so
+ *  it stays legible in both themes. */
+const TINT: Record<Tone, string> = {
+  brand: "border-brand/60 bg-brand/10 text-brand-ink",
+  violet: "border-violet/60 bg-violet/10 text-violet-ink",
+  success: "border-success/55 bg-success/10 text-success",
+  warning: "border-warning/55 bg-warning/10 text-warning",
+  danger: "border-danger/55 bg-danger/10 text-danger",
+  muted: "border-control bg-transparent text-ink-muted",
 };
 
-/** Status pill: solid tone background, contrasting text. */
+/** Status pill: 20px, tinted with a coloured border. */
 export function Pill({
   tone,
   children,
@@ -60,8 +61,8 @@ export function Pill({
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold leading-4",
-        FILL[tone],
+        "inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 text-[12.5px] font-[550] leading-none",
+        TINT[tone],
         className,
       )}
     >

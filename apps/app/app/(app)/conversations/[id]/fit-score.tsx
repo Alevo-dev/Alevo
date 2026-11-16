@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fitTone } from "@/components/conversations/kit";
 
-const R = 40;
+const R = 29;
 const CIRC = 2 * Math.PI * R;
 const DURATION_MS = 1200;
 
@@ -15,8 +16,9 @@ const ease = (t: number) => 1 - Math.pow(1 - t, 3);
  */
 export function FitScore({ score }: { score: number | null }) {
   const pct = score == null ? 0 : Math.max(0, Math.min(100, score));
-  const label =
-    score == null ? "Not scored yet" : score >= 70 ? "Strong fit" : score >= 40 ? "Possible fit" : "Weak fit";
+  const tone = score == null ? "muted" : fitTone(score);
+  const label = score == null ? "Not scored yet" : tone === "success" ? "Strong fit" : tone === "warning" ? "Possible fit" : "Weak fit";
+  const stroke = tone === "muted" ? "var(--color-control)" : `var(--color-${tone})`;
 
   // 0 → 1 progress of the intro animation, driven by requestAnimationFrame.
   const [p, setP] = useState(0);
@@ -37,38 +39,39 @@ export function FitScore({ score }: { score: number | null }) {
   const shown = score == null ? null : Math.round(pct * p);
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-3.5">
       <svg
-        width="96"
-        height="96"
-        viewBox="0 0 96 96"
+        width="64"
+        height="64"
+        viewBox="0 0 64 64"
         role="img"
         aria-label={score == null ? "Fit score not set" : `Fit score ${score} of 100`}
         className="shrink-0"
       >
-        <circle cx="48" cy="48" r={R} fill="none" className="stroke-raised" strokeWidth="8" />
+        <circle cx="32" cy="32" r={R} fill="none" stroke="var(--color-raised)" strokeWidth="5" />
         {score != null && (
           <circle
-            cx="48"
-            cy="48"
+            cx="32"
+            cy="32"
             r={R}
             fill="none"
-            className="stroke-brand"
-            strokeWidth="8"
+            stroke={stroke}
+            strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={CIRC}
             strokeDashoffset={CIRC * (1 - (pct * p) / 100)}
-            transform="rotate(-90 48 48)"
+            transform="rotate(-90 32 32)"
           />
         )}
-        <text x="48" y="55" textAnchor="middle" className="tabular fill-ink font-mono text-[20px] font-medium">
+        <text x="32" y="38" textAnchor="middle" className="tabular fill-ink font-mono text-[20px]">
           {shown ?? "—"}
         </text>
       </svg>
       <div>
-        <div className="text-label text-ink-muted">Fit score</div>
-        <div className="mt-1 text-sm font-semibold text-ink">{label}</div>
-        <div className="mt-1 text-label text-ink-muted">Out of 100</div>
+        <div className="font-semibold" style={{ color: stroke }}>
+          {label}
+        </div>
+        <div className="text-ink-muted">Out of 100</div>
       </div>
     </div>
   );

@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
-import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
-import { calls, contacts, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
+import { CalendarCheck } from "lucide-react";
+import { and, asc, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { calls, consents, contacts, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
 import { getCurrentRole, withOrg } from "@alevo/auth";
 import { CallCard } from "@/components/conversations/call-card";
-import { CardTitle } from "@/components/ui/card";
+import { Panel, ScreenHeader, Strip, TabLinks } from "@/components/conversations/kit";
+import { RefreshButton } from "@/components/conversations/refresh-button";
+import { buttonClass } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
-import { Pill, StatusDot } from "@/components/ui/pill";
+import { Pill } from "@/components/ui/pill";
 import { cx } from "@/lib/cx";
-import { anonymousLabel, displayName, fmtDateTime, fmtTime } from "@/lib/format";
+import { anonymousLabel, displayName, fmtDateTime, fmtDuration, fmtShort, fmtTime } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { linkedRecords } from "@/lib/psa/writeback";
-import { CHANNEL_LABEL, CONVERSATION_STATUS, MEETING_STATUS } from "@/lib/ui/status";
+import { CHANNEL_LABEL, CONVERSATION_STATUS, MEETING_STATUS, PROVIDER_LABEL } from "@/lib/ui/status";
+import { ManageControls, OutcomeControls } from "../../meetings/meetings-ui";
 import { ReplyAsContact } from "./reply-ui";
 import { AutoRefresh } from "./auto-refresh";
 import { FitScore } from "./fit-score";
 import { PsaPanel } from "./psa-panel";
+import { ThreadActions } from "./thread-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +41,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 const AUTHOR_LABEL = { contact: "Contact", assistant: "Alevo agent", human: "Rep" } as const;
 
-export default async function ConversationThread({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function ConversationThread({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const inOrg = sql`(select app.current_org_id())`;
 
   const [conv] = await withOrg((tx) =>
@@ -53,11 +58,14 @@ export default async function ConversationThread({ params }: { params: Promise<{
         replyFailedAt: conversations.replyFailedAt,
         replyError: conversations.replyError,
         createdAt: conversations.createdAt,
+        firstReplySentAt: conversations.firstReplySentAt,
+        leadReceivedAt: conversations.leadReceivedAt,
         firstName: contacts.firstName,
         lastName: contacts.lastName,
         email: contacts.email,
         phone: contacts.phone,
         company: contacts.company,
+        timezone: contacts.timezone,
       })
       .from(conversations)
       .innerJoin(contacts, eq(contacts.id, conversations.contactId))
@@ -68,7 +76,7 @@ export default async function ConversationThread({ params }: { params: Promise<{
   // Wrong id, or another org's conversation (RLS + the explicit filter hide it).
   if (!conv) notFound();
 
-  const [tz, thread, [profile], [meeting], psa, callRows, role, others] = await Promise.all([
+  const [tz, thread, [profile], meetingRows, psa, callRows, role, others, [consent]] = await Promise.all([
     getOrgTimezone(),
     withOrg((tx) =>
       tx
@@ -88,14 +96,14 @@ export default async function ConversationThread({ params }: { params: Promise<{
     withOrg((tx) =>
       tx.select({ enabled: orgProfiles.enabled }).from(orgProfiles).where(sql`${orgProfiles.orgId} = ${inOrg}`).limit(1),
     ),
-    // The booked meeting for this conversation (latest), if any.
+    // The meetings booked from this conversation, latest first.
     withOrg((tx) =>
       tx
-        .select({ status: meetings.status, startAt: meetings.startAt, joinUrl: meetings.joinUrl })
+        .select({ id: meetings.id, provider: meetings.provider, status: meetings.status, outcome: meetings.outcome, converted: meetings.converted, startAt: meetings.startAt, joinUrl: meetings.joinUrl, createdAt: meetings.createdAt })
         .from(meetings)
         .where(and(eq(meetings.conversationId, id), sql`${meetings.orgId} = ${inOrg}`))
         .orderBy(desc(meetings.createdAt))
-        .limit(1),
+        .limit(20),
     ),
     // What was written back to the PSA for this lead (explicit org filter).
     withOrg((tx) => linkedRecords(tx, conv.orgId, conv.id, conv.contactId)),
@@ -124,10 +132,24 @@ export default async function ConversationThread({ params }: { params: Promise<{
         .from(conversations)
         .where(and(eq(conversations.contactId, conv.contactId), sql`${conversations.orgId} = ${inOrg}`, ne(conversations.id, id))),
     ),
+    // Where the contact's consent came from (newest active one).
+    withOrg((tx) =>
+      tx
+        .select({ source: consents.source })
+        .from(consents)
+        .where(and(eq(consents.contactId, conv.contactId), eq(consents.orgId, conv.orgId), isNull(consents.revokedAt)))
+        .orderBy(desc(consents.grantedAt))
+        .limit(1),
+    ),
   ]);
+  const meeting = meetingRows[0];
+  const canAct = role === "rep" || role === "admin" || role === "owner";
+  const tab = sp.tab === "calls" && callRows.length > 0 ? "calls" : sp.tab === "meetings" && meetingRows.length > 0 ? "meetings" : "thread";
+  const tabHref = (t: string) => (t === "thread" ? `/conversations/${id}` : `/conversations/${id}?tab=${t}`);
   const otherCount = others[0]?.n ?? 0;
   const qualifierEnabled = profile?.enabled ?? false;
-  const canPlay = role === "admin" || role === "owner";
+  const canDelete = role === "admin" || role === "owner";
+  const canPlay = canDelete;
 
   // Messages and calls in one timeline, oldest first.
   type Entry = { at: Date } & ({ kind: "message"; m: (typeof thread)[number] } | { kind: "call"; c: (typeof callRows)[number] });
@@ -155,7 +177,6 @@ export default async function ConversationThread({ params }: { params: Promise<{
   }
 
   const name = displayName(conv.firstName, conv.lastName, conv.email ?? conv.phone ?? anonymousLabel(conv.channel));
-  const status = CONVERSATION_STATUS[conv.status];
   const isOpen = ["new", "active"].includes(conv.status);
 
   // Poll for the Qualifier's async reply only when it's actually on, a contact
@@ -163,143 +184,219 @@ export default async function ConversationThread({ params }: { params: Promise<{
   const lastMsg = thread.at(-1);
   const awaitingReply = qualifierEnabled && lastMsg?.author === "contact" && isOpen;
 
+  const firstReply = conv.firstReplySentAt && conv.leadReceivedAt ? (conv.firstReplySentAt.getTime() - conv.leadReceivedAt.getTime()) / 1000 : null;
+  const channel = CHANNEL_LABEL[conv.channel];
+  const ls = CONVERSATION_STATUS[conv.status];
+  const reasons = (conv.scoreReasons ?? "")
+    .split(/(?<=[.;])\s+/)
+    .map((r) => r.trim())
+    .filter(Boolean);
+  const timeline = [
+    { at: conv.createdAt, text: `First touch by ${channel.toLowerCase()}` },
+    ...(meeting ? [{ at: meeting.createdAt, text: meeting.startAt ? `Meeting booked for ${fmtDateTime(meeting.startAt, tz)}` : "Meeting booked" }] : []),
+    ...psa.slice(-1).map((r) => ({ at: r.createdAt, text: "Written to ConnectWise" })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
+  const firstAgentId = thread.find((m) => m.author === "assistant")?.id;
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
-      <section aria-label="Messages" className="flex min-w-0 flex-col gap-6">
-        <header className="border-b border-hairline pb-5">
-          <Link href="/conversations" transitionTypes={["nav-back"]} className="inline-flex items-center gap-1 text-label text-ink-muted no-underline hover:text-ink">
-            <ChevronLeft className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
-            Conversations
-          </Link>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="truncate text-title font-semibold text-ink">
-                <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]} className="text-ink no-underline hover:underline">
-                  {name}
-                </Link>
-              </h1>
-              <p className="mt-2 flex items-center gap-2 text-sm text-ink-muted">
-                <StatusDot tone={status.tone} live={isOpen && qualifierEnabled} />
-                {conv.company ? `${conv.company}. ` : ""}Started by {CHANNEL_LABEL[conv.channel].toLowerCase()} at{" "}
-                {fmtDateTime(conv.createdAt, tz)}
-              </p>
-            </div>
-            <Pill tone={status.tone} className="px-3 py-1.5 text-sm">
-              {status.label}
-            </Pill>
-          </div>
-        </header>
+    <div className="flex flex-col gap-3.5">
+      <ScreenHeader title={conv.company ?? name} badge={<Pill tone={ls.tone}>{ls.label}</Pill>} sub={conv.company ? name : undefined}>
+        <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]} className={buttonClass("secondary", "sm")}>
+          Open client
+        </Link>
+        <ThreadActions conversationId={conv.id} status={conv.status} canAct={canAct} canDelete={canDelete} />
+      </ScreenHeader>
 
-        {conv.replyFailedAt && (
-          <Notice tone="danger">
-            The agent could not complete its last reply
-            {conv.replyError ? ` (${conv.replyError.toLowerCase()})` : ""}. Reach out to this contact yourself; the
-            notice clears once a reply goes through.
-          </Notice>
-        )}
+      <Strip
+        items={[
+          { k: "Client", v: name },
+          { k: "Channel", v: channel },
+          { k: "Status", v: ls.label },
+          { k: "Fit", v: <span className="font-mono">{conv.fitScore ?? "—"}</span> },
+          { k: "First reply", v: <span className="font-mono">{firstReply == null ? "—" : fmtDuration(firstReply)}</span> },
+          { k: "Started", v: fmtShort(conv.createdAt, tz) },
+        ]}
+      />
 
-        {suppressedReason && (
-          <Notice tone="danger">
-            This contact opted out ({suppressedReason}). The agent won&apos;t email them; replies are recorded
-            here only.
-          </Notice>
-        )}
+      {conv.replyFailedAt && (
+        <Notice tone="danger">
+          The agent could not complete its last reply
+          {conv.replyError ? ` (${conv.replyError.toLowerCase()})` : ""}. Reach out to this contact yourself; the notice clears once a reply goes through.
+        </Notice>
+      )}
 
-        <ol className="flex flex-col gap-5">
-          {entries.length === 0 && <li className="text-sm text-ink-muted">No messages yet.</li>}
-          {entries.map((e) => {
-            if (e.kind === "call") {
-              const c = e.c;
-              return (
-                <CallCard
-                  key={c.id}
-                  tz={tz}
-                  canPlay={canPlay}
-                  call={{
-                    id: c.id,
-                    startedAt: c.startedAt,
-                    durationSec: c.durationSec,
-                    outcome: (c.outcome ?? "none") as CallOutcome,
-                    summary: c.summary,
-                    transcript: c.transcript,
-                    hasRecording: Boolean(c.recordingKey),
-                    messageTaken: thread.some((m) => m.providerRef === `call:${c.providerRef}:message`),
-                  }}
-                />
-              );
-            }
-            const m = e.m;
-            const fromContact = m.author === "contact";
-            return (
-              <li key={m.id} className={cx("flex max-w-[720px] flex-col", fromContact ? "self-start" : "self-end items-end")}>
-                <div className="mb-1.5 text-label text-ink-muted">
-                  {fromContact ? name : AUTHOR_LABEL[m.author]}, {fmtTime(m.createdAt, tz)}
+      {suppressedReason && (
+        <Notice tone="danger">
+          This contact opted out ({suppressedReason}). The agent won&apos;t email them; replies are recorded here only.
+        </Notice>
+      )}
+
+      {(callRows.length > 0 || meetingRows.length > 0) && (
+        <TabLinks
+          label="Conversation sections"
+          tabs={[
+            { label: "Thread", href: tabHref("thread"), active: tab === "thread" },
+            ...(callRows.length > 0 ? [{ label: "Calls", href: tabHref("calls"), count: callRows.length, active: tab === "calls" }] : []),
+            ...(meetingRows.length > 0 ? [{ label: "Meetings", href: tabHref("meetings"), count: meetingRows.length, active: tab === "meetings" }] : []),
+          ]}
+        />
+      )}
+
+      <div className="grid items-start gap-3.5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <Card boxed padding="none" aria-label={tab === "meetings" ? "Meetings" : "Messages"}>
+          <CardHeader title={tab === "thread" ? "Thread" : tab === "calls" ? "Calls" : "Meetings"} hint={`${channel} · started ${fmtTime(conv.createdAt, tz)}`} aside={<RefreshButton label="Refresh" />} />
+          {tab === "meetings" ? (
+            <ul>
+              {meetingRows.map((m) => {
+                const ms = MEETING_STATUS[m.status];
+                return (
+                  <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline/60 px-4 py-3 first:border-t-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="font-mono text-sm font-semibold">{m.startAt ? fmtDateTime(m.startAt, tz) : "Time to be set"}</span>
+                        <Pill tone={ms.tone}>{ms.label}</Pill>
+                      </div>
+                      <div className="mt-0.5 text-[13px] text-ink-muted">
+                        With {name} · {PROVIDER_LABEL[m.provider]}
+                        {m.joinUrl && (
+                          <>
+                            {" · "}
+                            <a href={m.joinUrl} target="_blank" rel="noopener noreferrer">
+                              Join link
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {canAct && <OutcomeControls id={m.id} status={m.status} outcome={m.outcome} converted={m.converted} />}
+                    {canAct && <ManageControls id={m.id} provider={m.provider} status={m.status} contact={name} />}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <>
+              <ol className="flex flex-col gap-3 p-3.5">
+                {entries.length === 0 && <li className="text-sm text-ink-muted">No messages yet.</li>}
+                {entries.filter((e) => tab === "thread" || e.kind === "call").map((e) => {
+                  if (e.kind === "call") {
+                    const c = e.c;
+                    return (
+                      <CallCard
+                        key={c.id}
+                        tz={tz}
+                        canPlay={canPlay}
+                        call={{
+                          id: c.id,
+                          startedAt: c.startedAt,
+                          durationSec: c.durationSec,
+                          outcome: (c.outcome ?? "none") as CallOutcome,
+                          summary: c.summary,
+                          transcript: c.transcript,
+                          hasRecording: Boolean(c.recordingKey),
+                          messageTaken: thread.some((m) => m.providerRef === `call:${c.providerRef}:message`),
+                        }}
+                      />
+                    );
+                  }
+                  const m = e.m;
+                  const fromContact = m.author === "contact";
+                  return (
+                    <li key={m.id} className={cx("flex max-w-[78%] flex-col", fromContact ? "self-start" : "ml-auto items-end self-end")}>
+                      <div className="mb-[3px] font-mono text-xs text-ink-muted">
+                        {fromContact ? name : AUTHOR_LABEL[m.author]} · {channel} {fmtTime(m.createdAt, tz)}
+                        {m.id === firstAgentId && firstReply != null ? ` · ${fmtDuration(firstReply)}` : ""}
+                      </div>
+                      <div
+                        className={cx(
+                          "whitespace-pre-wrap border px-3 py-2 text-sm leading-[21px] text-ink",
+                          fromContact ? "rounded-[10px_10px_10px_2px] border-hairline bg-raised" : "rounded-[10px_10px_2px_10px] border-brand/50 bg-brand-soft",
+                        )}
+                      >
+                        {m.body}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+              {tab === "thread" && meeting && (
+                <div className="mx-3.5 mb-3.5 flex items-start gap-2.5 rounded-sm border border-brand/60 bg-brand/[0.07] px-3 py-[9px] text-[13.5px] text-brand-ink">
+                  <CalendarCheck className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                  <div>
+                    <b className="font-semibold">{MEETING_STATUS[meeting.status].label}</b>
+                    {" · "}
+                    {meeting.startAt ? fmtDateTime(meeting.startAt, tz) : "Time to be set"}
+                    {meeting.joinUrl && (
+                      <>
+                        {" · "}
+                        <a href={meeting.joinUrl} target="_blank" rel="noopener noreferrer">
+                          Join link
+                        </a>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div
-                  className={cx(
-                    "whitespace-pre-wrap rounded-md p-4 text-base leading-6 text-ink",
-                    fromContact && "bg-raised",
-                    m.author === "assistant" && "border border-violet bg-violet-soft",
-                    m.author === "human" && "border border-brand bg-brand-soft",
-                  )}
-                >
-                  {m.body}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+              )}
+              {tab === "thread" && <ReplyAsContact conversationId={conv.id} qualifierEnabled={qualifierEnabled} />}
+              <AutoRefresh key={lastMsg?.id} active={!!awaitingReply} />
+            </>
+          )}
+        </Card>
 
-        <ReplyAsContact conversationId={conv.id} qualifierEnabled={qualifierEnabled} />
-        <AutoRefresh key={lastMsg?.id} active={!!awaitingReply} />
-      </section>
-
-      <aside aria-label="Lead details" className="flex flex-col gap-6 lg:border-l lg:border-hairline lg:pl-6">
-        <FitScore score={conv.fitScore} />
-
-        <dl className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-x-4 gap-y-3 text-sm">
-          <dt className="text-ink-muted">Email</dt>
-          <dd className="truncate">{conv.email ?? "—"}</dd>
-          <dt className="text-ink-muted">Phone</dt>
-          <dd className="font-mono text-label">{conv.phone ?? "—"}</dd>
-          <dt className="text-ink-muted">Company</dt>
-          <dd>{conv.company ?? "—"}</dd>
-          <dt className="text-ink-muted">Channel</dt>
-          <dd>{CHANNEL_LABEL[conv.channel]}</dd>
-          <dt className="text-ink-muted">Client</dt>
-          <dd>
-            <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]}>
-              {otherCount === 0 ? "No other conversations" : otherCount === 1 ? "1 other conversation" : `${otherCount} other conversations`}
-            </Link>
-          </dd>
-        </dl>
-
-        {conv.scoreReasons && (
-          <div className="rounded-md bg-brand-soft p-4">
-            <div className="text-sm font-semibold text-ink">Why the score</div>
-            <p className="mt-2 text-sm leading-5 text-ink">{conv.scoreReasons}</p>
-          </div>
-        )}
-
-        {meeting && (
-          <div>
-            <CardTitle>Meeting</CardTitle>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-              <Pill tone={MEETING_STATUS[meeting.status].tone}>{MEETING_STATUS[meeting.status].label}</Pill>
-              <span className="tabular font-mono text-label text-ink-muted">
-                {meeting.startAt ? fmtDateTime(meeting.startAt, tz) : "Time to be set"}
-              </span>
-            </div>
-            {meeting.joinUrl && (
-              <a href={meeting.joinUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm">
-                Join link
-              </a>
+        <aside aria-label="Lead details" className="flex min-w-0 flex-col gap-3.5">
+          <Panel title="Fit score">
+            <FitScore score={conv.fitScore} />
+            {reasons.length > 0 && (
+              <ul className="mt-3 list-disc pl-[18px] leading-5 text-ink-muted">
+                {reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
             )}
-          </div>
-        )}
+          </Panel>
 
-        <PsaPanel records={psa} tz={tz} />
-      </aside>
+          <Panel title="Details">
+            <dl>
+              <Row k="Email">{conv.email ?? "—"}</Row>
+              <Row k="Phone">{conv.phone ? <span className="font-mono">{conv.phone}</span> : "—"}</Row>
+              <Row k="Company">{conv.company ?? "—"}</Row>
+              <Row k="Timezone">{conv.timezone ?? "—"}</Row>
+              <Row k="Consent source">{consent?.source ?? "—"}</Row>
+              <Row k="Other conversations">
+                {otherCount === 0 ? (
+                  "None"
+                ) : (
+                  <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]}>
+                    {otherCount} more
+                  </Link>
+                )}
+              </Row>
+            </dl>
+          </Panel>
+
+          <PsaPanel records={psa} tz={tz} />
+
+          <Panel title="Timeline">
+            <ol className="flex flex-col gap-2">
+              {timeline.map((t) => (
+                <li key={t.text}>
+                  <span className="mr-2.5 font-mono text-ink-muted">{fmtTime(t.at, tz)}</span>
+                  {t.text}
+                </li>
+              ))}
+            </ol>
+          </Panel>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function Row({ k, children }: { k: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-hairline/60 py-1.5 first:pt-0 last:border-b-0 last:pb-0">
+      <dt className="text-ink-muted">{k}</dt>
+      <dd className="min-w-0 truncate">{children}</dd>
     </div>
   );
 }

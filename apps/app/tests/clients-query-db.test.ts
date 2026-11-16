@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { contacts, conversations, organizations, withService } from "@alevo/db";
 import { clientDetail } from "../lib/clients/detail";
-import { clientCount, clientsPage } from "../lib/clients/queries";
+import { clientCount, clientsPage, clientTabCounts } from "../lib/clients/queries";
 
 /**
  * The clients list: one row per contact, most recent activity first, with what
@@ -63,6 +63,25 @@ describe.skipIf(!HAS_DB)("clientsPage", () => {
 
   it("counts clients for the header", async () => {
     expect(await withService((tx) => clientCount(tx, orgId))).toBe(3);
+  });
+});
+
+describe.skipIf(!HAS_DB)("tabs and search", () => {
+  it("filters by the latest status and counts every tab", async () => {
+    const open = await withService((tx) => clientsPage(tx, orgId, null, { filter: "open" }));
+    expect(open.rows.map((r) => r.id)).toEqual([a]);
+    const handed = await withService((tx) => clientsPage(tx, orgId, null, { filter: "handed_off" }));
+    expect(handed.rows.map((r) => r.id)).toEqual([b]);
+    expect(await withService((tx) => clientTabCounts(tx, orgId))).toEqual({ all: 3, open: 1, handed_off: 1, booked: 0, disqualified: 0 });
+    expect(await withService((tx) => clientCount(tx, orgId, { filter: "open" }))).toBe(1);
+  });
+
+  it("searches name, company, email and phone, treating % and _ literally", async () => {
+    const ids = async (q: string) => (await withService((tx) => clientsPage(tx, orgId, null, { q }))).rows.map((r) => r.id);
+    expect(await ids("acme")).toEqual([a]);
+    expect(await ids("0011")).toEqual([b]);
+    expect(await ids(`c-${stamp}`)).toEqual([c]);
+    expect(await ids("%")).toEqual([]);
   });
 });
 

@@ -220,7 +220,7 @@ export function WorkspaceSwitcher() {
                         });
                       }}
                     >
-                      <Trash2 className="size-4" strokeWidth={1.75} aria-hidden="true" />
+                      <Trash2 className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
                     </IconButton>
                   )}
                 </div>

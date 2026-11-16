@@ -100,7 +100,7 @@ export function ConfirmSubmit({
           onClick={() => setOpen(true)}
           aria-label={aria["aria-label"]}
         >
-          <Icon className="size-4" strokeWidth={1.75} aria-hidden />
+          <Icon className="size-[18px]" strokeWidth={1.75} aria-hidden />
         </IconButton>
       ) : (
         <Button ref={ref} type="button" variant={variant} size={size} loading={loading} disabled={disabled} className={className} onClick={() => setOpen(true)}>

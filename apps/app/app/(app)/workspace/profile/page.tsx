@@ -3,6 +3,9 @@ import { eq } from "drizzle-orm";
 import { orgProfiles } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { authInterrupt } from "@/lib/auth-interrupts";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusStrip } from "@/components/workspace/status-strip";
+import { getOrgTimezone } from "@/lib/org-timezone";
 import { BusinessProfileForm } from "./profile-ui";
 import type { BusinessProfileValues } from "./actions";
 
@@ -20,12 +23,14 @@ export default async function BusinessProfilePage() {
   }
 
   const org = await getCurrentOrg();
+  const tz = await getOrgTimezone();
   const [row] = org
     ? await withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1))
     : [];
 
   const initial: BusinessProfileValues = {
     companyName: row?.companyName ?? "",
+    website: row?.website ?? "",
     businessAddress: row?.businessAddress ?? "",
     contactEmail: row?.contactEmail ?? "",
     contactPhone: row?.contactPhone ?? "",
@@ -36,5 +41,11 @@ export default async function BusinessProfilePage() {
     disqualifiers: row?.disqualifiers ?? "",
   };
 
-  return <BusinessProfileForm initial={initial} agentOn={row?.enabled ?? false} />;
+  return (
+    <div className="space-y-4">
+      <PageHeader title="Profile" />
+      <StatusStrip row={row} tz={tz} />
+      <BusinessProfileForm initial={initial} />
+    </div>
+  );
 }

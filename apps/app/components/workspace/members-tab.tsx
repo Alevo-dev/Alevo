@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Search, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { initials } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/ui/status";
@@ -20,6 +20,8 @@ import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
 import { Pill } from "@/components/ui/pill";
+import { Seg } from "@/components/ui/nav-kit";
+import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
 
 const ROLES = ["viewer", "rep", "admin", "owner"] as const;
@@ -43,16 +45,12 @@ function useActionResult(state: ActionState, message: string, onOk: () => void) 
   }, [state, message, onOk]);
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString();
-}
-
-/** The card the Members list sits in on the Manage page. */
+/** The panel the Members list sits in on the Manage page. */
 function Wrap({ children }: { children: ReactNode }) {
   return (
-    <Card>
-      <CardHeader title="Members" />
-      <div className="mt-4">{children}</div>
+    <Card boxed padding="none">
+      <CardHeader title="Members" hint="Everyone sees this list. Only owners and admins can change it." />
+      {children}
     </Card>
   );
 }
@@ -82,7 +80,7 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
   if (!data) {
     return (
       <Wrap>
-        <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
+        <div className="flex items-center gap-2 px-3.5 py-8 text-ink-muted">
           <Spinner /> Loading members…
         </div>
       </Wrap>
@@ -91,7 +89,9 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
   if ("error" in data) {
     return (
       <Wrap>
-        <Notice tone="warning">Could not load the members. Try again in a moment.</Notice>
+        <div className="p-3.5">
+          <Notice tone="warning">Could not load the members. Try again in a moment.</Notice>
+        </div>
       </Wrap>
     );
   }
@@ -103,29 +103,35 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
         (m) => (m.name ?? "").toLowerCase().includes(q) || (m.email ?? "").toLowerCase().includes(q),
       )
     : members;
+  const showMembers = tab === "members" || !canEdit;
 
   return (
     <Wrap>
-      {canEdit && (
-        <div role="tablist" aria-label="Members and invitations" className="flex gap-6 border-b border-hairline">
-          <SubTab active={tab === "members"} onClick={() => setTab("members")} label="Members" count={members.length} />
-          <SubTab active={tab === "invites"} onClick={() => setTab("invites")} label="Invitations" count={pending.length} />
-        </div>
-      )}
-
-      <div className={cx("flex items-center gap-3", canEdit && "mt-5")}>
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
+      {/* Toolbar: Members / Invitations switch, search, Invite. */}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-3.5 py-2.5">
+        {canEdit && (
+          <Seg
+            label="Members and invitations"
+            value={tab}
+            options={[
+              { key: "members", label: "Members", count: members.length, onSelect: () => setTab("members") },
+              { key: "invites", label: "Invitations", count: pending.length, onSelect: () => setTab("invites") },
+            ]}
+          />
+        )}
+        <div className="relative w-[220px] max-w-full">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-muted" strokeWidth={2} aria-hidden="true" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
+            placeholder="Search members"
             aria-label="Search members"
-            className="pl-9"
+            className="pl-8"
           />
         </div>
         {canEdit && (
-          <Button variant="primary" onClick={() => setInviteOpen((o) => !o)}>
+          <Button variant="primary" className="ml-auto" aria-expanded={inviteOpen} onClick={() => setInviteOpen((o) => !o)}>
+            <Plus className="size-3.5" strokeWidth={2} aria-hidden="true" />
             Invite
           </Button>
         )}
@@ -140,41 +146,44 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
         />
       )}
 
-      {tab === "members" || !canEdit ? (
-        <ul className="mt-4 divide-y divide-hairline">
-          {filtered.length === 0 && <li className="py-6 text-sm text-ink-muted">No members found.</li>}
-          {filtered.map((m) => (
-            <MemberRow key={m.userId} member={m} reload={reload} canEdit={canEdit} />
-          ))}
-        </ul>
+      {showMembers ? (
+        <Table>
+          <thead>
+            <tr>
+              <Th>Member</Th>
+              <Th>Role</Th>
+              <Th>
+                <span className="sr-only">Actions</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && <EmptyRow colSpan={3}>No members found.</EmptyRow>}
+            {filtered.map((m) => (
+              <MemberRow key={m.userId} member={m} reload={reload} canEdit={canEdit} />
+            ))}
+          </tbody>
+        </Table>
       ) : (
-        <ul className="mt-4 divide-y divide-hairline">
-          {pending.length === 0 && <li className="py-6 text-sm text-ink-muted">No pending invitations.</li>}
-          {pending.map((inv) => (
-            <InviteRow key={inv.id} invite={inv} reload={reload} />
-          ))}
-        </ul>
+        <Table>
+          <thead>
+            <tr>
+              <Th>Invitation</Th>
+              <Th>Role</Th>
+              <Th>
+                <span className="sr-only">Actions</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {pending.length === 0 && <EmptyRow colSpan={3}>No pending invitations.</EmptyRow>}
+            {pending.map((inv) => (
+              <InviteRow key={inv.id} invite={inv} reload={reload} />
+            ))}
+          </tbody>
+        </Table>
       )}
     </Wrap>
-  );
-}
-
-function SubTab({ active, onClick, label, count }: { active: boolean; onClick: () => void; label: string; count: number }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cx(
-        "relative flex items-center gap-2 py-3 text-sm transition-colors",
-        "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full",
-        active ? "font-semibold text-ink after:bg-brand" : "font-medium text-ink-muted hover:text-ink",
-      )}
-    >
-      {label}
-      <span className="rounded-full bg-raised px-1.5 text-label text-ink-muted">{count}</span>
-    </button>
   );
 }
 
@@ -189,27 +198,29 @@ function MemberRow({ member, reload, canEdit }: { member: MemberView; reload: ()
   useActionResult(rmState, "Member removed.", reload);
 
   return (
-    <li className="flex items-center gap-3 py-3">
-      <Avatar name={member.name} seed={member.email ?? member.userId} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-ink">{member.name ?? member.email ?? "—"}</div>
-        {member.name && member.email && <div className="truncate text-label text-ink-muted">{member.email}</div>}
-      </div>
-      <div className="hidden w-24 shrink-0 text-label text-ink-muted sm:block">{fmtDate(member.joinedAt)}</div>
-      {member.support ? (
-        <Pill tone="muted">Alevo support</Pill>
-      ) : !canEdit ? (
-        <Pill tone="brand">{ROLE_LABEL[member.role]}</Pill>
-      ) : (
-        <>
-          <form action={roleAction} onSubmit={() => setDirty(false)} className="flex shrink-0 items-center gap-1.5">
+    <Tr>
+      <Td>
+        <span className="flex items-center gap-2.5">
+          <Avatar name={member.name} seed={member.email ?? member.userId} />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-ink">{member.name ?? member.email ?? "—"}</span>
+            {member.name && member.email && <span className="block truncate text-[12.5px] text-ink-muted">{member.email}</span>}
+          </span>
+        </span>
+      </Td>
+      <Td>
+        {member.support ? (
+          <Pill tone="muted">Alevo support</Pill>
+        ) : !canEdit ? (
+          <Pill tone="brand">{ROLE_LABEL[member.role]}</Pill>
+        ) : (
+          <form action={roleAction} onSubmit={() => setDirty(false)} className="flex items-center gap-1.5">
             <input type="hidden" name="userId" value={member.userId} />
             <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
             {/* Fixed width so the trigger doesn't resize with the selected role. */}
-            <div className="w-28">
+            <div className="w-[110px]">
               <Select
                 name="role"
-                size="sm"
                 options={ROLE_OPTIONS}
                 defaultValue={member.role}
                 onChange={() => setDirty(true)}
@@ -217,12 +228,16 @@ function MemberRow({ member, reload, canEdit }: { member: MemberView; reload: ()
               />
             </div>
             {dirty && (
-              <Button type="submit" size="sm" variant="ghost" loading={rolePending}>
+              <Button type="submit" variant="ghost" loading={rolePending}>
                 Save
               </Button>
             )}
           </form>
-          <form action={rmAction} className="shrink-0">
+        )}
+      </Td>
+      <Td className="text-right">
+        {canEdit && !member.support && (
+          <form action={rmAction} className="inline-block">
             <input type="hidden" name="userId" value={member.userId} />
             <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
             <ConfirmSubmit
@@ -234,9 +249,9 @@ function MemberRow({ member, reload, canEdit }: { member: MemberView; reload: ()
               confirmLabel="Remove member"
             />
           </form>
-        </>
-      )}
-    </li>
+        )}
+      </Td>
+    </Tr>
   );
 }
 
@@ -245,26 +260,34 @@ function InviteRow({ invite, reload }: { invite: InviteView; reload: () => void 
   useActionResult(state, "Invite revoked.", reload);
 
   return (
-    <li className="flex items-center gap-3 py-3">
-      <Avatar name={null} seed={invite.email} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-ink">{invite.email}</div>
-        <div className="truncate text-label text-warning">Invite pending</div>
-      </div>
-      <Pill tone="brand">{ROLE_LABEL[invite.role]}</Pill>
-      <form action={action} className="shrink-0">
-        <input type="hidden" name="clerkInvitationId" value={invite.clerkInvitationId ?? ""} />
-        <ConfirmSubmit
-          icon={Trash2}
-          aria-label={`Revoke invite for ${invite.email}`}
-          loading={pending}
-          disabled={!invite.clerkInvitationId}
-          title={`Revoke the invite for ${invite.email}?`}
-          description="The link in their email stops working. You can send a new invite any time."
-          confirmLabel="Revoke invite"
-        />
-      </form>
-    </li>
+    <Tr>
+      <Td>
+        <span className="flex items-center gap-2.5">
+          <Avatar name={null} seed={invite.email} />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-ink">{invite.email}</span>
+            <span className="block truncate text-[12.5px] text-warning">Invite pending</span>
+          </span>
+        </span>
+      </Td>
+      <Td>
+        <Pill tone="brand">{ROLE_LABEL[invite.role]}</Pill>
+      </Td>
+      <Td className="text-right">
+        <form action={action} className="inline-block">
+          <input type="hidden" name="clerkInvitationId" value={invite.clerkInvitationId ?? ""} />
+          <ConfirmSubmit
+            icon={Trash2}
+            aria-label={`Revoke invite for ${invite.email}`}
+            loading={pending}
+            disabled={!invite.clerkInvitationId}
+            title={`Revoke the invite for ${invite.email}?`}
+            description="The link in their email stops working. You can send a new invite any time."
+            confirmLabel="Revoke invite"
+          />
+        </form>
+      </Td>
+    </Tr>
   );
 }
 
@@ -279,7 +302,7 @@ function InviteForm({ onDone }: { onDone: () => void }) {
       action={action}
       onSubmit={() => setDirty(false)}
       noValidate
-      className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-hairline bg-surface p-4"
+      className="flex flex-wrap items-end gap-3 border-b border-hairline bg-canvas px-3.5 py-3"
     >
       <Field label="Email" htmlFor="inv-email" error={emailError} className="min-w-56 flex-1">
         <Input
@@ -302,7 +325,7 @@ function InviteForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** 32px initials disc; fill picked deterministically from the key. */
+/** 30px initials disc; fill picked deterministically from the key. */
 function Avatar({ name, seed }: { name: string | null; seed: string }) {
   let hash = 0;
   for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
@@ -310,7 +333,7 @@ function Avatar({ name, seed }: { name: string | null; seed: string }) {
     <span
       aria-hidden="true"
       className={cx(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-on-brand",
+        "inline-flex size-[30px] shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-on-brand",
         AVATAR_FILLS[hash % AVATAR_FILLS.length],
       )}
     >

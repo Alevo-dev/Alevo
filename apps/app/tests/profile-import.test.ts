@@ -3,7 +3,7 @@ import { mergeImported } from "../lib/profile/merge";
 import { applyFacts } from "../lib/profile/extract";
 
 const blank = {
-  companyName: "", businessAddress: "", contactEmail: "", contactPhone: "", contactHours: "",
+  companyName: "", website: "", businessAddress: "", contactEmail: "", contactPhone: "", contactHours: "",
   offering: "", idealCustomer: "", qualifyingCriteria: "", disqualifiers: "",
 };
 

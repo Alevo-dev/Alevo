@@ -6,14 +6,15 @@ import { labelStep, niceMax, showLabel } from "@/lib/dashboard/window";
 
 export type TrendPoint = { label: string; short: string; n: number };
 
-const FILL: Record<"brand" | "success", string> = {
+const FILL: Record<"brand" | "violet" | "success", string> = {
   brand: "var(--color-brand)",
+  violet: "var(--color-violet)",
   success: "var(--color-success)",
 };
 
 // Drawing frame; the SVG scales to its card width, so a chart in a narrow card
 // gets a narrower frame (`width`) to keep its text readable.
-const H = 220;
+const H = 168;
 const PAD = { top: 16, right: 8, bottom: 28, left: 36 };
 const PLOT_H = H - PAD.top - PAD.bottom;
 
@@ -35,7 +36,7 @@ export function TrendChart({
   /** Noun for the tooltip and table, e.g. "leads". */
   unit: string;
   kind?: "area" | "columns";
-  tone?: "brand" | "success";
+  tone?: "brand" | "violet" | "success";
   /** Frame width in SVG units; ~the card's pixel width keeps 12px text at 12px. */
   width?: number;
 }) {
@@ -68,7 +69,7 @@ export function TrendChart({
   const ticks = [0, max / 2, max];
 
   return (
-    <div className="relative mt-4">
+    <div className="relative">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="block h-auto w-full overflow-visible"

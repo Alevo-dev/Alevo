@@ -17,6 +17,8 @@ export const orgProfiles = pgTable(
       .unique()
       .references(() => organizations.id, { onDelete: "cascade" }),
     companyName: text("company_name"),
+    // The company website, https (migration 0047, length <= 200); default for the profile import.
+    website: text("website"),
     // Postal address printed in every email footer (CAN-SPAM / CASL; migration 0020).
     businessAddress: text("business_address"),
     // Shown beside the public contact form (migration 0032); all optional.

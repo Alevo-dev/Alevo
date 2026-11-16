@@ -83,23 +83,24 @@ export function Dialog({ open, title, description, onClose, children, footer, sh
         aria-describedby={!bare && description ? descId : undefined}
         onKeyDown={onKeyDown}
         className={cx(
-          "relative w-full rounded-lg border border-hairline bg-surface shadow-float",
+          "relative w-full overflow-hidden rounded-md border border-hairline bg-surface shadow-float",
           size === "xl" ? "max-w-4xl" : "max-w-md",
-          !bare && "p-6",
         )}
       >
         {!bare && (
           <>
-            <h2 id={titleId} className="text-heading font-semibold text-ink">
-              {title}
-            </h2>
-            {description && (
-              <p id={descId} className="mt-2 text-sm leading-5 text-ink-muted">
-                {description}
-              </p>
-            )}
-            {children && <div className="mt-5">{children}</div>}
-            {footer && <div className="mt-6 flex flex-wrap items-center justify-end gap-3">{footer}</div>}
+            <div className="border-b border-hairline bg-sunken px-5 py-3.5 pr-12">
+              <h2 id={titleId} className="font-display text-[16px] font-semibold leading-6 text-ink">
+                {title}
+              </h2>
+              {description && (
+                <p id={descId} className="mt-0.5 text-[13.5px] leading-5 text-ink-muted">
+                  {description}
+                </p>
+              )}
+            </div>
+            {children && <div className="px-5 py-4">{children}</div>}
+            {footer && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-hairline bg-sunken px-5 py-3">{footer}</div>}
           </>
         )}
         {bare && children}
@@ -110,7 +111,7 @@ export function Dialog({ open, title, description, onClose, children, footer, sh
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-sm text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+            className="absolute right-3 top-2.5 inline-flex size-8 items-center justify-center rounded-xs text-ink-muted transition-colors duration-150 ease-out hover:bg-raised hover:text-ink"
           >
             <X className="size-4" strokeWidth={1.75} aria-hidden="true" />
           </button>

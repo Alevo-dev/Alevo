@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { hitRateLimit, orgProfiles, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
+import { cleanWebsite } from "@/lib/profile/website";
 import { crawlSite } from "@/lib/profile/crawl";
 import { extractProfile } from "@/lib/profile/extract";
 import { ImportError, importMessage } from "@/lib/profile/import-error";
@@ -13,6 +14,7 @@ import type { ImportedProfile } from "@/lib/profile/merge";
 /** The "who we are" half of org_profiles: what the agent grounds replies in. */
 export type BusinessProfileValues = {
   companyName: string;
+  website: string;
   businessAddress: string;
   contactEmail: string;
   contactPhone: string;
@@ -22,7 +24,7 @@ export type BusinessProfileValues = {
   qualifyingCriteria: string;
   disqualifiers: string;
 };
-export type BusinessProfileErrors = Partial<Record<"companyName" | "businessAddress" | "contactEmail" | "offering" | "idealCustomer", string>>;
+export type BusinessProfileErrors = Partial<Record<"companyName" | "website" | "businessAddress" | "contactEmail" | "offering" | "idealCustomer", string>>;
 export type ActionState = {
   ok?: boolean;
   error?: string;
@@ -34,6 +36,7 @@ function readValues(formData: FormData): BusinessProfileValues {
   const s = (k: string) => String(formData.get(k) ?? "").trim();
   return {
     companyName: s("companyName"),
+    website: s("website"),
     businessAddress: s("businessAddress"),
     contactEmail: s("contactEmail"),
     contactPhone: s("contactPhone"),
@@ -57,6 +60,10 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
       return { errors: { contactEmail: "Enter a valid email address." }, values };
     }
 
+    // Optional; stored as https. A fixable address is normalised, an unusable one is a field error.
+    const site = cleanWebsite(values.website);
+    if (site.error) return { errors: { website: site.error }, values };
+
     // While the agent is on, the three fields it reasons from stay required.
     const [current] = await withOrg((tx) =>
       tx.select({ enabled: orgProfiles.enabled }).from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1),
@@ -74,6 +81,7 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     const nullable = (v: string) => (v ? v : null);
     const set = {
       companyName: nullable(values.companyName),
+      website: site.value,
       businessAddress: nullable(values.businessAddress),
       contactEmail: nullable(values.contactEmail),
       contactPhone: nullable(values.contactPhone),
@@ -94,7 +102,7 @@ export async function saveBusinessProfile(_prev: ActionState, formData: FormData
     await recordAudit({ orgId: org.id, actorUserId: me?.id ?? null, action: "workspace.profile_saved", target: org.id });
 
     revalidatePath("/workspace/profile");
-    return { ok: true, values };
+    return { ok: true, values: { ...values, website: site.value ?? "" } };
   } catch (error) {
     return { error: safeErrorMessage(error, "Something went wrong"), values };
   }

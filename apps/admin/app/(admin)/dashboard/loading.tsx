@@ -11,11 +11,11 @@ export default function Loading() {
         ))}
       </div>
       <div className="rounded-lg border border-hairline bg-surface">
-        <div className="space-y-2 px-6 pt-6">
+        <div className="space-y-2 border-b border-hairline bg-sunken px-3.5 py-[9px]">
           <Skeleton className="h-5 w-56 rounded-sm" delay={400} />
           <Skeleton className="h-3 w-96 max-w-full rounded-sm" delay={440} />
         </div>
-        <div className="mt-4">
+        <div>
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="flex items-center gap-4 border-b border-hairline px-6 py-3.5 last:border-b-0">
               <Skeleton className="h-3 w-40 rounded-sm" delay={480 + i * 70} />

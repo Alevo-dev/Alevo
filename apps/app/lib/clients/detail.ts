@@ -1,5 +1,7 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { consents, contacts, conversations, emailSuppressions, type Channel, type ConversationStatus, type Tx } from "@alevo/db";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { calls, consents, contacts, conversations, emailSuppressions, meetings, psaLinks, type BookingProvider, type Channel, type ConversationStatus, type MeetingStatus, type Tx } from "@alevo/db";
+import { CW_PROVIDER } from "@/lib/psa/connectwise-map";
+import type { LinkedRecord } from "@/lib/psa/writeback";
 
 /**
  * Everything the client page shows for one contact: who they are, what they have
@@ -23,12 +25,40 @@ export type ClientConversation = {
   callOutcome: string | null;
 };
 
+export type ClientCall = {
+  id: string;
+  conversationId: string | null;
+  startedAt: Date;
+  durationSec: number | null;
+  outcome: string | null;
+  summary: string | null;
+  transcript: string | null;
+  hasRecording: boolean;
+};
+
+export type ClientMeeting = {
+  id: string;
+  conversationId: string | null;
+  provider: BookingProvider;
+  status: MeetingStatus;
+  outcome: "pending" | "showed" | "no_show";
+  converted: boolean;
+  startAt: Date | null;
+  endAt: Date | null;
+};
+
 export type ClientDetail = {
   contact: typeof contacts.$inferSelect;
   consents: Channel[];
+  /** Where each active consent came from (hosted_form, embed, api, …). */
+  consentSources: Partial<Record<Channel, string>>;
   suppressed: string | null;
   conversations: ClientConversation[];
   capped: boolean;
+  calls: ClientCall[];
+  meetings: ClientMeeting[];
+  /** What the PSA holds for this client (company, contact, activities, opportunity). */
+  psa: LinkedRecord[];
 };
 
 const toNullableNumber = (v: unknown) => (v == null ? null : Number(v));
@@ -39,9 +69,9 @@ export async function clientDetail(tx: Tx, orgId: string, contactId: string): Pr
   if (!contact) return null;
 
   const mine = sql`c.conversation_id = ${conversations.id} and c.org_id = ${orgId}`;
-  const [consentRows, suppression, convs] = await Promise.all([
+  const [consentRows, suppression, convs, callRows, meetingRows] = await Promise.all([
     tx
-      .select({ channel: consents.channel })
+      .select({ channel: consents.channel, source: consents.source })
       .from(consents)
       .where(and(eq(consents.contactId, contactId), eq(consents.orgId, orgId), isNull(consents.revokedAt))),
     contact.email
@@ -71,15 +101,49 @@ export async function clientDetail(tx: Tx, orgId: string, contactId: string): Pr
       .where(and(eq(conversations.contactId, contactId), eq(conversations.orgId, orgId)))
       .orderBy(desc(conversations.createdAt), desc(conversations.id))
       .limit(CLIENT_CONVERSATIONS_CAP + 1),
+    tx
+      .select({
+        id: calls.id,
+        conversationId: calls.conversationId,
+        startedAt: sql<Date>`coalesce(${calls.startedAt}, ${calls.createdAt})`.mapWith(toDate),
+        durationSec: calls.durationSec,
+        outcome: calls.outcome,
+        summary: calls.summary,
+        transcript: calls.transcript,
+        recordingKey: calls.recordingKey,
+      })
+      .from(calls)
+      .where(and(eq(calls.contactId, contactId), eq(calls.orgId, orgId)))
+      .orderBy(desc(calls.createdAt))
+      .limit(CLIENT_CONVERSATIONS_CAP),
+    tx
+      .select({ id: meetings.id, conversationId: meetings.conversationId, provider: meetings.provider, status: meetings.status, outcome: meetings.outcome, converted: meetings.converted, startAt: meetings.startAt, endAt: meetings.endAt })
+      .from(meetings)
+      .where(and(eq(meetings.contactId, contactId), eq(meetings.orgId, orgId)))
+      .orderBy(desc(meetings.startAt))
+      .limit(CLIENT_CONVERSATIONS_CAP),
   ]);
+  const psa: LinkedRecord[] = await tx
+    .select({ kind: psaLinks.kind, remoteId: psaLinks.remoteId, createdAt: psaLinks.createdAt })
+    .from(psaLinks)
+    .where(and(eq(psaLinks.orgId, orgId), eq(psaLinks.provider, CW_PROVIDER), inArray(psaLinks.localId, [contactId, ...convs.map((c) => c.id)])))
+    .orderBy(psaLinks.createdAt);
 
   const seen = new Set<Channel>();
-  for (const r of consentRows) seen.add(r.channel);
+  const consentSources: Partial<Record<Channel, string>> = {};
+  for (const r of consentRows) {
+    seen.add(r.channel);
+    if (r.source) consentSources[r.channel] = r.source;
+  }
   return {
     contact,
     consents: (["form", "email", "sms", "chat", "voice"] as Channel[]).filter((c) => seen.has(c)),
+    consentSources,
     suppressed: suppression[0]?.reason ?? null,
     conversations: convs.slice(0, CLIENT_CONVERSATIONS_CAP),
     capped: convs.length > CLIENT_CONVERSATIONS_CAP,
+    calls: callRows.map(({ recordingKey, ...c }) => ({ ...c, hasRecording: Boolean(recordingKey) })),
+    meetings: meetingRows,
+    psa,
   };
 }

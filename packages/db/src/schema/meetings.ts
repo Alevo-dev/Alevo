@@ -4,7 +4,7 @@
  */
 import { sql } from "drizzle-orm";
 import { boolean, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { organizations, timestamps } from "./identity";
+import { organizations, timestamps, users } from "./identity";
 import { contacts, conversations } from "./conversations";
 
 export const bookingProvider = pgEnum("booking_provider", [
@@ -43,12 +43,15 @@ export const meetings = pgTable(
     joinUrl: text("join_url"),
     outcome: meetingOutcome("outcome").notNull().default("pending"),
     converted: boolean("converted").notNull().default(false),
+    // The rep who owns it (migration 0046); null = Unassigned, which is how the agent books.
+    repUserId: uuid("rep_user_id").references(() => users.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [
     index("meetings_org_id_idx").on(t.orgId),
     index("meetings_org_start_idx").on(t.orgId, sql`coalesce(${t.startAt}, ${t.createdAt}) desc`, t.id.desc()),
     index("meetings_conversation_id_idx").on(t.conversationId),
+    index("meetings_org_rep_idx").on(t.orgId, t.repUserId),
   ],
 );
 

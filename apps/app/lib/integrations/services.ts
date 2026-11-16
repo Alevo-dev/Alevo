@@ -17,15 +17,16 @@ export type ServiceIcon =
   | "hubspot"
   | "zoho"
   | "connectwise"
-  | "halopsa";
+  | "halopsa"
+  | "facebook";
 
 /** The page is split into these sections, in this order. */
 export type ServiceGroup = "capture" | "booking" | "communication" | "crm";
 export const SERVICE_GROUPS: { id: ServiceGroup; title: string; hint: string; add: string; pick: string }[] = [
-  { id: "capture", add: "Add lead source", pick: "Add a lead source", title: "Lead capture", hint: "Where leads come in from your website: the form (embed, or your own form posting to Alevo) and the chat bubble." },
-  { id: "booking", add: "Add booking tool", pick: "Add a booking tool", title: "Booking", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
-  { id: "communication", add: "Add channel", pick: "Add a channel", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts." },
-  { id: "crm", add: "Add CRM or PSA", pick: "Add a CRM or PSA", title: "CRM and PSA", hint: "Where qualified leads, notes and bookings get written back. ConnectWise today; HaloPSA and CRMs later." },
+  { id: "capture", add: "Add lead source", pick: "Add a lead source", title: "Lead capture", hint: "Where leads come in from your website" },
+  { id: "booking", add: "Connect calendar", pick: "Connect your calendar", title: "Calendar", hint: "Where the agent offers times and books meetings. Connect one, then turn booking on under Agent." },
+  { id: "communication", add: "Add channel", pick: "Add a channel", title: "Communication", hint: "How the agent texts and emails leads, and where it posts alerts" },
+  { id: "crm", add: "Add CRM or PSA", pick: "Add a CRM or PSA", title: "CRM and PSA", hint: "Where qualified leads and bookings get written back" },
 ];
 
 export type ServiceView = {
@@ -77,6 +78,13 @@ const CRM_PLACEHOLDERS: { id: string; name: string; hint: string; icon: ServiceI
   { id: "halopsa", name: "HaloPSA", hint: "Tickets, clients and opportunities", icon: "halopsa" },
   { id: "zoho", name: "Zoho CRM", hint: "Leads, contacts and deals", icon: "zoho" },
   { id: "hubspot", name: "HubSpot", hint: "Contacts, deals and timeline notes", icon: "hubspot" },
+];
+
+/** Lead sources still to come: picker entries only (the "Soon" chip), no dialog. */
+const CAPTURE_PLACEHOLDERS: { id: string; name: string; hint: string; icon: ServiceIcon }[] = [
+  { id: "facebook-leads", name: "Facebook Lead Ads", hint: "Leads from your Facebook and Instagram ads", icon: "facebook" },
+  { id: "webhook", name: "Webhook", hint: "Post a lead to Alevo from any tool", icon: "alevo" },
+  { id: "custom-api", name: "Custom API", hint: "Send leads from your own system", icon: "alevo" },
 ];
 
 const BOOKING_META: Record<BookingTool, { hint: string; icon: ServiceIcon; signingKey?: SecretKey }> = {
@@ -213,8 +221,8 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
     {
       id: "connectwise",
       group: "crm",
-      name: "ConnectWise",
-      hint: "Companies, contacts, activities and opportunities",
+      name: "ConnectWise Manage",
+      hint: "Company, contact, activity and opportunity",
       icon: "connectwise",
       status: cwMissing === null ? CONNECTED : cwStarted ? NEEDS_SETUP : NOT_CONNECTED,
       keys: [],
@@ -222,6 +230,7 @@ export function buildServices({ setKeys, smsFromNumber, smsConfigured, emailConf
       listed: cwMissing === null || cwStarted,
       issue: cwStarted && cwMissing ? `ConnectWise is half set up: missing its ${cwMissing}. Nothing is written back until it is complete.` : undefined,
     },
+    ...CAPTURE_PLACEHOLDERS.map((p): ServiceView => ({ ...p, group: "capture", status: COMING_SOON, keys: [], managed: false, listed: false })),
     ...CRM_PLACEHOLDERS.map((p): ServiceView => ({ ...p, group: "crm", status: COMING_SOON, keys: [], managed: false, listed: false })),
   ];
 }

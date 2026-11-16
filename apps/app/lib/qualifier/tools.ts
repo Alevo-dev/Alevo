@@ -161,7 +161,7 @@ function notBooked() {
   return sql`${conversations.status} <> 'booked'`;
 }
 
-function scoped(target: DispatchTarget) {
+function scoped(target: Pick<DispatchTarget, "orgId" | "conversationId">) {
   return and(
     eq(conversations.id, target.conversationId),
     eq(conversations.orgId, target.orgId),
@@ -173,8 +173,8 @@ function scoped(target: DispatchTarget) {
  * to the owners/admins (`notifyOrg`). Best-effort: any failure is swallowed so
  * the agent turn never fails. Carries the fit score + a link to the thread.
  */
-async function notifyHandoff(
-  target: DispatchTarget,
+export async function notifyHandoff(
+  target: Pick<DispatchTarget, "orgId" | "conversationId" | "contactName" | "contactEmail">,
   opts: { urgent?: boolean; reason?: string } = {},
 ): Promise<void> {
   const [row] = await withService((tx) =>

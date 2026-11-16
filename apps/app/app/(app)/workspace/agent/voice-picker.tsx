@@ -2,29 +2,44 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
-import { FieldError, Hint, Input } from "@/components/ui/field";
-import { IconButton } from "@/components/ui/icon-button";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { FieldError, Input } from "@/components/ui/field";
+import { PanelRow } from "@/components/workspace/panel-row";
+import { cx } from "@/lib/cx";
 import { VOICES } from "@/lib/voice/voices";
 
 /**
- * The phone voices: a switch per voice (several can be on; each call uses one at
- * random, at least one stays on) and a play button for its sample
- * (public/voices/<id>.mp3, from Vapi's docs). Plain checkboxes named `voiceNames`,
- * so the surrounding form posts them and tracks unsaved changes by itself.
+ * The phone voices as two rows: a chip per voice (several can be on; each call uses one at
+ * random, at least one stays on) with one Play sample button for the voice you touched last
+ * (public/voices/<id>.mp3, from Vapi's docs), then a name per voice that is on. The chips are
+ * plain checkboxes named `voiceNames` and the name boxes stay in the form while hidden, so the
+ * surrounding form posts them all and tracks unsaved changes by itself.
  */
-export function VoicePicker({ selected, labels, errors }: { selected: readonly string[]; labels: Record<string, string>; errors?: Record<string, string> }) {
+export function VoicePicker({
+  selected,
+  labels,
+  error,
+  labelErrors,
+}: {
+  selected: readonly string[];
+  labels: Record<string, string>;
+  error?: string;
+  labelErrors?: Record<string, string>;
+}) {
   const audio = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState<string | null>(null);
+  const [on, setOn] = useState<string[]>(() => VOICES.map((v) => v.id).filter((id) => selected.includes(id)));
+  const [focus, setFocus] = useState<string>(() => on[0] ?? VOICES[0].id);
 
   useEffect(() => () => audio.current?.pause(), []);
 
-  function toggle(id: string) {
+  function sample() {
     audio.current?.pause();
-    if (playing === id) {
+    if (playing) {
       setPlaying(null);
       return;
     }
+    const id = focus;
     const a = new Audio(`/voices/${id}.mp3`);
     a.addEventListener("ended", () => setPlaying((now) => (now === id ? null : now)));
     audio.current = a;
@@ -33,47 +48,59 @@ export function VoicePicker({ selected, labels, errors }: { selected: readonly s
   }
 
   return (
-    <div>
-      <Hint>If you turn on more than one voice, each call uses one of them, picked at random.</Hint>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <>
+      <PanelRow label="Voices" hint="Each call uses one at random" error={error}>
         {VOICES.map((v) => (
-          <li key={v.id} className="space-y-2 rounded-md border border-hairline px-3 py-2">
-            <div className="flex items-center gap-3">
-              <Switch
-                name="voiceNames"
-                value={v.id}
-                aria-label={`Use ${v.id}`}
-                defaultChecked={selected.includes(v.id)}
-                onChange={(ev) => {
-                  // At least one voice stays on: the last one cannot be switched off.
-                  const on = ev.currentTarget.form?.querySelectorAll('input[name="voiceNames"]:checked').length ?? 0;
-                  if (on === 0) ev.currentTarget.checked = true;
-                }}
-              />
-              <span className="min-w-0 flex-1 text-ink">
-                {v.id} <span className="text-ink-muted">· {v.gender}</span>
-              </span>
-              <IconButton
-                onClick={() => toggle(v.id)}
-                aria-label={playing === v.id ? `Stop the ${v.id} sample` : `Play a sample of ${v.id}`}
-                title={playing === v.id ? "Stop" : "Play sample"}
-                className="border border-hairline"
-              >
-                {playing === v.id ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
-              </IconButton>
-            </div>
-            <Input
-              name={`voiceLabel_${v.id}`}
-              defaultValue={labels[v.id] ?? ""}
-              invalid={!!errors?.[v.id]}
-              maxLength={30}
-              placeholder="Name callers hear (optional)"
-              aria-label={`Name for ${v.id}`}
+          <label key={v.id} title={v.gender} className="cursor-pointer">
+            <input
+              type="checkbox"
+              name="voiceNames"
+              value={v.id}
+              className="peer sr-only"
+              defaultChecked={selected.includes(v.id)}
+              onChange={(ev) => {
+                // At least one voice stays on: the last one cannot be switched off.
+                const form = ev.currentTarget.form;
+                if (form && form.querySelectorAll('input[name="voiceNames"]:checked').length === 0) ev.currentTarget.checked = true;
+                setOn(VOICES.map((x) => x.id).filter((id) => form?.querySelector<HTMLInputElement>(`input[name="voiceNames"][value="${id}"]`)?.checked));
+                setFocus(v.id);
+              }}
             />
-            <FieldError>{errors?.[v.id]}</FieldError>
-          </li>
+            <span
+              className={cx(
+                "inline-flex h-[22px] items-center rounded-[5px] border px-2 text-[13px] transition-colors duration-150 ease-out peer-focus-visible:[box-shadow:var(--ds-focus-ring)]",
+                on.includes(v.id) ? "border-brand bg-brand-soft text-ink" : "border-hairline bg-raised text-ink-muted hover:text-ink",
+              )}
+            >
+              {v.id}
+            </span>
+          </label>
         ))}
-      </ul>
-    </div>
+        <Button size="sm" onClick={sample} aria-label={playing ? `Stop the ${focus} sample` : `Play a sample of ${focus}`}>
+          {playing ? <Pause className="size-3.5" aria-hidden="true" /> : <Play className="size-3.5" aria-hidden="true" />}
+          {playing ? "Stop" : "Play sample"}
+        </Button>
+      </PanelRow>
+      <PanelRow label="Voice names" hint="The agent goes by this name on that voice">
+        {VOICES.map((v) => (
+          <div key={v.id} hidden={!on.includes(v.id)}>
+            <label className="flex items-center gap-1.5">
+              <span className="text-ink-muted">{v.id}</span>
+              <Input
+                name={`voiceLabel_${v.id}`}
+                inline
+                className="w-40"
+                defaultValue={labels[v.id] ?? ""}
+                invalid={!!labelErrors?.[v.id]}
+                maxLength={30}
+                placeholder="Name (optional)"
+                aria-label={`Name for ${v.id}`}
+              />
+            </label>
+            <FieldError>{labelErrors?.[v.id]}</FieldError>
+          </div>
+        ))}
+      </PanelRow>
+    </>
   );
 }

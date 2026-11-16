@@ -2,15 +2,22 @@ import { describe, expect, it } from "vitest";
 import { membershipFor } from "../lib/webhooks/membership-role";
 
 /**
- * The one rule for mirrored memberships: any platform admin is "support" with
- * the admin role (never owner, even as the org's creator); everyone else gets
- * the invite's role, else creator → owner, else Clerk's role mapped.
+ * The rule for mirrored memberships: a platform admin is "support" with the admin
+ * role (never owner, even as the org's creator) unless the org invited them with a
+ * role; everyone else gets the invite's role, else creator → owner, else Clerk's role mapped.
  */
 describe("membershipFor", () => {
   it("platform admin is support with the admin role, even as creator", () => {
     expect(membershipFor({ isPlatformAdmin: true, inviteRole: null, clerkRole: "org:admin", isCreator: true })).toEqual({
       role: "admin",
       support: true,
+    });
+  });
+
+  it("a platform admin invited with a role is a real member with that role", () => {
+    expect(membershipFor({ isPlatformAdmin: true, inviteRole: "owner", clerkRole: "org:admin", isCreator: false })).toEqual({
+      role: "owner",
+      support: false,
     });
   });
 

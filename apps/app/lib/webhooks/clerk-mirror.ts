@@ -157,9 +157,13 @@ export async function mirrorMembership(data: ClerkMembershipData) {
         target: [memberships.orgId, memberships.userId],
         // `membership.updated` (a Clerk-role change, a re-sync) must never lower a
         // real owner: Clerk only knows admin/member, so "owner" lives here alone.
+        // A platform admin whose row is already a real membership (made owner in the
+        // console, or invited with a role) stays that: only the console switches it back.
         set: {
-          role: sql`case when ${memberships.role} = 'owner' and not excluded.support then 'owner' else excluded.role end`,
-          support,
+          role: user.isPlatformAdmin
+            ? sql`case when not ${memberships.support} then ${memberships.role} when ${memberships.role} = 'owner' and not excluded.support then 'owner' else excluded.role end`
+            : sql`case when ${memberships.role} = 'owner' and not excluded.support then 'owner' else excluded.role end`,
+          support: user.isPlatformAdmin ? sql`case when not ${memberships.support} then false else excluded.support end` : support,
           clerkMembershipId: data.id,
           updatedAt: new Date(),
         },

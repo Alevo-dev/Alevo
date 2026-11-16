@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, sql } from "drizzle-orm";
 import {
   finishPage,
   keysetOrder,
@@ -45,11 +45,14 @@ function orgQuery(tx: Tx) {
 
 export type OrgRow = Awaited<ReturnType<typeof orgQuery>>[number];
 
-/** One page of organizations, newest first. */
-export function orgsPage(cursor: Cursor | null): Promise<Page<OrgRow>> {
+/** `%` and `_` typed by the admin match themselves, not "anything". */
+const nameLike = (q: string) => ilike(organizations.name, `%${q.replace(/[\\%_]/g, "\\$&")}%`);
+
+/** One page of organizations, newest first; `q` keeps the names that contain it. */
+export function orgsPage(cursor: Cursor | null, q = ""): Promise<Page<OrgRow>> {
   return withService((tx) =>
     orgQuery(tx)
-      .where(keysetWhere(organizations, KEY, cursor))
+      .where(and(keysetWhere(organizations, KEY, cursor), q ? nameLike(q) : undefined))
       .orderBy(...keysetOrder(KEY, cursor))
       .limit(PAGE_SIZE + 1),
   ).then((rows) => finishPage(rows, cursor));
@@ -73,4 +76,17 @@ export async function orgCounts(): Promise<{ total: number; live: number }> {
       .leftJoin(orgProfiles, eq(orgProfiles.orgId, organizations.id)),
   );
   return row ?? { total: 0, live: 0 };
+}
+
+/** How many organizations a name search matches, and how many were created in the last `days` days. */
+export async function orgTotals(q: string, days: number): Promise<{ matching: number; recent: number }> {
+  const [row] = await withService((tx) =>
+    tx
+      .select({
+        matching: sql<number>`count(*) filter (where ${q ? nameLike(q) : sql`true`})`.mapWith(Number),
+        recent: sql<number>`count(*) filter (where ${organizations.createdAt} >= now() - (${days}::int * interval '1 day'))`.mapWith(Number),
+      })
+      .from(organizations),
+  );
+  return row ?? { matching: 0, recent: 0 };
 }

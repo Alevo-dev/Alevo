@@ -57,8 +57,8 @@ export function MiniBars({
   const current = active == null ? null : series[active];
 
   return (
-    <div className="relative mt-3.5">
-      <div className="flex h-[30px] items-end gap-1" role="group" aria-label={unit ? `${unit} per ${period}` : `Per ${period}`}>
+    <div className="absolute bottom-3 right-3">
+      <div className={cx("flex h-[34px] w-[104px] items-end", n > 16 ? "gap-px" : "gap-[3px]")} role="group" aria-label={unit ? `${unit} per ${period}` : `Per ${period}`}>
         {series.map((v, i) => (
           <button
             key={i}
@@ -70,17 +70,17 @@ export function MiniBars({
             onFocus={() => setActive(i)}
             onBlur={() => setActive(null)}
             // The hit target is the whole column; the painted bar sits at its foot.
-            className="group flex h-full flex-1 cursor-default items-end outline-none"
+            className="group flex h-full min-w-0 flex-1 cursor-default items-end outline-none"
           >
             <span
               className={cx(
-                "animate-grow-y w-full rounded-t-[3px] rounded-b-[1px] transition-opacity",
+                "animate-grow-y w-full rounded-t-[2px] transition-opacity duration-150 ease-out",
                 v > 0 ? BAR[tone] : "bg-raised",
                 active != null && active !== i && "opacity-50",
               )}
               style={{
                 height: v > 0 ? `${Math.max(8, Math.round((v / max) * 100))}%` : "2px",
-                animationDelay: `${100 + i * 80}ms`,
+                animationDelay: `${100 + Math.round(i * Math.min(80, 640 / n))}ms`,
               }}
             />
           </button>

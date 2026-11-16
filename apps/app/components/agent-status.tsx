@@ -1,54 +1,26 @@
 import Link from "next/link";
-import { Settings } from "lucide-react";
 import { StatusDot } from "@/components/ui/pill";
 import { cx } from "@/lib/cx";
 
 /**
- * The agent's live state, always in the shell. Links to Workspace → Agent.
- * - Default (sidebar): a row like the theme control — "Agent: Online / Offline".
- * - `compact` (phone top bar): a blinking dot when online; dot + "Offline" when off.
+ * The agent's live state, always in the top bar. A pill that links to Workspace → Agent:
+ * green with a pulsing dot while online, muted with "offline" while off.
  */
-export function AgentStatus({
-  on,
-  compact = false,
-  className,
-}: {
-  on: boolean;
-  compact?: boolean;
-  className?: string;
-}) {
-  const label = on ? "Online" : "Offline";
-
-  if (compact) {
-    return (
-      <Link
-        href="/workspace/agent"
-        aria-label={`Agent ${label.toLowerCase()}`}
-        className={cx(
-          "inline-flex h-8 items-center gap-1.5 rounded-full px-2 text-label font-medium text-ink-muted no-underline hover:bg-raised hover:text-ink",
-          className,
-        )}
-      >
-        <StatusDot tone={on ? "success" : "muted"} live={on} />
-        {on ? null : <span>{label}</span>}
-      </Link>
-    );
-  }
-
+export function AgentStatus({ on, className }: { on: boolean; className?: string }) {
   return (
     <Link
       href="/workspace/agent"
       className={cx(
-        "flex items-center justify-between gap-3 text-label text-ink-muted no-underline hover:text-ink",
+        "inline-flex h-[26px] items-center gap-2 rounded-full border px-2.5 text-label font-medium no-underline transition-colors",
+        on
+          ? "border-success/50 bg-success/10 text-success hover:bg-success/20"
+          : "border-hairline text-ink-muted hover:bg-surface hover:text-ink",
         className,
       )}
     >
-      <span className="inline-flex items-center gap-2 font-medium text-ink">
-        <StatusDot tone={on ? "success" : "muted"} live={on} />
-        Agent: {label}
-      </span>
-      <Settings className="size-4" strokeWidth={1.75} aria-hidden="true" />
-      <span className="sr-only">Agent settings</span>
+      <StatusDot tone={on ? "success" : "muted"} live={on} />
+      <span className="hidden sm:inline">Agent {on ? "online" : "offline"}</span>
+      <span className="sr-only sm:hidden">Agent {on ? "online" : "offline"}</span>
     </Link>
   );
 }

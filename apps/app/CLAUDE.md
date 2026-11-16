@@ -120,7 +120,7 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   required fields), Knowledge, Integrations (three sections — **Booking**: Cal.com,
   Google Calendar, Microsoft 365, Calendly; **Communication**: Twilio, Resend, Slack;
   **CRM and PSA**: HaloPSA, ConnectWise, Zoho CRM, HubSpot as "Coming soon"
-  placeholders until Sprint 5 write-back. A section shows cards ONLY for tools that
+  placeholders (Lead capture also has Facebook Lead Ads, Webhook and Custom API as "Soon" picker entries: `CAPTURE_PLACEHOLDERS`, no dialog) until Sprint 5 write-back. A section shows cards ONLY for tools that
   are connected or at least started (`ServiceView.listed`), else "Nothing connected
   yet."; everything else waits in the **Connect a tool** picker (`connect-tool.tsx`:
   same sections, a Connect button per row that closes the picker and opens that
@@ -128,11 +128,11 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   placeholders live in `lib/integrations/services.ts` (`SERVICE_GROUPS`,
   `CRM_PLACEHOLDERS`); marks in `lib/integrations/brand-icons.ts` — `LETTER_MARKS` is
   the lettered-tile fallback for brands Simple Icons doesn't carry). (No Files tab: the `files` table is a storage ledger behind the
-  Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Settings" is reserved for per-user app preferences.
+  Knowledge PDF upload; deleting a KB document deletes its R2 object + ledger row + chunks.) "Preferences" (`/preferences`, the sidebar bottom: appearance + plan) is the per-user page; the workspace brand page is "Brand".
   `/settings/*` redirects (next.config.ts).
-- **Workspace sub-menu:** the Workspace pages (Profile, Agent, Knowledge, Integrations, Manage, Settings) are a sub-menu under "Workspace" in the side nav (`components/workspace-subnav.tsx`, `WORKSPACE_PAGES`; shown while you are in `/workspace`, also in the phone menu). There is no tab bar on the pages. Add a new Workspace page to `WORKSPACE_PAGES`.
-- **Workspace → Settings** (`/workspace/settings`, admins and owners): the **Tone and sign-off** card (`tone-card.tsx`, its own form + `saveToneAndSignoff`; the Profile form and the website import no longer touch `tone` / `signoff`) and the **Brand colour** card (`brand-colour.tsx`: swatches only, never a button-shaped preview, a gear opens the dialog; `saveBrandColour` stays in `integrations/actions.ts`). Not the same as the sidebar Settings (`/preferences`: theme + plan).
-- **Manage tab** (`/workspace/manage`, the last Workspace tab; the workspace picker has no Manage item any more):
+- **Workspace sub-menu:** the Workspace pages (Profile, Agent, Knowledge, Integrations, Manage, Brand) are a sub-menu under "Workspace" in the side nav (`components/workspace-subnav.tsx`, `WORKSPACE_PAGES`; shown while you are in `/workspace`, also in the phone menu). There is no tab bar on the pages. Add a new Workspace page to `WORKSPACE_PAGES`.
+- **Workspace → Brand** (`/workspace/settings`, the route keeps its path), admins and owners): page title row with Discard and Save in the header (shown only once the Tone form changed; they submit it via `form=`), then dense panels (`PanelRow`): the **Tone and sign-off** card (`tone-card.tsx`, its own form + `saveToneAndSignoff`; the Profile form and the website import no longer touch `tone` / `signoff`) and the **Brand colour** card (`brand-colour.tsx`: swatches only, never a button-shaped preview, a gear opens the dialog; `saveBrandColour` stays in `integrations/actions.ts`). Not the same as Preferences (`/preferences`: theme + plan).
+- **Manage tab** (`/workspace/manage`, the last Workspace tab; the workspace picker has no Manage item any more): title row, 920px of dense panels (rows via `PanelRow`, Members as a `Table` with a `Seg` Members/Invitations switch; no join-date column);
   **General** (`components/workspace/general-tab.tsx`: org name/logo via Clerk
   `organization.update`/`setLogo`, mirrored by the `organization.updated` webhook; a copyable
   **Workspace ID** row, our uuid via `loadOrgIdentity`, the `data-org` of the form / chat snippets;
@@ -145,9 +145,9 @@ violet for outbound and AI-drafted things, green/amber/red for status only.
   actions (`workspace/org-actions.ts` → `leaveActiveOrg`/`deleteActiveOrg`) that sync our DB (delete
   cascades on the org row, since `organization.deleted` has no webhook). `/workspace/members`
   redirects to `/workspace/manage`. `tests/manage-tab.test.ts` guards the wiring.
-- **Integrations page** (matches the Claude Design "Settings: Integrations" artboard, minus its tab bar: our Workspace sub-menu stays; the page is 70% wide and left-aligned on desktop): a slim **Needs attention** bar (only when something is wrong), then **Connected tools** with four sections (Lead capture, Booking, Communication, CRM and PSA). Each section lists its connected tools as rows (`service-row.tsx`: mark, name, state, gear) and has its own add button (`add-tool.tsx`, label/picker title from `SERVICE_GROUPS`) opening an inline searchable picker of that section's unconnected tools. **Connection health** is last (`health-section.tsx`): one line per service for the last 24 hours, a chip per service that isolates it. Data: `lib/integrations/health.ts` (`shapeHealth`, tested) over `webhook_deliveries`, which now holds **inbound webhooks and outbound API calls** (`direction`, migration 0045; providers resend, twilio, calcom, calendly, vapi, slack, connectwise, google, microsoft). Outbound calls are recorded by `vendorFetch(..., { track: { provider, orgId } })`; pass `track` on any new vendor call for an org's connected tool (Resend's SDK sends record themselves). Not recorded: OAuth token refreshes, Voyage and Anthropic (platform services, not a tool an org connects), Clerk and Inngest.
+- **Integrations page** (matches the Claude Design Integrations board 1:1, minus its tab bar: our Workspace sub-menu stays; FULL width): a title row, an info strip (connected tools, booking tool, webhooks 24h), a slim **Needs attention** note (only when something is wrong; a pill per issue), then four panels (Lead capture, Calendar, Communication, CRM and PSA; ids unchanged for `JUMP`). Each panel is a `ToolSection` (`tool-section.tsx`: `Card` + `CardHeader` with the section hint and its add button, label/picker title from `SERVICE_GROUPS`, inline searchable picker of the unconnected tools, then rows). A row (`service-row.tsx`, 30px `BrandMark size="sm"`, name + hint, state dot + label, actions) ends with the gear (`manage-dialog.tsx`); the tests ("Send test", "Test connection") live inside the Manage dialogs only, never on the row; "Finish setup" opens the dialog for a "Needs setup" tool. A chosen, connected booking tool reads "In use for bookings". The Calendar panel ends with **Your calendar** (the org's connected calendar, Connected / Not connected) and **Team calendars** (`team-calendars.tsx`: each non-support member with the same Connected / Not connected, because everyone shares the org calendar; nothing per person is stored, no per-user OAuth). "Send reminder" is NOT built (no per-person state to remind about). **Connection health** is last (`health-section.tsx`): one line per service for the last 24 hours, a chip per service that dims the others to 12%. Data: `lib/integrations/health.ts` (`shapeHealth`, tested) over `webhook_deliveries`, which now holds **inbound webhooks and outbound API calls** (`direction`, migration 0045; providers resend, twilio, calcom, calendly, vapi, slack, connectwise, google, microsoft). Outbound calls are recorded by `vendorFetch(..., { track: { provider, orgId } })`; pass `track` on any new vendor call for an org's connected tool (Resend's SDK sends record themselves). Not recorded: OAuth token refreshes, Voyage and Anthropic (platform services, not a tool an org connects), Clerk and Inngest.
 - **Jump links:** a link from one workspace page to a section of another uses `JUMP` (`lib/jump.ts`, e.g. `/workspace/integrations#booking`). The target carries the matching `id` (Integrations sections use their `group.id`; Agent cards `booking` / `channels`), `components/jump-highlight.tsx` (in `workspace/layout.tsx`) scrolls to it and flashes `.jump-flash` once (`:target` does not update on Next client navigation). `tests/jump-links.test.ts` fails if an id goes missing. Use `JUMP` for every new cross-page link instead of a bare path.
-- **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone
+- **Labels:** `lib/ui/status.ts` maps every enum to a sentence-case label + tone (conversation words on every screen: Active, Booked, Handed off in violet, Not a fit muted not red, Closed; no page-local copy)
   (`CONVERSATION_STATUS`, `MEETING_STATUS`, `KB_STATUS`, `CHANNEL_LABEL`, …). Never
   render a raw enum value. Shared formatters live in `lib/format.ts`.
 - **Shell:** `(app)/layout.tsx` + `components/app-sidebar.tsx` (232px rail, plan card,
@@ -286,6 +286,8 @@ app's `globals.css` after the tokens, with `@source` pointing at `packages/ui/sr
 - **0043** `org_profiles.last_voice` — the voice that answered the last call; the `assistant-request` webhook saves it and `pickVoice` skips it next time whenever another voice is on.
 - **0042** `org_profiles.voice_names text[]` — the voices the org turned on; each call uses one at random (`pickVoice`, per `assistant-request`), empty = Savannah. Replaces 0041's single `voice_name`, which stays unused. Switches + play buttons in `voice-picker.tsx`; at least one stays on.
 - **0041** `org_profiles.voice_name` (superseded by 0042) — the phone agent's voice, one of Vapi's built-in voices (`lib/voice/voices.ts`: Savannah, Emma, Clara, Elliot, Nico, Sid — all Version 2, set as `version: 2` on the assistant voice; null = Savannah). Set under Workspace → Agent → Channels, with a play button (`voice-sample.tsx`) for the 12-second clips in `public/voices/<Id>.mp3`, trimmed from Vapi's own docs samples; `mp3` is excluded from the proxy matcher so they are plain static files.
+- **0046** `meetings.rep_user_id` (uuid, references `users`, on delete set null; index `(org_id, rep_user_id)`) — the rep who owns a meeting; null = Unassigned, which is how the agent books. The existing row-level `meetings_tenant` policy already covers it. Assigned on the Meetings page (`assignMeetingRep`, rep+, member of this org and not support, audited `meeting.rep_assigned`).
+- **0047** `org_profiles.website` (text, check length <= 200) — the company website, set under Profile → Company (`cleanWebsite` in `lib/profile/website.ts`: https only, bare domain gets the scheme, `http://` upgraded, no login / private host / query; per-field error). It is the default address in Import from website.
 - **0024** pagination indexes — `conversations (org_id, created_at desc, id desc)`,
   `meetings (org_id, coalesce(start_at, created_at) desc, id desc)`,
   `audit_log (created_at desc, id desc)` (replaces `audit_log_created_at_idx`). See
@@ -572,7 +574,7 @@ by `getBookingAdapter(orgId, bookingConfigFromProfile(profile))`.
   set the **outcome** (showed / no-show / converted — feeds the §11 KPIs) and
   **cancel / reschedule** for API-managed providers (Cal.com / Google / M365, via
   the adapter's `cancel`/`reschedule`, then our row syncs). Calendly / manual rows
-  show outcome + converted only. The conversation thread shows the booked meeting
+  show outcome + converted only. Board layout (2026-11-13): window switch (`?window=`, default 30) scoping an info strip (show rate, next meeting, booking calendar), four `StatTile`s with bars + delta vs the prior window (`lib/meetings/figures.ts`, tested), a Booked-per-bucket chart, then the table: outcome is a Pending / Showed / No-show segmented radiogroup plus a Converted toggle, Reschedule / Cancel are icon buttons (Cancel still confirms). Each row has a **Rep** column (`RepControl`: a Select of the org's members, saves on change for rep+, plain text for viewers; `lib/meetings/reps.ts`, tested) and the **Booked by rep** donut beside the chart counts the Booked set per rep (+ Unassigned, Former member) in the same window. Not built: Week view, toolbar (Refresh / Export / Filter / Columns). The conversation thread shows the booked meeting
   inline.
 - **Env (platform-level OAuth apps):** `GOOGLE_OAUTH_CLIENT_ID` /
   `GOOGLE_OAUTH_CLIENT_SECRET`, `MICROSOFT_OAUTH_CLIENT_ID` /
@@ -733,8 +735,10 @@ silent when every org is on target or nothing is saved).
 
 ## Dashboard
 
+**Boards restyle (Dashboard, Conversations, Client, Thread):** page-local pieces live in `components/conversations/kit.tsx` (`Panel`, `Strip`, `TabLinks`, `Kpi` with a coloured "▲/▼ n vs prior" line, `FitMeter`, `FitCard`, `ChannelIcons`, `StatusIcon`) and `refresh-button.tsx`. Dashboard: info strip, a blue "Getting started" note that opens the checklist panel (`getting-started.tsx`), tiles with prior-period deltas (`windowSql` in `lib/dashboard/window-sql.ts` gives the window / prior bounds and `ago()`), speed card as a bar against 60s. `/conversations` takes `?window=`, `?status=open|handed_off|booked|disqualified`, `?q=`; `lib/clients/overview.ts` feeds its tiles/charts, `clientTabCounts` the tab counts. Client page tabs are `?tab=overview|conversations|calls|meetings|psa`.
+
 `(app)/dashboard/page.tsx` follows the Claude Design mockup row for row. One **time
-window** for the whole page (`?window=1|7|30|90`; the shared `WindowSwitch` in `@alevo/ui` is a "Last:" dropdown with Alt+1…4 shortcuts; helpers in
+window** for the whole APP, not per page: the "Last:" menu saves the choice in the `alevo_window` cookie (`lib/dashboard/window-cookie.ts`; server read `readWindow()` in `window-pref.ts`, default 7) and refreshes, so Dashboard, Conversations and Meetings always show the same window until it is changed (a `?window=` in the URL is ignored in the app; the admin console still uses the param). Values 1|7|30|90; the shared `WindowSwitch` in `@alevo/ui` is a "Last:" dropdown with Alt+1…4 shortcuts; helpers in
 `lib/dashboard/window.ts`, tested): Today (1) buckets per hour (24 bars), 7 and 30 days per day, 90 per week (13
 bars), all as calendar days in the org timezone computed in SQL. Rows: the four
 `StatTile`s (`kpi-tiles.tsx`) → **Leads per day** (area chart) + **Speed to lead**
@@ -879,6 +883,8 @@ Sprint 7.2 (spec `docs/superpowers/specs/2026-11-02-clients-and-calls-design.md`
   `clientDetail(tx, orgId, contactId)` (`lib/clients/detail.ts`). Both take the org id
   explicitly (platform admins bypass RLS). The thread's name links to the client page and the
   aside says "N other conversations".
+  **List tools:** Export (`conversations/export/route.ts`, viewer+, same tab/search, 5,000-row cap; `lib/clients/csv.ts` quotes and prefixes an apostrophe on cells starting `= + - @`), a Columns menu and sortable headers (`components/conversations/clients-panel.tsx`; the choice lives in localStorage, sorting reorders only the loaded page, paging stays keyset by activity; pure helpers in `lib/clients/list-view.ts`).
+  **Thread / client actions** (`conversations/[id]/status-actions.ts`, UI `thread-actions.tsx`): hand off (rep+: status handed_off, `notifyHandoff` from the Qualifier tools once, PSA write-back, no repeat alert), mark not a fit (rep+; the cadence only works new/active threads), delete (admin+: messages + calls through the service path, org-scoped; recordings in R2 are left), and on the client page mark all open conversations not a fit. Each writes an audit entry. The thread has Calls / Meetings tabs (`?tab=`); the client Meetings tab reuses the Meetings page's `OutcomeControls` / `ManageControls`.
 - Tests: `tests/identity.test.ts`, `resolve-contact-db`, `contact-details-db`, `call-thread-db`,
   `call-summary`, `format`, `client-activity-db`, `clients-query-db`. Vitest aliases
   `server-only` to a stub and `@` to the app root (`vitest.config.ts`).
@@ -898,9 +904,9 @@ update public.users set is_platform_admin = true where email = '<you>@example.co
 
 Sprint 6. Alevo creates client workspaces from the console (Admin → Organizations →
 New organization: Clerk org with the admin as creator + owner invite + plan) and sets
-them up in THIS app. **Support rule:** any platform admin's membership in any org is
-`support` (`lib/webhooks/membership-role.ts`, set by the webhook mirror): app role
-`admin`, never owner; excluded from seats and from `ownerEmails`; the Members tab shows
+them up in THIS app. **Support rule:** a platform admin's membership in an org is
+`support` by default (`lib/webhooks/membership-role.ts`, set by the webhook mirror): app role
+`admin`, never owner, no seat. It is a per-workspace CHOICE: an explicit invite role makes them a real member with that role, and Admin → Organizations → [org] → Members has "Make owner" / "Back to support" on every platform admin's row (`setMemberMode`, audited `membership.made_owner` / `made_support`); the mirror never reverts a real membership of a platform admin. A platform admin who is also an owner counts as a seat and receives owner emails; excluded from seats and from `ownerEmails`; the Members tab shows
 "Alevo support" with no role select / Remove and the members actions refuse to touch
 them (`lib/members/guards.ts`). **Readiness** lives in `@alevo/db`
 (`packages/db/src/onboarding/`: pure `readiness()` over `loadReadinessFacts(orgId)`,
@@ -963,4 +969,6 @@ Sentry is wired (`instrumentation.ts`, `sentry.*.config.ts`,
 `instrumentation-client.ts`) and is a no-op until `NEXT_PUBLIC_SENTRY_DSN` is
 set. Source-map upload (withSentryConfig) is intentionally not enabled yet.
 
-- **Settings and gear icons**: the sidebar bottom has a Settings link to `/preferences` (theme + plan; not `/settings`, which `next.config.ts` redirects permanently to `/workspace`). "Manage" buttons are the gear icon with an `sr-only` name, never the word.
+- **Settings and gear icons**: the sidebar bottom has a Preferences link to `/preferences` (theme + plan; not `/settings`, which `next.config.ts` redirects permanently to `/workspace`). "Manage" buttons are the gear icon with an `sr-only` name, never the word.
+
+- **Workspace boards (Profile v2 / Agent / Knowledge, 2026-11-13):** `components/workspace/` holds `panel-row.tsx` (dense label/control row), `save-bar.tsx` (full-width bottom bar, shown only while dirty) and `status-strip.tsx` (the board's info strip from `org_profiles`). **Profile** is the v2 layout (`profile-field.tsx` underline fields with counters, `profile-toc.tsx` on-this-page list). **Agent** is ONE form (`agent-ui.tsx` + `save-all.ts` `saveAgentPage`: agent half then booking half; the booking switch posts `bookingEnabled`), sub-tabs General / Booking / Channels / Notifications via `SubTabs`; panels stay mounted and a `#booking` / `#channels` hash opens its tab. On/off switches sit in a row (board), no longer in `CardHeader`. **Knowledge** is a toolbar (Add text / Add URL dialogs, Upload PDF) over a documents table with a client filter.

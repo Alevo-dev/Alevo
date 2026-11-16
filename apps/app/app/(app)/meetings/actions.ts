@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
-import { conversations, meetings, orgProfiles, type MeetingOutcome, safeErrorMessage } from "@alevo/db";
-import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { conversations, meetings, memberships, orgProfiles, recordAudit, type MeetingOutcome, safeErrorMessage } from "@alevo/db";
+import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { bookingConfigFromProfile, getBookingAdapter } from "@/lib/booking";
 
 export type ManageState = { ok?: boolean; error?: string };
@@ -26,6 +26,43 @@ async function orgAdapter() {
   );
   if (!p) return null;
   return getBookingAdapter(org.id, bookingConfigFromProfile(p));
+}
+
+/**
+ * Assign a meeting to a rep, or back to Unassigned (empty `rep`). Rep+ only. The rep must
+ * be a member of this org and not Alevo support staff, checked here, never trusted from the form.
+ */
+export async function assignMeetingRep(_prev: ManageState, formData: FormData): Promise<ManageState> {
+  try {
+    await requireRole("rep");
+    const org = await getCurrentOrg();
+    if (!org) return { error: "No active organization." };
+    const id = String(formData.get("id") ?? "");
+    const rep = String(formData.get("rep") ?? "");
+    if (!id) return { error: "Missing meeting." };
+
+    if (rep) {
+      const [member] = await withOrg((tx) =>
+        tx
+          .select({ id: memberships.id })
+          .from(memberships)
+          .where(and(eq(memberships.orgId, org.id), eq(memberships.userId, rep), eq(memberships.support, false)))
+          .limit(1),
+      );
+      if (!member) return { error: "That person is not a member of this workspace." };
+    }
+    const updated = await withOrg((tx) =>
+      tx.update(meetings).set({ repUserId: rep || null, updatedAt: new Date() }).where(scoped(id)).returning({ id: meetings.id }),
+    );
+    if (updated.length === 0) return { error: "Meeting not found." };
+
+    const me = await getCurrentUser();
+    await recordAudit({ orgId: org.id, actorUserId: me?.id ?? null, action: "meeting.rep_assigned", target: id, metadata: { rep: rep || null } });
+    revalidatePath("/meetings");
+    return { ok: true };
+  } catch (error) {
+    return { error: safeErrorMessage(error, "Something went wrong") };
+  }
 }
 
 /**

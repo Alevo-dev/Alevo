@@ -19,7 +19,7 @@ export function DeclineButton({ item, declined }: { item: DeclineKey; declined: 
       <input type="hidden" name="key" value={item} />
       <input type="hidden" name="value" value={String(!declined)} />
       <IconButton type="submit" loading={pending} aria-label={label} title={label}>
-        {declined ? <Undo2 className="size-4" aria-hidden="true" /> : <X className="size-4" aria-hidden="true" />}
+        {declined ? <Undo2 className="size-[18px]" aria-hidden="true" /> : <X className="size-[18px]" aria-hidden="true" />}
       </IconButton>
     </form>
   );

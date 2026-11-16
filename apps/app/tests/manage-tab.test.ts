@@ -6,7 +6,7 @@ const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "u
 /** Members and General live in the Workspace → Manage tab, not behind the workspace picker. */
 describe("Manage tab", () => {
   it("is a Workspace sub-menu entry with its own page", () => {
-    expect(read("components/workspace-subnav.tsx")).toContain('href: "/workspace/manage"');
+    expect(read("components/nav-items.ts")).toContain('href: "/workspace/manage"');
     expect(read("app/(app)/workspace/manage/page.tsx")).toContain("canEdit");
   });
   it("the workspace picker no longer opens a Manage dialog", () => {

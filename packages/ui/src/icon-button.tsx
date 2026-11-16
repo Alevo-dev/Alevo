@@ -26,7 +26,7 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(function IconButt
       type={type}
       disabled={disabled || loading}
       className={cx(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex size-8 shrink-0 items-center justify-center rounded-xs bg-transparent transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50",
         tone === "danger" ? "text-danger hover:bg-danger/10" : "text-ink-muted hover:bg-raised hover:text-ink",
         className,
       )}

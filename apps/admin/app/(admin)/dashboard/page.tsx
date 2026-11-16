@@ -83,15 +83,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatTile label="Over 60s" value={slow} hint={slow ? "Orgs replying slower than target" : "Every org on target"} tone="danger" />
       </section>
 
-      <Card padding="none">
-        <div className="px-6 pt-6">
-          <CardHeader
-            title="Funnel per organization"
-            hint={`What each tenant's dashboard shows for the last ${days} days. Speed to lead is the p95 first reply against the 60-second promise.`}
-            aside={moreOrgs ? `Busiest ${ranked.length} of ${counts.total}` : undefined}
-          />
-        </div>
-        <Table className="mt-2">
+      <Card boxed padding="none">
+        <CardHeader
+          title="Funnel per organization"
+          hint={`What each tenant's dashboard shows for the last ${days} days. Speed to lead is the p95 first reply against the 60-second promise.`}
+          aside={moreOrgs ? `Busiest ${ranked.length} of ${counts.total}` : undefined}
+        />
+        <Table>
           <thead>
             <tr>
               <Th>Organization</Th>
@@ -147,11 +145,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </Card>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" aria-label="Organizations and activity">
-        <Card padding="none">
-          <div className="px-6 pt-6">
-            <CardHeader title="Organizations" aside={`${counts.total} total`} />
-          </div>
-          <OrgsTable rows={newest.rows} className="mt-2" empty="No organizations yet." />
+        <Card boxed padding="none">
+          <CardHeader title="Organizations" aside={`${counts.total} total`} />
+          <OrgsTable rows={newest.rows} empty="No organizations yet." />
           {newest.older && (
             <ViewAll href="/organizations" label={`Newest ${newest.rows.length} of ${counts.total}`}>
               All organizations
@@ -159,11 +155,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </Card>
 
-        <Card padding="none">
-          <div className="px-6 pt-6">
-            <CardHeader title="Recent activity" hint="The audit log across every org, newest first." />
-          </div>
-          <ActivityTable rows={activity.rows} className="mt-2" empty="No activity yet." />
+        <Card boxed padding="none">
+          <CardHeader title="Recent activity" hint="The audit log across every org, newest first." />
+          <ActivityTable rows={activity.rows} empty="No activity yet." />
           {activity.older && (
             <ViewAll href="/activity" label={`Newest ${activity.rows.length}`}>
               All activity

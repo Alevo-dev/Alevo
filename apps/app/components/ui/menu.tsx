@@ -205,7 +205,7 @@ export function Menu({
               minWidth: Math.max(pos.width, 208),
               transform: `${align === "end" ? "translateX(-100%)" : ""} ${pos.up ? "translateY(-100%)" : ""}`.trim() || undefined,
             }}
-            className={cx("fixed z-50 rounded-md border border-hairline bg-raised p-1 shadow-float", menuClassName)}
+            className={cx("fixed z-50 rounded-sm border border-control bg-surface p-1 shadow-float", menuClassName)}
           >
             {(() => {
               const resolved = typeof header === "function" ? header(close) : header;
@@ -226,8 +226,8 @@ export function Menu({
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => run(items[i]!)}
                       className={cx(
-                        "flex items-center gap-2.5 rounded-sm px-3 text-sm",
-                        size === "lg" ? "h-11" : "h-9",
+                        "flex items-center gap-2.5 rounded-xs px-2.5 text-sm",
+                        size === "lg" ? "h-11" : "h-[34px]",
                         item.disabled ? "cursor-default opacity-50" : "cursor-pointer",
                         item.danger ? "text-danger" : "text-ink",
                         i === active && !item.disabled && "bg-brand-soft",
@@ -242,7 +242,7 @@ export function Menu({
                           />
                         ))}
                       <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-                      {item.selected && <Check className="size-4 shrink-0 text-brand" strokeWidth={2} aria-hidden="true" />}
+                      {item.selected && <Check className="size-4 shrink-0 text-brand-ink" strokeWidth={2} aria-hidden="true" />}
                     </div>
                   );
                 })}

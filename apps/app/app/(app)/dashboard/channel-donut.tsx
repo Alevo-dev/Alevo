@@ -4,31 +4,36 @@ import { useState } from "react";
 import type { Channel } from "@alevo/db";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { cx } from "@/lib/cx";
-import { CHANNEL_LABEL } from "@/lib/ui/status";
 import { fmtCount } from "@/lib/format";
 
-/** Slice colours by rank (largest first): brand, violet, then the muted control
- *  grey as in the mockup, with success and warning for a fourth and fifth. */
-const SLICE = [
-  "var(--color-brand)",
-  "var(--color-violet)",
-  "var(--color-control)",
-  "var(--color-success)",
-  "var(--color-warning)",
-];
+/** One colour per channel, as on the board. */
+const COLOR: Record<Channel, string> = {
+  form: "var(--color-brand)",
+  chat: "var(--color-violet)",
+  voice: "var(--color-success)",
+  sms: "var(--color-warning)",
+  email: "var(--color-danger)",
+};
 
-const SIZE = 200;
-const R = 70;
+/** The board's names for where a lead came in. */
+const SOURCE: Record<Channel, string> = { form: "Lead form", chat: "Website chat", voice: "Phone", sms: "SMS", email: "Email" };
+
+const SIZE = 120;
+const R = 44;
+const STROKE = 14;
 
 /** "Where leads come from": a donut (one ring segment per channel, largest
  *  first, starting at the top) with the total in the middle and a legend
  *  beneath. Hovering or focusing a segment (or its legend row) lifts it and
  *  shows the count and share in a tooltip. Pure SVG, no chart library. */
-export function ChannelDonut({
-  rows,
-}: {
-  rows: { channel: Channel; n: number }[];
-}) {
+export function ChannelDonut({ rows }: { rows: { channel: Channel; n: number }[] }) {
+  return <Donut rows={rows.map((r) => ({ key: r.channel, label: SOURCE[r.channel], n: r.n, color: COLOR[r.channel] }))} unit="leads" />;
+}
+
+export type DonutRow = { key: string; label: string; n: number; color: string };
+
+/** The donut itself: any labelled, coloured counts (`unit` names what is counted). */
+export function Donut({ rows, unit }: { rows: DonutRow[]; unit: string }) {
   const [active, setActive] = useState<number | null>(null);
   const total = rows.reduce((sum, r) => sum + r.n, 0);
   // Each slice starts where the ones before it end (shares as percent of the ring).
@@ -36,10 +41,9 @@ export function ChannelDonut({
     ...r,
     share: (r.n / total) * 100,
     offset: rows.slice(0, i).reduce((sum, p) => sum + (p.n / total) * 100, 0),
-    color: SLICE[i % SLICE.length]!,
   }));
   const label = slices
-    .map((s) => `${CHANNEL_LABEL[s.channel]} ${Math.round(s.share)} percent`)
+    .map((s) => `${s.label} ${Math.round(s.share)} percent`)
     .join(", ");
   const current = active == null ? null : slices[active];
   // The tooltip sits on the ring at the slice's middle angle (the ring starts at 12 o'clock).
@@ -55,7 +59,7 @@ export function ChannelDonut({
   });
 
   return (
-    <div className="mt-5 flex flex-col items-start gap-5">
+    <div className="flex items-center gap-[18px]">
       <div className="relative" style={{ width: SIZE, height: SIZE }}>
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
@@ -68,30 +72,30 @@ export function ChannelDonut({
           <g className="animate-spin-in origin-center">
             {slices.map((s, i) => (
               <circle
-                key={s.channel}
+                key={s.key}
                 cx={SIZE / 2}
                 cy={SIZE / 2}
                 r={R}
                 fill="none"
                 stroke={s.color}
-                strokeWidth={active === i ? 34 : 28}
+                strokeWidth={active === i ? STROKE + 3 : STROKE}
                 opacity={active != null && active !== i ? 0.45 : 1}
                 pathLength="100"
                 strokeDasharray={`${s.share} ${100 - s.share}`}
                 strokeDashoffset={-s.offset}
                 role="img"
                 tabIndex={0}
-                aria-label={`${CHANNEL_LABEL[s.channel]}: ${fmtCount(s.n)} leads, ${Math.round(s.share)}%`}
+                aria-label={`${s.label}: ${fmtCount(s.n)} ${unit}, ${Math.round(s.share)}%`}
                 className="outline-none transition-[stroke-width,opacity] duration-150"
                 {...bind(i)}
               />
             ))}
           </g>
-          <text x={SIZE / 2} y="98" textAnchor="middle" className="tabular fill-ink font-mono" fontSize="22">
+          <text x={SIZE / 2} y="58" textAnchor="middle" className="tabular fill-ink font-mono" fontSize="20" fontWeight="500">
             {current ? fmtCount(current.n) : fmtCount(total)}
           </text>
-          <text x={SIZE / 2} y="118" textAnchor="middle" className="fill-ink-muted" fontSize="12">
-            {current ? CHANNEL_LABEL[current.channel] : "leads"}
+          <text x={SIZE / 2} y="74" textAnchor="middle" className="fill-ink-muted" fontSize="11">
+            {current ? current.label : unit}
           </text>
         </svg>
         {current && (
@@ -99,16 +103,16 @@ export function ChannelDonut({
             x={tipX}
             y={tipY}
             value={fmtCount(current.n)}
-            label={`${current.n === 1 ? "lead" : "leads"} · ${CHANNEL_LABEL[current.channel]}`}
+            label={`${unit} · ${current.label}`}
             detail={`${Math.round(current.share)}% of ${fmtCount(total)}`}
             swatch={current.color}
           />
         )}
       </div>
-      <ul className="w-full space-y-3 text-sm" aria-label="Leads by channel">
+      <ul className="flex flex-1 flex-col gap-[5px] text-sm" aria-label={`Share of ${unit}`}>
         {slices.map((s, i) => (
           <li
-            key={s.channel}
+            key={s.key}
             className={cx(
               "flex items-center justify-between gap-3 transition-opacity",
               active != null && active !== i && "opacity-50",
@@ -116,10 +120,10 @@ export function ChannelDonut({
             {...bind(i)}
           >
             <span className="flex items-center gap-2">
-              <span aria-hidden className="size-2.5 rounded-[3px]" style={{ background: s.color }} />
-              {CHANNEL_LABEL[s.channel]}, {Math.round(s.share)}%
+              <span aria-hidden className="size-2 rounded-[2px]" style={{ background: s.color }} />
+              {s.label}
             </span>
-            <span className="tabular font-mono text-label text-ink-muted">{fmtCount(s.n)}</span>
+            <span className="tabular font-mono text-ink-muted"><span className="sr-only">{Math.round(s.share)}%, </span>{fmtCount(s.n)}</span>
           </li>
         ))}
       </ul>

@@ -5,7 +5,10 @@ import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { authInterrupt } from "@/lib/auth-interrupts";
 import { bookingSnapshot, connectedBookingTools, isBookingTool } from "@/lib/booking/connected";
 import { AgentForm } from "./agent-ui";
-import { BookingForm } from "./booking-ui";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusStrip } from "@/components/workspace/status-strip";
+import { getOrgTimezone } from "@/lib/org-timezone";
+import { getCurrentUsage } from "@/lib/usage/current";
 import { DEFAULT_VOICE, isVoice } from "@/lib/voice/voices";
 import type { AgentValues } from "./actions";
 import type { BookingValues } from "./booking-actions";
@@ -22,6 +25,7 @@ export default async function AgentPage() {
   }
 
   const org = await getCurrentOrg();
+  const [tz, usage] = await Promise.all([getOrgTimezone(), getCurrentUsage()]);
   const [[row], setKeys] = org
     ? await Promise.all([
         withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1)),
@@ -55,10 +59,21 @@ export default async function AgentPage() {
     bookingHoursEnd: row?.bookingHoursEnd ?? 17,
   };
 
+  const voice = usage.find((u) => u.metric === "voice_minutes");
+  const minutesUsed = voice && voice.allowance > 0 ? `${voice.used} of ${voice.allowance} minutes used` : null;
+
   return (
-    <div className="space-y-6">
-      <AgentForm initial={initial} profileReady={profileReady} />
-      <BookingForm initial={booking} connected={connected} />
+    <div className="space-y-4">
+      <PageHeader title="Agent" />
+      <StatusStrip row={row} tz={tz} />
+      <AgentForm
+        initial={initial}
+        booking={booking}
+        connected={connected}
+        profileReady={profileReady}
+        slackConnected={setKeys.includes("slack_webhook_url")}
+        minutesUsed={minutesUsed}
+      />
     </div>
   );
 }

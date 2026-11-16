@@ -28,6 +28,7 @@ export const BRAND_ICONS = {
 export const LETTER_MARKS = {
   connectwise: { text: "CW", fill: "#1D3F6E" },
   halopsa: { text: "H", fill: "#00A99D" },
+  facebook: { text: "f", fill: "#1877F2" },
 } as const;
 
 /** Slack's four-colour mark: one path per colour, viewBox 0 0 122.8 122.8. */

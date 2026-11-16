@@ -9,12 +9,13 @@ import { initials } from "@/lib/format";
 import { nextWorkspace } from "@/lib/orgs/next-workspace";
 import { toast } from "@/lib/ui/use-action-toast";
 import { deleteOrg, leaveOrg, loadOrgIdentity } from "@/app/(app)/workspace/org-actions";
-import { AccountRow, LinkButton } from "@/components/account/rows";
+import { LinkButton } from "@/components/account/rows";
+import { PanelRow } from "@/components/workspace/panel-row";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
-import { IconButton } from "@/components/ui/icon-button";
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
@@ -68,10 +69,9 @@ export function GeneralTab({ canEdit }: { canEdit: boolean }) {
   }
 
   return (
-    <Card>
+    <Card padding="none">
       <CardHeader title="General" />
-      <div className="mt-2 divide-y divide-hairline">
-      <AccountRow label="Workspace profile">
+      <PanelRow label="Workspace profile" hint="Name and logo">
         {editing && organization ? (
           <ProfileEditor
             organization={organization}
@@ -79,40 +79,39 @@ export function GeneralTab({ canEdit }: { canEdit: boolean }) {
             onCancel={() => setEditing(false)}
           />
         ) : (
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex min-w-0 items-center gap-3">
+          <div className="flex w-full items-center gap-3">
+            <span className="flex min-w-0 items-center gap-2.5">
               <LogoTile name={organization?.name} imageUrl={organization?.hasImage ? organization.imageUrl : null} />
-              <span className="truncate text-sm font-medium text-ink">
+              <span className="truncate font-semibold text-ink">
                 {organization?.name ?? (isLoaded ? "—" : "…")}
               </span>
             </span>
             {canEdit && (
-              <LinkButton onClick={() => setEditing(true)} disabled={!organization}>
+              <LinkButton className="ml-auto" onClick={() => setEditing(true)} disabled={!organization}>
                 Update profile
               </LinkButton>
             )}
           </div>
         )}
-      </AccountRow>
+      </PanelRow>
 
-      <AccountRow label="Workspace ID">
+      <PanelRow label="Workspace ID" hint="The data-org value in your website form and chat widget snippets.">
         <WorkspaceId />
-      </AccountRow>
+      </PanelRow>
 
-      <AccountRow label="Leave workspace">
+      <PanelRow label="Leave workspace" hint="You lose access right away. An admin can invite you back.">
         <LinkButton danger onClick={() => setLeaveOpen(true)} disabled={!organization}>
           Leave workspace
         </LinkButton>
-      </AccountRow>
+      </PanelRow>
 
       {canEdit && (
-        <AccountRow label="Delete workspace">
+        <PanelRow label="Delete workspace" hint="Permanently deletes conversations, meetings, members and settings.">
           <LinkButton danger onClick={() => setDeleteOpen(true)} disabled={!organization}>
             Delete workspace
           </LinkButton>
-        </AccountRow>
+        </PanelRow>
       )}
-      </div>
 
       <ConfirmDialog
         open={leaveOpen}
@@ -176,21 +175,18 @@ function WorkspaceId() {
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
-        <code className="min-w-0 truncate rounded-sm bg-raised px-2 py-1 font-mono text-sm text-ink">
-          {id ?? (failed ? "Unavailable" : "…")}
-        </code>
-        <IconButton aria-label="Copy workspace ID" onClick={copy} disabled={!id}>
-          {copied ? (
-            <Check className="size-4" strokeWidth={1.75} aria-hidden="true" />
-          ) : (
-            <Copy className="size-4" strokeWidth={1.75} aria-hidden="true" />
-          )}
-        </IconButton>
-      </div>
-      <Hint>The data-org value in your website form and chat widget snippets.</Hint>
-    </div>
+    <>
+      <code className="min-w-0 truncate rounded-xs bg-raised px-2 py-[3px] font-mono text-ink">
+        {id ?? (failed ? "Unavailable" : "…")}
+      </code>
+      <IconButton aria-label="Copy workspace ID" onClick={copy} disabled={!id}>
+        {copied ? (
+          <Check className="size-[18px] text-success" strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <Copy className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+        )}
+      </IconButton>
+    </>
   );
 }
 
@@ -292,12 +288,12 @@ function ProfileEditor({ organization, onDone, onCancel }: { organization: Org; 
 
 function LogoTile({ name, imageUrl }: { name: string | undefined; imageUrl: string | null }) {
   if (imageUrl) {
-    return <Image src={imageUrl} alt="" width={36} height={36} className="size-9 shrink-0 rounded-md object-cover" />;
+    return <Image src={imageUrl} alt="" width={34} height={34} className="size-[34px] shrink-0 rounded-[8px] object-cover" />;
   }
   return (
     <span
       className={cx(
-        "inline-flex size-9 shrink-0 items-center justify-center rounded-md text-sm font-semibold",
+        "inline-flex size-[34px] shrink-0 items-center justify-center rounded-[8px] text-[13px] font-bold",
         name ? "bg-brand text-on-brand" : "bg-raised text-ink-muted",
       )}
     >

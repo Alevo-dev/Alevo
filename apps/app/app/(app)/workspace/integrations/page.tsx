@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { eq } from "drizzle-orm";
-import { listOrgSecretKeys, orgProfiles } from "@alevo/db";
-import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { and, eq } from "drizzle-orm";
+import { listOrgSecretKeys, memberships, orgProfiles, users } from "@alevo/db";
+import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { authInterrupt } from "@/lib/auth-interrupts";
 import { Notice } from "@/components/ui/notice";
-import { StatusDot } from "@/components/ui/pill";
+import { PageHeader } from "@/components/ui/page-header";
+import { Pill } from "@/components/ui/pill";
+import { InfoStrip } from "@/components/ui/nav-kit";
 import type { WebhookProvider } from "@alevo/db";
 import { isEmailConfigured } from "@/lib/email/resend";
 import { isSmsConfigured } from "@/lib/sms/twilio";
-import { bookingSnapshot } from "@/lib/booking/connected";
+import { BOOKING_TOOL_LABEL, bookingSnapshot, type BookingTool } from "@/lib/booking/connected";
 import { connectwiseSnapshot } from "@/lib/psa/connectwise-map";
 import { buildServices, SERVICE_GROUPS, type ServiceView } from "@/lib/integrations/services";
 import { getConnectionHealth } from "@/lib/integrations/health";
@@ -20,13 +22,14 @@ import { CalendlyForm } from "./calendly-form";
 import { ChatWidgetForm } from "./chat-widget-form";
 import { ConnectResult } from "./connect-result";
 import { ConnectWiseForm } from "./connectwise-form";
-import { AddTool } from "./add-tool";
+import { ToolSection } from "./tool-section";
+import { TeamCalendars, type CalendarMember } from "./team-calendars";
+import { displayName } from "@/lib/format";
 import { normaliseHex } from "@/lib/colour";
 import { EmbedSnippets } from "./embed-snippets";
 import { HealthSection } from "./health-section";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceRow } from "./service-row";
-import { ManageDialog } from "./manage-dialog";
 import { SetupStatus } from "./setup-status";
 
 export const dynamic = "force-dynamic";
@@ -61,11 +64,23 @@ export default async function SecretsPage({
   const orgName = org.name;
 
   // Explicit org filter: platform admins bypass RLS, so scope in code.
-  const [{ calendar_connected, calendar_error }, setKeys, [profile]] = await Promise.all([
+  const [{ calendar_connected, calendar_error }, setKeys, [profile], memberRows, me] = await Promise.all([
     searchParams,
     listOrgSecretKeys(org.id),
     withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1)),
+    // The workspace's own people (Alevo support staff are not on the team).
+    withOrg((tx) =>
+      tx
+        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, role: memberships.role })
+        .from(memberships)
+        .innerJoin(users, eq(users.id, memberships.userId))
+        .where(and(eq(memberships.orgId, org.id), eq(memberships.support, false))),
+    ),
+    getCurrentUser(),
   ]);
+  const team: CalendarMember[] = memberRows
+    .map((m) => ({ id: m.id, name: displayName(m.firstName, m.lastName, m.email), email: m.email, role: m.role }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const canModify = userRole === "admin" || userRole === "owner";
   const isSet = new Set(setKeys);
   // The colour each snippet starts with: the Brand colour, else (chat only) the older chat colour, else Alevo blue.
@@ -93,6 +108,8 @@ export default async function SecretsPage({
   const attention = services.filter((s) => s.issue);
   const listed = services.filter((s) => s.listed);
   const connectable = services.filter((s) => !s.listed);
+  // The one calendar everyone shares: the booking tool in use, else any connected one.
+  const sharedCalendar = (services.find((s) => s.group === "booking" && s.setup?.connected && s.setup.chosen) ?? services.find((s) => s.group === "booking" && s.setup?.connected))?.name ?? null;
   const connectedCalendar =
     booking.calendarProvider === "google" || booking.calendarProvider === "m365"
       ? { provider: booking.calendarProvider, email: booking.calendarAccountEmail }
@@ -182,84 +199,69 @@ export default async function SecretsPage({
           : undefined;
 
   return (
-    <div className="space-y-12 lg:w-[70%]">
+    <div>
       <ConnectResult connected={calendar_connected} error={calendar_error} />
+      <PageHeader title="Integrations" />
+      <InfoStrip
+        items={[
+          { label: "Connected tools", value: <span className="font-mono">{listed.length}</span> },
+          { label: "Booking tool", value: booking.tool && booking.tool in BOOKING_TOOL_LABEL ? BOOKING_TOOL_LABEL[booking.tool as BookingTool] : "Not chosen" },
+          { label: "Webhooks, 24h", value: <span className="font-mono">{health.successRate === null ? "No data" : `${(health.successRate * 100).toFixed(1)}%`}</span> },
+        ]}
+      />
 
-      {/* Slim: only when something needs doing, one line each. */}
-      {attention.length > 0 && (
-        <section aria-label="Needs attention" className="rounded-md border border-warning/50 bg-warning/10 px-4 py-3">
-          <ul className="divide-y divide-warning/20">
+      <div className="mt-3.5 space-y-3.5">
+        {/* Slim: only when something needs doing, one line each. */}
+        {attention.length > 0 && (
+          <section aria-label="Needs attention" className="flex flex-col gap-1.5 rounded-sm border border-warning/55 bg-warning/[0.07] px-3 py-[9px] text-[13.5px] text-ink">
             {attention.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                <p className="min-w-0 flex-1 text-sm text-ink">
-                  <span className="font-semibold">{s.name}:</span> {s.issue}
-                </p>
-                <span className="flex shrink-0 items-center gap-3">
-                  <span className="inline-flex items-center gap-2 text-label font-medium text-ink">
-                    <StatusDot tone={s.status.tone} />
-                    {s.status.label}
-                  </span>
-                  {s.managed && (
-                    <ManageDialog name={s.name} label="Review" description={dialogDescription(s)}>
-                      {manageContent(s)}
-                    </ManageDialog>
-                  )}
+              <div key={s.id} className="flex items-center justify-between gap-2 border-t border-warning/25 pt-1.5 first:border-t-0 first:pt-0">
+                <span>
+                  <b>{s.name}:</b> {s.issue}
                 </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <div>
-        <h2 className="text-title font-semibold text-ink">Connected tools</h2>
-        <p className="mt-2 text-sm text-ink-muted">Where Alevo books meetings, sends messages, posts alerts and writes leads back.</p>
-      </div>
-
-      {SERVICE_GROUPS.map((group) => {
-        const rows = listed.filter((s) => s.group === group.id);
-        const addable = connectable.filter((s) => s.group === group.id);
-        return (
-          <section key={group.id} id={group.id} aria-labelledby={`services-${group.id}`} className="-mt-4 scroll-mt-6">
-            {/* The add picker is a sibling of the title row inside this wrapping row, so it opens right under it. */}
-            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-4">
-              <div className="min-w-0 flex-1">
-                <h3 id={`services-${group.id}`} className="text-heading font-semibold text-ink">
-                  {group.title}
-                </h3>
-                <p className="mt-1.5 text-sm text-ink-muted">{group.hint}</p>
-                <div className="mt-3 h-[3px] w-7 rounded-sm bg-gradient-to-r from-brand to-violet" aria-hidden="true" />
+                <Pill tone={s.status.tone === "danger" ? "danger" : "warning"}>{s.status.label}</Pill>
               </div>
-              {canModify && addable.length > 0 && (
-                <AddTool
-                  label={group.add}
-                  title={group.pick}
-                  tools={addable.map((s) => ({
-                    id: s.id,
-                    name: s.name,
-                    icon: s.icon,
-                    managed: s.managed,
-                    unavailable: s.status.label,
-                    dialogDescription: dialogDescription(s),
-                  }))}
-                  panels={Object.fromEntries(addable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
-                />
-              )}
-            </div>
-            {rows.length === 0 ? (
-              <p className="mt-3 border-y border-hairline px-3 py-5 text-sm text-ink-muted">Nothing connected yet.</p>
-            ) : (
-              <ul className="mt-3 border-y border-hairline">
-                {rows.map((s) => (
-                  <ServiceRow key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
-                ))}
-              </ul>
-            )}
+            ))}
           </section>
-        );
-      })}
+        )}
 
-      <HealthSection health={health} />
+        {SERVICE_GROUPS.map((group) => {
+          const rows = listed.filter((s) => s.group === group.id);
+          const addable = canModify ? connectable.filter((s) => s.group === group.id) : [];
+          return (
+            <ToolSection
+              key={group.id}
+              id={group.id}
+              title={group.title}
+              hint={group.hint}
+              add={group.add}
+              pick={group.pick}
+              tools={addable.map((s) => ({
+                id: s.id,
+                name: s.name,
+                icon: s.icon,
+                managed: s.managed,
+                unavailable: s.status.label === "Coming soon" ? "Soon" : s.status.label,
+                dialogDescription: dialogDescription(s),
+              }))}
+              panels={Object.fromEntries(addable.filter((s) => s.managed).map((s) => [s.id, manageContent(s)]))}
+            >
+              {rows.length === 0 ? (
+                <p className="px-3.5 py-3.5 text-ink-muted">Nothing connected yet.</p>
+              ) : (
+                <ul>
+                  {rows.map((s) => (
+                    <ServiceRow key={s.id} service={s} manage={manageContent(s)} dialogDescription={dialogDescription(s)} />
+                  ))}
+                </ul>
+              )}
+              {group.id === "booking" && team.length > 0 && <TeamCalendars calendar={sharedCalendar} me={team.find((m) => m.id === me?.id)} members={team} />}
+            </ToolSection>
+          );
+        })}
+
+        <HealthSection health={health} />
+      </div>
     </div>
   );
 }

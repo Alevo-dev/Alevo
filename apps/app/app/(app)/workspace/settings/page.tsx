@@ -8,10 +8,10 @@ import { ToneCard } from "./tone-card";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Workspace settings" };
+export const metadata: Metadata = { title: "Brand" };
 
 /** How the workspace presents itself: the agent's tone and sign-off, and the brand colours. Admins and owners only. */
-export default async function WorkspaceSettingsPage() {
+export default async function WorkspaceBrandPage() {
   try {
     await requireRole("admin");
   } catch (error) {
@@ -24,10 +24,9 @@ export default async function WorkspaceSettingsPage() {
     : [];
 
   return (
-    <div className="space-y-6">
-      <ToneCard tone={row?.tone ?? ""} signoff={row?.signoff ?? ""} />
+    <ToneCard tone={row?.tone ?? ""} signoff={row?.signoff ?? ""}>
       {/* This page is admin-only, so the brand card can always edit. */}
       <BrandColour accent={row?.brandColor ?? ""} textColor={row?.brandTextColor ?? ""} canModify />
-    </div>
+    </ToneCard>
   );
 }

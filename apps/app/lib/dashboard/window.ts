@@ -124,3 +124,20 @@ export function speedLevel(p95Seconds: number | null): SpeedLevel {
   if (p95Seconds <= 300) return "warning";
   return "danger";
 }
+
+/** The window as dates for the info strip: "Nov 13" for Today, else "Oct 15 – Nov 13". */
+export function windowRange(todayIso: string, days: Window): string {
+  if (days === 1) return MONTH.format(shift(todayIso, 0));
+  return `${MONTH.format(shift(todayIso, days - 1))} – ${MONTH.format(shift(todayIso, 0))}`;
+}
+
+/** What a tile's change is measured against: "vs yesterday", "vs prior 30 days". */
+export function priorLabel(days: Window): string {
+  return days === 1 ? "vs yesterday" : `vs prior ${days} days`;
+}
+
+/** The median reply as a share of the 60-second target, for the speed card's bar (capped at 100). */
+export function speedShare(p50Seconds: number | null, targetSeconds = 60): number {
+  if (p50Seconds == null) return 0;
+  return Math.max(0, Math.min(100, Math.round((p50Seconds / targetSeconds) * 100)));
+}

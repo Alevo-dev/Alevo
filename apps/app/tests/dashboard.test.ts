@@ -9,9 +9,12 @@ import {
   labelStep,
   niceMax,
   parseWindow,
+  priorLabel,
   showLabel,
   speedLevel,
+  speedShare,
   windowLabel,
+  windowRange,
 } from "../lib/dashboard/window";
 
 describe("axis labels", () => {
@@ -119,5 +122,20 @@ describe("showRatePct", () => {
     expect(showRatePct(4, 5)).toBe(80);
     expect(showRatePct(1, 3)).toBe(33);
     expect(showRatePct(5, 5)).toBe(100);
+  });
+});
+
+describe("info strip helpers", () => {
+  it("names the window's dates and what a change is measured against", () => {
+    expect(windowRange("2026-11-13", 1)).toBe("Nov 13");
+    expect(windowRange("2026-11-13", 7)).toBe("Nov 7 – Nov 13");
+    expect(windowRange("2026-11-13", 30)).toBe("Oct 15 – Nov 13");
+    expect(priorLabel(1)).toBe("vs yesterday");
+    expect(priorLabel(90)).toBe("vs prior 90 days");
+  });
+  it("reads the median against the 60s target, capped", () => {
+    expect(speedShare(38)).toBe(63);
+    expect(speedShare(300)).toBe(100);
+    expect(speedShare(null)).toBe(0);
   });
 });

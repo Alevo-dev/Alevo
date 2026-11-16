@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { IconButton } from "@/components/ui/icon-button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { ColourField } from "@/components/ui/colour-picker";
 import { Dialog } from "@/components/ui/dialog";
 import { chatTextColour, contrastRatio, normaliseHex } from "@/lib/colour";
@@ -20,12 +21,12 @@ function Chip({ label, hex, fallbackHex, fallbackName }: { label: string; hex: s
     <div className="flex items-center gap-3">
       <span
         aria-hidden="true"
-        className={`size-10 shrink-0 rounded-md border-2 ${hex ? "border-hairline" : "border-dashed border-ink-muted"}`}
+        className={`size-10 shrink-0 rounded-[8px] border-2 ${hex ? "border-control" : "border-dashed border-ink-muted"}`}
         style={{ background: hex || fallbackHex }}
       />
       <div>
-        <dt className="text-label text-ink-muted">{label}</dt>
-        <dd className="font-mono text-sm text-ink">{hex || <span className="font-sans text-ink-muted">Default ({fallbackName})</span>}</dd>
+        <dt className="text-[12.5px] text-ink-muted">{label}</dt>
+        <dd className="font-mono text-ink">{hex || <span className="font-sans text-ink-muted">Default ({fallbackName})</span>}</dd>
       </div>
     </div>
   );
@@ -67,37 +68,32 @@ export function BrandColour({ accent, textColor, canModify }: { accent: string; 
   const err = dirty ? state.errors : undefined;
 
   return (
-    <Card as="section" padding="md" aria-labelledby="brand-colour">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 id="brand-colour" className="text-heading font-semibold text-ink">
-            Brand colour
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-            The default colours of the website form and the chat bubble. A page can still override them with <code className="font-mono">data-accent</code> and{" "}
-            <code className="font-mono">data-color</code>.
-          </p>
+    <Card as="section" padding="none" aria-label="Brand colour">
+      <CardHeader title="Brand colour" />
+      <div className="p-3.5">
+        <div className="flex flex-wrap items-center gap-7">
+          <dl className="contents">
+            <Chip label="Colour" hex={savedAccentHex} fallbackHex={ALEVO_BLUE} fallbackName="Alevo blue" />
+            <Chip label="Font colour" hex={savedTextHex} fallbackHex={summaryText} fallbackName="white or navy" />
+          </dl>
+          {canModify && (
+            <IconButton
+              className="ml-auto"
+              onClick={() => {
+                setOpenedOn(state);
+                setOpen(true);
+              }}
+            >
+              <Settings className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+              <span className="sr-only">Manage brand colours</span>
+            </IconButton>
+          )}
         </div>
-        {canModify && (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => {
-              setOpenedOn(state);
-              setOpen(true);
-            }}
-          >
-            <Settings className="size-4" strokeWidth={1.75} aria-hidden="true" />
-            <span className="sr-only">Brand colour settings</span>
-          </Button>
-        )}
+        <p className="mt-3.5 max-w-[640px] text-ink-muted">
+          The default colours of the website form and the chat bubble. A page can still override them with <code className="font-mono">data-accent</code> and{" "}
+          <code className="font-mono">data-color</code>.
+        </p>
       </div>
-
-      <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-4">
-        <Chip label="Colour" hex={savedAccentHex} fallbackHex={ALEVO_BLUE} fallbackName="Alevo blue" />
-        <Chip label="Font colour" hex={savedTextHex} fallbackHex={summaryText} fallbackName="white or navy" />
-      </dl>
 
       <Dialog
         open={visible}

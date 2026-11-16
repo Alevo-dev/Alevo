@@ -14,6 +14,9 @@
   --color-canvas: var(--ds-canvas);
   --color-surface: var(--ds-surface);
   --color-raised: var(--ds-surface-raised);
+  --color-sunken: var(--ds-sunken);
+  --color-rail: var(--ds-rail);
+  --color-topbar: var(--ds-topbar);
   --color-hairline: var(--ds-hairline);
   --color-control: var(--ds-control);
   --color-ink: var(--ds-ink);
@@ -22,6 +25,8 @@
   --color-brand: var(--ds-brand);
   --color-brand-sky: var(--ds-brand-sky);
   --color-brand-soft: var(--ds-brand-soft);
+  --color-brand-ink: var(--ds-brand-ink);
+  --color-violet-ink: var(--ds-violet-ink);
   --color-violet: var(--ds-accent);
   --color-violet-light: var(--ds-accent-light);
   --color-violet-soft: var(--ds-accent-soft);
@@ -40,6 +45,7 @@
   --font-display: var(--font-display);
   --font-mono: var(--font-data);
 
+  --radius-xs: var(--ds-radius-xs);
   --radius-sm: var(--ds-radius-sm);
   --radius-md: var(--ds-radius-md);
   --radius-lg: var(--ds-radius-lg);

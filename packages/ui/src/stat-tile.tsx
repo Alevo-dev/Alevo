@@ -5,7 +5,7 @@ import { MiniBars } from "./mini-bars";
 
 export type StatTone = "brand" | "violet" | "success" | "warning" | "danger";
 
-/** The big-number tile: label in muted ink, value in mono with tabular figures.
+/** The KPI tile (boards `.kpi`): label, value in mono with tabular figures, bars bottom-right.
  *  A numeric `value` counts up on load; pass a string to show it as-is.
  *  `series` adds a row of mini bars under the number (one per period, scaled
  *  to the largest; hover / focus a bar for its value — `seriesLabels` names the
@@ -37,28 +37,27 @@ export function StatTile({
   featured?: boolean;
 }) {
   return (
-    <Card
+    <Card boxed
       as="div"
-      padding="sm"
+      padding="none"
       className={cx(
-        "rounded-md",
-        series && "relative flex min-h-[132px] flex-col justify-between",
+        "relative px-3.5 py-3",
         featured && "border-brand bg-[linear-gradient(160deg,var(--color-brand-soft)_0%,var(--color-surface)_70%)]",
       )}
     >
       {featured && (
         <span
           aria-hidden
-          className="absolute inset-x-0 top-0 h-[3px] rounded-t-md bg-[linear-gradient(100deg,var(--color-brand-sky),var(--color-violet-light))]"
+          className="absolute inset-x-0 top-0 h-[3px] rounded-t-sm bg-[linear-gradient(100deg,var(--color-brand-sky),var(--color-violet-light))]"
         />
       )}
       <div>
-        <div className="text-label text-ink-muted">{label}</div>
-        <div className="tabular mt-2 font-mono text-metric font-medium tracking-tight text-ink">
+        <div className="text-label font-[550] text-ink-muted">{label}</div>
+        <div className="tabular mt-0.5 font-mono text-[28px] font-medium leading-[34px] tracking-[-0.02em] text-ink">
           {typeof value === "number" ? <CountUp value={value} /> : value}
         </div>
-        {delta && <div className="mt-1.5 text-xs font-medium text-success">{delta}</div>}
-        {hint && <div className="mt-1 text-label text-ink-muted">{hint}</div>}
+        {delta && <div className="mt-0.5 text-[12.5px] font-medium text-success">{delta}</div>}
+        {hint && <div className="mt-0.5 text-[12.5px] text-ink-muted">{hint}</div>}
       </div>
       {series && <MiniBars series={series} labels={seriesLabels} unit={unit} period={period} tone={tone} />}
     </Card>

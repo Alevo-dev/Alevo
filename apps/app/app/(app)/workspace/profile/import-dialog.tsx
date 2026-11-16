@@ -18,14 +18,18 @@ export function ImportDialog({
   hasContent,
   onClose,
   onImported,
+  defaultUrl = "",
 }: {
   open: boolean;
   /** Some profile field already has text, so ask how to treat it. */
   hasContent: boolean;
   onClose: () => void;
   onImported: (imported: ImportedProfile, mode: ImportMode) => void;
+  /** The saved company website, offered as the address to read. */
+  defaultUrl?: string;
 }) {
-  const [url, setUrl] = useState("");
+  const [typed, setUrl] = useState<string | null>(null);
+  const url = typed ?? defaultUrl;
   const [mode, setMode] = useState<ImportMode>("fill");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -50,7 +54,7 @@ export function ImportDialog({
       }
       if (!res.ok) return setError(res.error);
       onImported(res.imported, hasContent ? mode : "fill");
-      setUrl("");
+      setUrl(null);
       onClose();
     });
   }

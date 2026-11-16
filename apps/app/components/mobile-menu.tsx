@@ -1,19 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Building2, CalendarCheck, LayoutDashboard, MessagesSquare, Settings } from "lucide-react";
-import { cx } from "@/lib/cx";
-import { WorkspaceSubnav } from "./workspace-subnav";
+import { Menu, X } from "lucide-react";
 import { WorkspaceSwitcher } from "./workspace-switcher";
-
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/conversations", label: "Conversations", icon: MessagesSquare },
-  { href: "/meetings", label: "Meetings", icon: CalendarCheck },
-  { href: "/workspace/profile", label: "Workspace", icon: Building2, match: "/workspace" },
-] as const;
+import { NavGroupList, NavLink } from "./app-sidebar";
+import { PREFERENCES } from "./nav-items";
 
 export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,7 +40,7 @@ export function MobileMenu() {
 
       {/* Slide-out sidebar */}
       <div
-        className={`fixed left-0 top-0 z-50 h-dvh w-58 bg-canvas transition-transform duration-300 ease-in-out md:hidden flex flex-col ${
+        className={`fixed left-0 top-0 z-50 h-dvh w-58 bg-rail transition-transform duration-300 ease-in-out md:hidden flex flex-col ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -68,45 +60,12 @@ export function MobileMenu() {
           </button>
         </div>
 
-        <nav aria-label="Primary" className="-mx-1 flex flex-col gap-1 px-1 py-4 shrink-0">
-          {NAV.map(({ href, label, icon: Icon, ...item }) => {
-            const base = "match" in item ? item.match : href;
-            const active = pathname === base || pathname.startsWith(`${base}/`);
-            return (
-              <div key={href}>
-                <Link
-                  href={href}
-                  onClick={closeMenu}
-                  aria-current={active ? "page" : undefined}
-                  className={cx(
-                    "flex shrink-0 items-center gap-3 rounded-sm px-3 py-2.5 text-sm no-underline transition-colors",
-                    active
-                      ? "bg-brand-soft font-medium text-ink"
-                      : "font-medium text-ink-muted hover:bg-raised hover:text-ink",
-                  )}
-                >
-                  <Icon className={cx("size-4", active ? "text-brand" : "text-ink-muted")} strokeWidth={1.75} aria-hidden="true" />
-                  {label}
-                </Link>
-                {active && base === "/workspace" && <WorkspaceSubnav onNavigate={closeMenu} />}
-              </div>
-            );
-          })}
+        <nav aria-label="Primary" className="flex flex-col overflow-y-auto px-2.5 py-3">
+          <NavGroupList pathname={pathname} onNavigate={closeMenu} />
         </nav>
 
-        <div className="mt-auto border-t border-hairline px-4 py-4 shrink-0">
-          <Link
-            href="/preferences"
-            onClick={closeMenu}
-            aria-current={pathname === "/preferences" ? "page" : undefined}
-            className={cx(
-              "-mx-1 flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium no-underline transition-colors",
-              pathname === "/preferences" ? "bg-brand-soft text-ink" : "text-ink-muted hover:bg-raised hover:text-ink",
-            )}
-          >
-            <Settings className="size-4" strokeWidth={1.75} aria-hidden="true" />
-            Settings
-          </Link>
+        <div className="mt-auto border-t border-hairline px-2.5 py-3 shrink-0">
+          <NavLink item={PREFERENCES} pathname={pathname} onNavigate={closeMenu} />
         </div>
       </div>
     </>

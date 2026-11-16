@@ -4,10 +4,10 @@ import { memberships, organizations, withService } from "@alevo/db";
 import { authInterrupt, requirePlatformAdmin } from "@alevo/auth";
 import { allowedDestination } from "@/lib/admin/destination";
 import { OpenOrg } from "./open-org";
+import { adminUrl } from "@/lib/admin-url";
 
 export const dynamic = "force-dynamic";
 
-const ADMIN_URL = (process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.getalevo.com").replace(/\/$/, "");
 
 /**
  * Deep link from the admin console: `/admin/open?org=<clerkOrgId>&to=/workspace/…`.
@@ -34,7 +34,7 @@ export default async function OpenPage({ searchParams }: { searchParams: Promise
       .limit(1),
   );
   if (!row) notFound();
-  if (!row.membershipId) redirect(`${ADMIN_URL}/organizations/${row.orgId}?notice=join-first`);
+  if (!row.membershipId) redirect(`${adminUrl()}/organizations/${row.orgId}?notice=join-first`);
 
   return <OpenOrg clerkOrgId={clerkOrgId} to={allowedDestination(to)} />;
 }
