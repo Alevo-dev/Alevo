@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHead, Section, Container } from "@/components/landing/page-kit";
-import { ContactForm } from "@/components/landing/contact-form";
+import { AlevoForm } from "@/components/landing/alevo-form";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default function ContactPage() {
       <Section>
         <div style={{ display: "grid", gap: 24, gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,360px),1fr))", alignItems: "start" }}>
           {/* Scheduler */}
-          <div>
+          <div style={{ gridColumn: "1 / -1" }}>
             <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--blue-t)", marginBottom: 14 }}>PICK A TIME</div>
             {embedSrc ? (
               <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid rgba(var(--ink),.1)", background: "#fff" }}>
@@ -47,10 +47,10 @@ export default function ContactPage() {
             )}
           </div>
 
-          {/* Message form */}
-          <div>
+          {/* Message form: the whole width */}
+          <div style={{ gridColumn: "1 / -1" }}>
             <div className="mono" style={{ fontSize: 12, letterSpacing: ".14em", color: "var(--violet-t)", marginBottom: 14 }}>OR SEND A NOTE</div>
-            <ContactForm />
+            <AlevoForm />
           </div>
         </div>
       </Section>
