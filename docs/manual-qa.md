@@ -1378,3 +1378,11 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 - [ ] Your own form tab: the request code, the Fields list (name, email, message, consent required) and the three responses.
 - [ ] Chat widget window: the On / Off switch is beside the close button. Typing in Greeting or Agent name updates the preview at once and the footer reads "1 unsaved change" with Discard and Save changes. Discard puts it back. Bubble position moves the bubble in the preview and `data-position` in the code.
 - [ ] Slack window: a masked box with Replace and a trash button once saved (never the saved URL), Replace shows an input with Save and Cancel, Send test shows "delivered at <time>" or the reason it failed.
+
+## Chat avatar
+
+- [ ] Integrations → Chat widget: Avatar → Upload image with a large photo. The field and the chat preview show it in a circle and the footer reads "1 unsaved change: Avatar". Small / Medium / Large change its diameter (44 / 60 / 80px) in the preview; Large is not clipped.
+- [ ] Save changes: the window closes. Open `/api/chat/<workspace id>` and `avatarUrl` is set (it can lag up to a minute: the response is cached). The image URL returns a small WebP (typically 10 to 30 KB).
+- [ ] On a page with the chat snippet, open the bubble: the picture is in the header at the chosen size. With no picture, a circle with the first letter.
+- [ ] Replace image, then Remove: the old file is deleted from R2 (its old URL now returns 404). A wide logo is shown whole inside the circle, nothing cut off.
+- [ ] The code in the Website form and Chat widget windows has one attribute per line, scrolls sideways when long, and Copy copies it as shown.

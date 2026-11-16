@@ -30,6 +30,7 @@ import { normaliseHex } from "@/lib/colour";
 import { EmbedSnippets } from "./embed-snippets";
 import { HealthSection } from "./health-section";
 import { buttonClass } from "@/components/ui/button";
+import { isAvatarSize } from "@/lib/chat/avatar";
 import { fixFor } from "@/lib/integrations/fix-link";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceRow } from "./service-row";
@@ -129,6 +130,8 @@ export default async function SecretsPage({
             enabled={profile?.chatEnabled ?? false}
             greeting={profile?.chatGreeting ?? ""}
             agentName={profile?.chatAgentName ?? ""}
+            avatarUrl={profile?.chatAvatarKey ? `/api/chat/${orgId}/avatar?v=${profile.chatAvatarAt?.getTime() ?? 0}` : null}
+            avatarSize={isAvatarSize(profile?.chatAvatarSize) ? profile.chatAvatarSize : "md"}
             company={orgName}
             src={`${appUrl()}/chat.js`}
             orgId={orgId}

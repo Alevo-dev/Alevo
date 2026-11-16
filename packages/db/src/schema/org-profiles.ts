@@ -96,6 +96,10 @@ export const orgProfiles = pgTable(
     chatGreeting: text("chat_greeting"),
     // The name shown at the top of the chat window (migration 0036); null = the company name.
     chatAgentName: text("chat_agent_name"),
+    // A picture at the top of the chat window (migration 0049): the R2 key, its size ('sm' | 'md' | 'lg') and when it last changed.
+    chatAvatarKey: text("chat_avatar_key"),
+    chatAvatarSize: text("chat_avatar_size").notNull().default("md"),
+    chatAvatarAt: timestamp("chat_avatar_at", { withTimezone: true }),
     chatAccent: text("chat_accent"),
     // The workspace's default brand colour (migrations 0033-0034): the website form and the chat bubble. `chatAccent` above is the older chat-only colour, used only while this is blank.
     brandColor: text("brand_color"),

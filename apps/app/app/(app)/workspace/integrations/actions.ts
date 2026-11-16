@@ -14,7 +14,9 @@ import { makeM365Adapter } from "@/lib/booking/m365";
 import { calendarTestDetail, calendarTestHint } from "@/lib/booking/calendar-test";
 import { BOOKING_TOOL_LABEL } from "@/lib/booking/connected";
 import { connectedToolsNow, enableBookingOnConnect } from "@/lib/booking/auto-enable";
+import { avatarKey, isAvatarSize, looksLikeWebp, MAX_AVATAR_BYTES, type AvatarSize } from "@/lib/chat/avatar";
 import { MAX_AGENT_NAME_CHARS, MAX_GREETING_CHARS } from "@/lib/chat/rules";
+import { deleteObject, putObject } from "@/lib/r2";
 import { normaliseHex } from "@/lib/colour";
 
 export type ActionState = {
@@ -354,24 +356,53 @@ export async function saveBrandColour(_prev: BrandColourState, formData: FormDat
 export type ChatWidgetState = {
   ok?: boolean;
   error?: string;
-  errors?: { greeting?: string; agentName?: string };
-  values?: { enabled: boolean; greeting: string; agentName: string };
+  errors?: { greeting?: string; agentName?: string; avatar?: string };
+  values?: { enabled: boolean; greeting: string; agentName: string; avatarSize: AvatarSize };
 };
 
-/** The website chat widget: on/off and greeting, on the org profile (its colour is the workspace brand colour). */
+/**
+ * The website chat widget: on/off, greeting, name and the agent's picture, on the org profile (its colour is the workspace
+ * brand colour). The picture arrives already resized to a small WebP by the browser; this checks it really is one, stores
+ * it in R2 under the org's avatars folder and removes the one it replaces. `removeAvatar` clears it.
+ */
 export async function saveChatWidget(_prev: ChatWidgetState, formData: FormData): Promise<ChatWidgetState> {
   const enabled = formData.get("enabled") === "on";
   const greeting = String(formData.get("greeting") ?? "").trim();
   const agentName = String(formData.get("agentName") ?? "").trim();
-  const values = { enabled, greeting, agentName };
+  const sizeRaw = formData.get("avatarSize");
+  const avatarSize: AvatarSize = isAvatarSize(sizeRaw) ? sizeRaw : "md";
+  const values = { enabled, greeting, agentName, avatarSize };
+  const picked = formData.get("avatar");
+  const file = picked instanceof File && picked.size > 0 ? picked : null;
+  const removeAvatar = formData.get("removeAvatar") === "1";
   try {
     const { org, actorId } = await adminContext();
     const errors: ChatWidgetState["errors"] = {};
     if (greeting.length > MAX_GREETING_CHARS) errors.greeting = `Keep the greeting under ${MAX_GREETING_CHARS} characters.`;
     if (agentName.length > MAX_AGENT_NAME_CHARS) errors.agentName = `Keep the name under ${MAX_AGENT_NAME_CHARS} characters.`;
+    let bytes: Uint8Array | null = null;
+    if (file) {
+      bytes = new Uint8Array(await file.arrayBuffer());
+      if (file.size > MAX_AVATAR_BYTES || !looksLikeWebp(bytes)) errors.avatar = "That image could not be used. Choose a PNG, JPEG or WebP picture and try again.";
+    }
     if (Object.keys(errors).length > 0) return { errors, values };
 
-    await upsertProfile(org.id, { chatEnabled: enabled, chatGreeting: greeting || null, chatAgentName: agentName || null });
+    const [current] = await withOrg((tx) => tx.select({ key: orgProfiles.chatAvatarKey }).from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1));
+    let newKey: string | null | undefined; // undefined = keep, null = remove
+    if (bytes) {
+      newKey = avatarKey(org.id, crypto.randomUUID());
+      await putObject(newKey, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, "image/webp");
+    } else if (removeAvatar) newKey = null;
+
+    await upsertProfile(org.id, {
+      chatEnabled: enabled,
+      chatGreeting: greeting || null,
+      chatAgentName: agentName || null,
+      chatAvatarSize: avatarSize,
+      ...(newKey !== undefined ? { chatAvatarKey: newKey, chatAvatarAt: new Date() } : {}),
+    });
+    // The replaced picture is no longer referenced: remove it (a failed delete only leaves an orphan).
+    if (newKey !== undefined && current?.key) await deleteObject(current.key).catch(() => undefined);
     await recordAudit({ orgId: org.id, actorUserId: actorId, action: "chat.settings_saved", target: enabled ? "enabled" : "disabled" });
     revalidatePath("/workspace/integrations");
     return { ok: true, values };

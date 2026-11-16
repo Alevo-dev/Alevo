@@ -23,6 +23,36 @@ export function Attr({ name, value }: { name: string; value: string }) {
   );
 }
 
+/** The text of a `<script>` tag with one attribute per line (the copied code reads the same as it is shown). */
+export function scriptText(attrs: [string, string][], flags: string[] = ["async"]): string {
+  return ["<script", ...attrs.map(([n, v]) => `  ${n}="${v}"`), ...flags.map((f) => `  ${f}`), "></script>"].join("\n");
+}
+
+/** The same `<script>` tag, coloured: tag, then each attribute on its own indented line. */
+export function ScriptTag({ attrs, flags = ["async"] }: { attrs: [string, string][]; flags?: string[] }) {
+  return (
+    <>
+      <Tg>&lt;script</Tg>
+      {attrs.map(([n, v]) => (
+        <span key={n}>
+          {"\n  "}
+          <At>{n}</At>
+          <Pn>=</Pn>
+          <Vl>&quot;{v}&quot;</Vl>
+        </span>
+      ))}
+      {flags.map((f) => (
+        <span key={f}>
+          {"\n  "}
+          <At>{f}</At>
+        </span>
+      ))}
+      {"\n"}
+      <Tg>&gt;&lt;/script&gt;</Tg>
+    </>
+  );
+}
+
 /**
  * A copyable code block (the boards' `.code`): a bar with the language and a Copy button, then the code in mono.
  * `text` is what Copy puts on the clipboard; `children` is the same code drawn with colours.
@@ -51,7 +81,7 @@ export function CodeBox({ label, text, children, className }: { label: string; t
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>
-      <pre className="m-0 whitespace-pre-wrap break-all px-4 py-3.5 font-mono text-[12.5px] leading-[1.75] text-ink-muted">
+      <pre className="m-0 overflow-x-auto whitespace-pre px-4 py-3.5 font-mono text-[12.5px] leading-[1.75] text-ink-muted">
         <code>{children}</code>
       </pre>
     </div>

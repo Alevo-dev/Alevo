@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { At, Attr, CodeBox, Pn, Tg, Vl } from "@/components/workspace/code-box";
+import { At, Attr, CodeBox, Pn, ScriptTag, scriptText, Tg, Vl } from "@/components/workspace/code-box";
 import { DialogTabs } from "@/components/workspace/tool-dialog";
 import { chatTextColour } from "@/lib/colour";
 
@@ -40,15 +40,27 @@ export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { o
   const text = textColor || chatTextColour(accent);
   const safeCompany = company.replace(/"/g, "&quot;");
 
-  const script = [
-    `<div id="alevo-form"></div>`,
-    `<script src="${origin}/embed.js" data-org="${orgId}" data-target="#alevo-form" data-company="${safeCompany}"${follow ? "" : ` data-accent="${accent}" data-color="${text}"`}${details ? "" : ` data-details="false"`} async></script>`,
-  ].join("\n");
+  const attrs: [string, string][] = [
+    ["src", `${origin}/embed.js`],
+    ["data-org", orgId],
+    ["data-target", "#alevo-form"],
+    ["data-company", safeCompany],
+    ...(follow ? [] : ([["data-accent", accent], ["data-color", text]] as [string, string][])),
+    ...(details ? [] : ([["data-details", "false"]] as [string, string][])),
+  ];
+  const script = `<div id="alevo-form"></div>\n${scriptText(attrs)}`;
   const request = [
     `POST ${endpoint}`,
     `Content-Type: application/json`,
     ``,
-    `{ "name": "Pat Lee", "email": "pat@example.com", "phone": "", "company": "", "message": "Hi", "consent": true }`,
+    `{`,
+    `  "name": "Pat Lee",`,
+    `  "email": "pat@example.com",`,
+    `  "phone": "",`,
+    `  "company": "",`,
+    `  "message": "Hi",`,
+    `  "consent": true`,
+    `}`,
   ].join("\n");
 
   return (
@@ -64,20 +76,7 @@ export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { o
           <Attr name="id" value="alevo-form" />
           <Tg>&gt;&lt;/div&gt;</Tg>
           {"\n"}
-          <Tg>&lt;script</Tg>
-          <Attr name="src" value={`${origin}/embed.js`} />
-          <Attr name="data-org" value={orgId} />
-          <Attr name="data-target" value="#alevo-form" />
-          <Attr name="data-company" value={safeCompany} />
-          {!follow && (
-            <>
-              <Attr name="data-accent" value={accent} />
-              <Attr name="data-color" value={text} />
-            </>
-          )}
-          {!details && <Attr name="data-details" value="false" />}
-          <At> async</At>
-          <Tg>&gt;&lt;/script&gt;</Tg>
+          <ScriptTag attrs={attrs} />
         </CodeBox>
 
         <div className="flex flex-col">
@@ -122,18 +121,28 @@ export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { o
             {"\n"}
             <At>Content-Type</At>
             <Pn>:</Pn> application/json{"\n\n"}
-            <Pn>{"{"}</Pn> <At>&quot;name&quot;</At>
-            <Pn>:</Pn> <Vl>&quot;Pat Lee&quot;</Vl>
-            <Pn>,</Pn> <At>&quot;email&quot;</At>
-            <Pn>:</Pn> <Vl>&quot;pat@example.com&quot;</Vl>
-            <Pn>,</Pn> <At>&quot;phone&quot;</At>
-            <Pn>:</Pn> <Vl>&quot;&quot;</Vl>
-            <Pn>,</Pn> <At>&quot;company&quot;</At>
-            <Pn>:</Pn> <Vl>&quot;&quot;</Vl>
-            <Pn>,</Pn> <At>&quot;message&quot;</At>
-            <Pn>:</Pn> <Vl>&quot;Hi&quot;</Vl>
-            <Pn>,</Pn> <At>&quot;consent&quot;</At>
-            <Pn>:</Pn> <Tg>true</Tg> <Pn>{"}"}</Pn>
+            <Pn>{"{"}</Pn>
+            {[
+              ["name", '"Pat Lee"'],
+              ["email", '"pat@example.com"'],
+              ["phone", '""'],
+              ["company", '""'],
+              ["message", '"Hi"'],
+            ].map(([k, v]) => (
+              <span key={k}>
+                {"\n  "}
+                <At>&quot;{k}&quot;</At>
+                <Pn>: </Pn>
+                <Vl>{v}</Vl>
+                <Pn>,</Pn>
+              </span>
+            ))}
+            {"\n  "}
+            <At>&quot;consent&quot;</At>
+            <Pn>: </Pn>
+            <Tg>true</Tg>
+            {"\n"}
+            <Pn>{"}"}</Pn>
           </CodeBox>
           <div className="flex flex-col text-[13.5px]">
             <div className="pb-1.5 text-xs font-semibold uppercase tracking-[0.07em] text-ink-muted">Fields</div>

@@ -96,6 +96,8 @@
       ".alevo-chat.is-open .alevo-chat-panel{display:flex}" +
       ".alevo-chat-head{background:var(--a);color:var(--on);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}" +
       ".alevo-chat-head strong{display:block;font-size:15px}.alevo-chat-head span{display:block;font-size:12px;opacity:.85;margin-top:2px}" +
+      ".alevo-chat-who{display:flex;align-items:center;gap:10px;min-width:0}.alevo-chat-av{flex:none;border-radius:50%;object-fit:contain}" +
+      ".alevo-chat-who .alevo-chat-ini{flex:none;border-radius:50%;background:rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;opacity:1;margin:0}" +
       ".alevo-chat-close{background:transparent;border:0;color:var(--on);cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}.alevo-chat-close:hover{background:rgba(128,128,128,.25)}" +
       ".alevo-chat-log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f6f7f9}" +
       ".alevo-chat-msg{max-width:85%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word}" +
@@ -118,17 +120,24 @@
       "@media (max-width:480px){.alevo-chat.is-open{inset:0}.alevo-chat.is-open .alevo-chat-launch{display:none}.alevo-chat-panel{position:fixed;inset:0;width:auto;max-width:none;height:auto;max-height:none;border-radius:0}}";
     document.head.appendChild(css);
 
+    // The agent's picture (any size the workspace chose), else the first letter of the name in a circle.
+    var avPx = cfg.avatarUrl ? Math.min(Math.max(Number(cfg.avatarPx) || 60, 24), 96) : 40;
+    var avatarHtml = cfg.avatarUrl
+      ? '<img class="alevo-chat-av" src="' + esc(cfg.avatarUrl) + '" alt="" width="' + avPx + '" height="' + avPx + '">'
+      : '<span class="alevo-chat-ini" aria-hidden="true" style="width:' + avPx + "px;height:" + avPx + 'px">' + esc(title.slice(0, 1).toUpperCase()) + "</span>";
     var root = document.createElement("div");
     root.className = "alevo-chat";
     root.innerHTML =
       '<div class="alevo-chat-panel" role="dialog" aria-label="Chat with ' +
       esc(title) +
       '" aria-modal="false">' +
-      '<div class="alevo-chat-head"><div><strong>' +
+      '<div class="alevo-chat-head"><div class="alevo-chat-who">' +
+      avatarHtml +
+      "<div><strong>" +
       esc(title) +
       "</strong><span>" +
       (cfg.online ? "Usually replies in under a minute" : "Leave a message and your email; we'll get back to you") +
-      "</span></div>" +
+      "</span></div></div>" +
       '<button type="button" class="alevo-chat-close" aria-label="Close chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>' +
       '<div class="alevo-chat-log" aria-live="polite" aria-relevant="additions"></div>' +
       '<div class="alevo-chat-foot"><form class="alevo-chat-row" novalidate><textarea rows="1" placeholder="Write a message…" aria-label="Your message" maxlength="2000"></textarea>' +

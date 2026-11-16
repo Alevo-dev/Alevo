@@ -16,6 +16,7 @@ import {
 import { inngest } from "@/lib/inngest/client";
 import { clientIp, ipKey } from "@/lib/leads/spam";
 import { meterUsage } from "@/lib/usage/limits";
+import { isAvatarSize, type AvatarSize } from "./avatar";
 import { CHAT_CONSENT_TEXT, CHAT_LIMITS, DEFAULT_ACCENT, DEFAULT_GREETING, hashToken, newToken, visitorPresent } from "./rules";
 
 /**
@@ -24,7 +25,17 @@ import { CHAT_CONSENT_TEXT, CHAT_LIMITS, DEFAULT_ACCENT, DEFAULT_GREETING, hashT
  * scoped to the org in code, and trusts only the visitor's token.
  */
 
-export type ChatConfig = { enabled: boolean; company: string; agentName: string; greeting: string; accent: string; textColor: string; online: boolean };
+export type ChatConfig = {
+  enabled: boolean;
+  company: string;
+  agentName: string;
+  greeting: string;
+  accent: string;
+  textColor: string;
+  online: boolean;
+  /** The picture at the top of the window: how big, and a number that changes with the file (for the URL's cache-buster). Null = none. */
+  avatar: { size: AvatarSize; version: number } | null;
+};
 
 /** What the widget needs before it renders. `null` when the org doesn't exist. */
 export async function chatConfig(orgId: string): Promise<ChatConfig | null> {
@@ -40,6 +51,9 @@ export async function chatConfig(orgId: string): Promise<ChatConfig | null> {
         legacyAccent: orgProfiles.chatAccent,
         textColor: orgProfiles.brandTextColor,
         agentOn: orgProfiles.enabled,
+        avatarKey: orgProfiles.chatAvatarKey,
+        avatarSize: orgProfiles.chatAvatarSize,
+        avatarAt: orgProfiles.chatAvatarAt,
       })
       .from(organizations)
       .leftJoin(orgProfiles, eq(orgProfiles.orgId, organizations.id))
@@ -55,6 +69,7 @@ export async function chatConfig(orgId: string): Promise<ChatConfig | null> {
     accent: row.accent || row.legacyAccent || DEFAULT_ACCENT,
     textColor: row.textColor ?? "",
     online: row.agentOn ?? false,
+    avatar: row.avatarKey ? { size: isAvatarSize(row.avatarSize) ? row.avatarSize : "md", version: row.avatarAt?.getTime() ?? 0 } : null,
   };
 }
 
