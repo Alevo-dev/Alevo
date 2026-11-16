@@ -29,6 +29,8 @@ import { displayName } from "@/lib/format";
 import { normaliseHex } from "@/lib/colour";
 import { EmbedSnippets } from "./embed-snippets";
 import { HealthSection } from "./health-section";
+import { buttonClass } from "@/components/ui/button";
+import { fixFor } from "@/lib/integrations/fix-link";
 import { ServiceKeysForm } from "./integrations-ui";
 import { ElsewhereNote, ServiceRow } from "./service-row";
 import { SetupStatus } from "./setup-status";
@@ -127,6 +129,7 @@ export default async function SecretsPage({
             enabled={profile?.chatEnabled ?? false}
             greeting={profile?.chatGreeting ?? ""}
             agentName={profile?.chatAgentName ?? ""}
+            company={orgName}
             src={`${appUrl()}/chat.js`}
             orgId={orgId}
             accent={chatAccent}
@@ -220,7 +223,12 @@ export default async function SecretsPage({
                 <span>
                   <b>{s.name}:</b> {s.issue}
                 </span>
-                <Pill tone={s.status.tone === "danger" ? "danger" : "warning"}>{s.status.label}</Pill>
+                <span className="flex shrink-0 items-center gap-2">
+                  <Pill tone={s.status.tone === "danger" ? "danger" : "warning"}>{s.status.label}</Pill>
+                  <a href={fixFor(s).href} className={buttonClass("secondary", "sm", "no-underline")}>
+                    {fixFor(s).label}
+                  </a>
+                </span>
               </div>
             ))}
           </section>
@@ -235,6 +243,7 @@ export default async function SecretsPage({
                 key: group.id,
                 label: group.title,
                 count: rows.length,
+                dot: rows.some((r) => r.issue) ? ("warn" as const) : rows.length > 0 ? ("ok" as const) : ("none" as const),
                 content: (
                   <ToolSection
                     id={group.id}
@@ -266,7 +275,7 @@ export default async function SecretsPage({
                 ),
               };
             }),
-            { key: "health", label: "Connection health", content: <HealthSection health={health} /> },
+            { key: "health", label: "Connection health", dot: "none" as const, content: <HealthSection health={health} /> },
           ]}
         />
       </div>

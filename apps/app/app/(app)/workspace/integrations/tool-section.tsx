@@ -5,11 +5,11 @@ import { Plus } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Dialog } from "@/components/ui/dialog";
+import { ToolDialog } from "@/components/workspace/tool-dialog";
+import { dialogMeta } from "@/lib/integrations/dialog-meta";
 import { Input } from "@/components/ui/field";
 import { BrandMark } from "@/components/workspace/brand-mark";
 import type { ServiceIcon } from "@/lib/integrations/services";
-import { KEYS_DESCRIPTION } from "./manage-dialog";
 
 export type AddableTool = {
   id: string;
@@ -115,9 +115,9 @@ export function ToolSection({
       {children}
 
       {active && (
-        <Dialog open onClose={() => setActiveId(null)} title={active.name} description={active.dialogDescription ?? KEYS_DESCRIPTION} size="xl">
-          <div className="space-y-4">{panels[active.id]}</div>
-        </Dialog>
+        <ToolDialog open onClose={() => setActiveId(null)} icon={active.icon} title={active.name} {...dialogMeta(active.id, active.dialogDescription)}>
+          {panels[active.id]}
+        </ToolDialog>
       )}
     </Card>
   );

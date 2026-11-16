@@ -37,7 +37,7 @@ function Section({ id, title, why, children }: { id: string; title: string; why:
 export function BusinessProfileForm({ initial }: { initial: BusinessProfileValues }) {
   const [state, action, pending] = useActionState(saveBusinessProfile, INITIAL);
   useActionToast(state, "Profile saved.");
-  const { formRef, formKey, dirty, recheck, touch, discard, guard } = useUnsavedForm(state);
+  const { formRef, formKey, dirty, recheck, touch, discard, guard, saveAndLeave } = useUnsavedForm(state);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importHasContent, setImportHasContent] = useState(false);
@@ -184,7 +184,7 @@ export function BusinessProfileForm({ initial }: { initial: BusinessProfileValue
             discard();
           }}
         />
-        <LeaveDialog open={guard.pendingHref !== null} what="your business profile changes" onStay={guard.stay} onLeave={guard.leave} />
+        <LeaveDialog open={guard.pendingHref !== null} what="your business profile changes" onStay={guard.stay} onLeave={guard.leave} onSave={saveAndLeave} />
       </form>
       <ImportDialog open={importOpen} hasContent={importHasContent} onClose={() => setImportOpen(false)} onImported={applyImport} defaultUrl={v("website")} />
     </>

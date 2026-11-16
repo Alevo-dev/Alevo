@@ -104,7 +104,7 @@ type Props = {
 export function AgentForm({ initial, booking, connected, profileReady, slackConnected, minutesUsed }: Props) {
   const [state, action, pending] = useActionState(saveAgentPage, INITIAL);
   useActionToast(state, "Agent settings saved.");
-  const { formRef, formKey, dirty, recheck, touch, discard, guard } = useUnsavedForm(state);
+  const { formRef, formKey, dirty, recheck, touch, discard, guard, saveAndLeave } = useUnsavedForm(state);
   const [tab, setTab] = useState<Tab>("general");
   // The calls switch follows what is typed in the number field, not only what is saved.
   const [typed, setTyped] = useState<string | null>(null);
@@ -252,7 +252,7 @@ export function AgentForm({ initial, booking, connected, profileReady, slackConn
           setAgentOn(null);
         }}
       />
-      <LeaveDialog open={guard.pendingHref !== null} what="your agent changes" onStay={guard.stay} onLeave={guard.leave} />
+      <LeaveDialog open={guard.pendingHref !== null} what="your agent changes" onStay={guard.stay} onLeave={guard.leave} onSave={saveAndLeave} />
     </form>
   );
 }

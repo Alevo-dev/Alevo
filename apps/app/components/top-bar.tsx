@@ -47,7 +47,7 @@ export function TopBar({
           <a
             href={adminUrl()}
             title="Visible to platform admins only"
-            className="hidden h-7 items-center gap-1.5 whitespace-nowrap rounded-xs border border-violet bg-violet/15 px-2.5 text-label font-semibold text-violet-light no-underline transition-colors hover:bg-violet/30 hover:text-ink sm:inline-flex"
+            className="hidden h-7 items-center gap-1.5 whitespace-nowrap rounded-xs border border-violet bg-violet/15 px-2.5 text-label font-semibold text-violet-light no-underline transition-colors hover:bg-violet/30 hover:text-ink dark:text-ink sm:inline-flex"
           >
             <ShieldCheck className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
             Admin console

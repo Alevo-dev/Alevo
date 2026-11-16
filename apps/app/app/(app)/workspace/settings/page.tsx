@@ -3,8 +3,7 @@ import { eq } from "drizzle-orm";
 import { orgProfiles } from "@alevo/db";
 import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
 import { authInterrupt } from "@/lib/auth-interrupts";
-import { BrandColour } from "./brand-colour";
-import { ToneCard } from "./tone-card";
+import { BrandForm } from "./tone-card";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +22,5 @@ export default async function WorkspaceBrandPage() {
     ? await withOrg((tx) => tx.select().from(orgProfiles).where(eq(orgProfiles.orgId, org.id)).limit(1))
     : [];
 
-  return (
-    <ToneCard tone={row?.tone ?? ""} signoff={row?.signoff ?? ""}>
-      {/* This page is admin-only, so the brand card can always edit. */}
-      <BrandColour accent={row?.brandColor ?? ""} textColor={row?.brandTextColor ?? ""} canModify />
-    </ToneCard>
-  );
+  return <BrandForm tone={row?.tone ?? ""} signoff={row?.signoff ?? ""} accent={row?.brandColor ?? ""} textColor={row?.brandTextColor ?? ""} />;
 }

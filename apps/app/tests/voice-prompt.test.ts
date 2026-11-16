@@ -113,7 +113,7 @@ describe("the assistant voice", () => {
     expect(build([]).voice).toMatchObject({ voiceId: DEFAULT_VOICE });
     expect(build(["NotAVoice"]).voice).toMatchObject({ voiceId: DEFAULT_VOICE });
     expect(build(["NotAVoice", "Emma"], () => 0).voice).toMatchObject({ voiceId: "Emma" });
-    expect(DEFAULT_VOICE).toBe("Savannah");
+    expect(DEFAULT_VOICE).toBe("Clara");
   });
   it("offers a few male and a few female voices", () => {
     expect(VOICES.filter((v) => v.gender === "female").length).toBeGreaterThanOrEqual(3);

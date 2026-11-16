@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
-import { Dialog } from "@/components/ui/dialog";
+import { ToolDialog } from "@/components/workspace/tool-dialog";
+import { dialogMeta } from "@/lib/integrations/dialog-meta";
+import type { ServiceIcon } from "@/lib/integrations/services";
+import type { Tone } from "@/lib/ui/status";
 
-export const KEYS_DESCRIPTION = "Keys are stored encrypted. Values are never shown again after you save them.";
 
 /**
  * A row's actions (the board's `.i-act`): an optional "Finish setup" that opens the dialog, then the gear (32px
@@ -14,12 +16,18 @@ export const KEYS_DESCRIPTION = "Keys are stored encrypted. Values are never sho
  * Tests live inside the dialog only.
  */
 export function ManageDialog({
+  serviceId,
+  icon,
+  status,
   name,
   actionLabel,
-  description = KEYS_DESCRIPTION,
+  description,
   className,
   children,
 }: {
+  serviceId: string;
+  icon: ServiceIcon;
+  status?: { label: string; tone: Tone };
   name: string;
   actionLabel?: string;
   description?: string;
@@ -28,6 +36,15 @@ export function ManageDialog({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // A "Needs attention" link (`#communication:slack`) opens this tool's window, on arrival or on the same page.
+  useEffect(() => {
+    const check = () => {
+      if (decodeURIComponent(location.hash).endsWith(`:${serviceId}`)) setOpen(true);
+    };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, [serviceId]);
   return (
     <>
       <span className={`flex justify-end gap-1.5 ${className ?? ""}`}>
@@ -37,9 +54,9 @@ export function ManageDialog({
           <span className="sr-only">Manage {name}</span>
         </IconButton>
       </span>
-      <Dialog open={open} onClose={() => setOpen(false)} title={name} description={description} size="xl">
-        <div className="space-y-4">{children}</div>
-      </Dialog>
+      <ToolDialog open={open} onClose={() => setOpen(false)} icon={icon} title={name} status={status} {...dialogMeta(serviceId, description)}>
+        {children}
+      </ToolDialog>
     </>
   );
 }

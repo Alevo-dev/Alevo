@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { Button } from "@alevo/ui/button";
 import { ConfirmSubmit } from "@alevo/ui/confirm-dialog";
 import { FieldError, Input } from "@alevo/ui/field";
 import { Notice } from "@alevo/ui/notice";
 import { Pill } from "@alevo/ui/pill";
+import { SaveBar } from "@alevo/ui/save-bar";
+import { LeaveDialog, useLeaveGuard, useSaveAndLeave } from "@alevo/ui/unsaved-changes";
 import { clearInternalWebhook, saveInternalWebhook, sendTestInternal, type SettingsState } from "./actions";
 
 const INITIAL: SettingsState = {};
@@ -28,10 +30,13 @@ export function InternalAlertsForm({ isSet, savedAt }: { isSet: boolean; savedAt
   const [test, testAction, testing] = useActionState(sendTestInternal, INITIAL);
   const [clear, clearAction, clearing] = useActionState(clearInternalWebhook, INITIAL);
   const dirty = value.trim() !== "";
+  const formRef = useRef<HTMLFormElement>(null);
+  const guard = useLeaveGuard(dirty);
+  const saveAndLeave = useSaveAndLeave(guard, formRef, save);
 
   return (
     <div className="space-y-6">
-      <form action={saveAction} noValidate className="space-y-3">
+      <form ref={formRef} action={saveAction} noValidate className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <label htmlFor="webhook" className="text-sm font-semibold text-ink">
@@ -57,18 +62,9 @@ export function InternalAlertsForm({ isSet, savedAt }: { isSet: boolean; savedAt
           className="font-mono text-label"
         />
         <FieldError>{save.errors?.webhook}</FieldError>
-        {save.error && <Notice tone="danger">{save.error}</Notice>}
         {save.ok && !dirty && <Notice tone="success">Saved. The watch uses this webhook from its next run.</Notice>}
-        {dirty && (
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" disabled={saving} onClick={() => setValue("")}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={saving}>
-              Save
-            </Button>
-          </div>
-        )}
+        <SaveBar visible={dirty} pending={saving} error={save.error} onDiscard={() => setValue("")} />
+        <LeaveDialog open={guard.pendingHref !== null} what="the webhook you typed" onStay={guard.stay} onLeave={guard.leave} onSave={saveAndLeave} />
       </form>
 
       {isSet && (

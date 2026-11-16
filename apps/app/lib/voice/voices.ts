@@ -4,16 +4,16 @@
  * Each has a short sample in public/voices/<id>.mp3, from Vapi's own docs.
  */
 export const VOICES = [
+  { id: "Clara", gender: "female" },
   { id: "Savannah", gender: "female" },
   { id: "Emma", gender: "female" },
-  { id: "Clara", gender: "female" },
   { id: "Elliot", gender: "male" },
   { id: "Nico", gender: "male" },
   { id: "Sid", gender: "male" },
 ] as const;
 
 export type VoiceId = (typeof VOICES)[number]["id"];
-export const DEFAULT_VOICE: VoiceId = "Savannah";
+export const DEFAULT_VOICE: VoiceId = "Clara";
 
 export const isVoice = (v: unknown): v is VoiceId => VOICES.some((x) => x.id === v);
 

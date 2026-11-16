@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Search, Trash2 } from "lucide-react";
 import { cx } from "@/lib/cx";
 import { initials } from "@/lib/format";
@@ -14,7 +15,8 @@ import {
   revokeInvite,
   type ActionState,
 } from "@/app/(app)/workspace/members/actions";
-import { Button, Spinner } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/field";
@@ -23,6 +25,8 @@ import { Pill } from "@/components/ui/pill";
 import { Tabs } from "@/components/ui/nav-kit";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { Select } from "@/components/ui/select";
+import { LeaveDialog, useLeaveGuard } from "@/components/ui/unsaved-changes";
+import { SaveBar } from "@/components/workspace/save-bar";
 
 const ROLES = ["viewer", "rep", "admin", "owner"] as const;
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: ROLE_LABEL[r] }));
@@ -48,7 +52,7 @@ function useActionResult(state: ActionState, message: string, onOk: () => void) 
 /** The panel the Members list sits in on the Manage page. */
 function Wrap({ children }: { children: ReactNode }) {
   return (
-    <Card boxed padding="none">
+    <Card padding="none">
       <CardHeader title="Members" hint="Everyone sees this list. Only owners and admins can change it." />
       {children}
     </Card>
@@ -65,6 +69,45 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
   const reload = useCallback(async () => {
     setData(await loadMembers());
   }, []);
+
+  // Role changes are picked in the list and saved together from the bottom bar (never inline).
+  const router = useRouter();
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const changed = data && !("error" in data) ? data.members.filter((m) => edits[m.userId] && edits[m.userId] !== m.role) : [];
+  const dirty = changed.length > 0;
+  const guard = useLeaveGuard(dirty);
+
+  /** True once every change is saved; on a refusal it stops there, keeps the rest unsaved and says why. */
+  async function save(): Promise<boolean> {
+    setSaving(true);
+    setSaveError(null);
+    for (const m of changed) {
+      const fd = new FormData();
+      fd.set("userId", m.userId);
+      fd.set("clerkUserId", m.clerkUserId);
+      fd.set("role", edits[m.userId]!);
+      const r = await changeMemberRole(INITIAL, fd);
+      if (!r.ok) {
+        setSaveError(`${m.name ?? m.email ?? "A member"}: ${r.error ?? "The role could not be changed."}`);
+        setSaving(false);
+        await reload();
+        return false;
+      }
+    }
+    toast.success(changed.length === 1 ? "Role updated." : "Roles updated.");
+    setEdits({});
+    await reload();
+    setSaving(false);
+    return true;
+  }
+
+  async function saveAndLeave() {
+    const href = guard.pendingHref;
+    guard.stay();
+    if ((await save()) && href) router.push(href);
+  }
   // Initial load: set state from the resolved promise (not synchronously in the
   // effect), and ignore a late result if the dialog unmounts first.
   useEffect(() => {
@@ -80,8 +123,23 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
   if (!data) {
     return (
       <Wrap>
-        <div className="flex items-center gap-2 px-3.5 py-8 text-ink-muted">
-          <Spinner /> Loading members…
+        <div aria-busy="true" aria-live="polite">
+          <span className="sr-only">Loading members…</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-hairline py-2.5">
+            <Skeleton className="h-8 w-44 rounded-xs" />
+            <Skeleton className="h-8 w-[220px] max-w-full rounded-xs" delay={60} />
+            <Skeleton className="ml-auto h-8 w-24 rounded-xs" delay={120} />
+          </div>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-2.5 border-b border-hairline/60 py-3 last:border-b-0">
+              <Skeleton className="size-8 shrink-0 rounded-full" delay={160 + i * 70} />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3.5 w-36 rounded-xs" delay={180 + i * 70} />
+                <Skeleton className="h-3 w-48 rounded-xs" delay={200 + i * 70} />
+              </div>
+              <Skeleton className="ml-auto h-5 w-16 rounded-full" delay={220 + i * 70} />
+            </div>
+          ))}
         </div>
       </Wrap>
     );
@@ -108,7 +166,7 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
   return (
     <Wrap>
       {/* Toolbar: Members / Invitations switch, search, Invite. */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-3.5 py-2.5">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline py-2.5">
         {canEdit && (
           <Tabs
             className="border-b-0"
@@ -161,7 +219,14 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
           <tbody>
             {filtered.length === 0 && <EmptyRow colSpan={3}>No members found.</EmptyRow>}
             {filtered.map((m) => (
-              <MemberRow key={m.userId} member={m} reload={reload} canEdit={canEdit} />
+              <MemberRow
+                key={m.userId}
+                member={m}
+                role={edits[m.userId] ?? m.role}
+                onRole={(r) => setEdits((e) => ({ ...e, [m.userId]: r }))}
+                reload={reload}
+                canEdit={canEdit}
+              />
             ))}
           </tbody>
         </Table>
@@ -184,18 +249,39 @@ export function MembersTab({ canEdit }: { canEdit: boolean }) {
           </tbody>
         </Table>
       )}
+
+      {/* Only the bar sits in this form: the rows hold their own forms (remove, revoke), which cannot nest. */}
+      {canEdit && (
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+        >
+          <SaveBar visible={dirty} pending={saving} error={saveError} onDiscard={() => { setEdits({}); setSaveError(null); }} />
+          <LeaveDialog open={guard.pendingHref !== null} what="the role changes" onStay={guard.stay} onLeave={guard.leave} onSave={saveAndLeave} />
+        </form>
+      )}
     </Wrap>
   );
 }
 
-function MemberRow({ member, reload, canEdit }: { member: MemberView; reload: () => void; canEdit: boolean }) {
-  const [roleState, roleAction, rolePending] = useActionState(changeMemberRole, INITIAL);
+function MemberRow({
+  member,
+  role,
+  onRole,
+  reload,
+  canEdit,
+}: {
+  member: MemberView;
+  /** The role shown: the saved one, or the one picked and not saved yet. */
+  role: string;
+  onRole: (role: string) => void;
+  reload: () => void;
+  canEdit: boolean;
+}) {
   const [rmState, rmAction, rmPending] = useActionState(removeMember, INITIAL);
-  const [dirty, setDirty] = useState(false);
-  useActionResult(roleState, "Role updated.", () => {
-    setDirty(false);
-    reload();
-  });
   useActionResult(rmState, "Member removed.", reload);
 
   return (
@@ -215,25 +301,10 @@ function MemberRow({ member, reload, canEdit }: { member: MemberView; reload: ()
         ) : !canEdit ? (
           <Pill tone="brand">{ROLE_LABEL[member.role]}</Pill>
         ) : (
-          <form action={roleAction} onSubmit={() => setDirty(false)} className="flex items-center gap-1.5">
-            <input type="hidden" name="userId" value={member.userId} />
-            <input type="hidden" name="clerkUserId" value={member.clerkUserId} />
-            {/* Fixed width so the trigger doesn't resize with the selected role. */}
-            <div className="w-[110px]">
-              <Select
-                name="role"
-                options={ROLE_OPTIONS}
-                defaultValue={member.role}
-                onChange={() => setDirty(true)}
-                aria-label={`Role for ${member.email ?? member.userId}`}
-              />
-            </div>
-            {dirty && (
-              <Button type="submit" variant="ghost" loading={rolePending}>
-                Save
-              </Button>
-            )}
-          </form>
+          /* Fixed width so the trigger doesn't resize with the selected role. */
+          <div className="w-[110px]">
+            <Select options={ROLE_OPTIONS} value={role} onChange={onRole} aria-label={`Role for ${member.email ?? member.userId}`} />
+          </div>
         )}
       </Td>
       <Td className="text-right">

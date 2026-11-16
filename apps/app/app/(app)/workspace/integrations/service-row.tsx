@@ -45,6 +45,9 @@ export function ServiceRow({
       </span>
       {service.managed ? (
         <ManageDialog
+          serviceId={service.id}
+          icon={service.icon}
+          status={status}
           name={service.name}
           description={dialogDescription}
           actionLabel={service.issue && service.status.label === "Needs setup" ? "Finish setup" : undefined}

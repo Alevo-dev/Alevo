@@ -21,6 +21,8 @@ type Props = {
   /** No padding/heading — children own the whole panel (`title` becomes the
    *  accessible name). For shells like the two-pane account dialog. */
   bare?: boolean;
+  /** Replaces the panel width (a `max-w-*` class): the Integrations dialogs size themselves. */
+  panelClassName?: string;
 };
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [role="combobox"]:not([disabled])';
@@ -29,7 +31,7 @@ const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [role=
  * Modal panel drawn on our own surface (never the browser's dialog chrome).
  * Locks page scroll, traps Tab inside, closes on Escape / backdrop click.
  */
-export function Dialog({ open, title, description, onClose, children, footer, showClose, size = "md", bare }: Props) {
+export function Dialog({ open, title, description, onClose, children, footer, showClose, size = "md", bare, panelClassName }: Props) {
   const titleId = useId();
   const descId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -84,7 +86,7 @@ export function Dialog({ open, title, description, onClose, children, footer, sh
         onKeyDown={onKeyDown}
         className={cx(
           "relative w-full overflow-hidden rounded-md border border-hairline bg-surface shadow-float",
-          size === "xl" ? "max-w-4xl" : "max-w-md",
+          panelClassName ?? (size === "xl" ? "max-w-4xl" : "max-w-md"),
         )}
       >
         {!bare && (

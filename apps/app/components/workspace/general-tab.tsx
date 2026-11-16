@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useClerk, useOrganization } from "@clerk/nextjs";
 import { Check, Copy, Upload } from "lucide-react";
 import { cx } from "@/lib/cx";
@@ -16,6 +17,8 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Hint, Input, Label } from "@/components/ui/field";
+import { LeaveDialog, useLeaveGuard } from "@/components/ui/unsaved-changes";
+import { SaveBar } from "@/components/workspace/save-bar";
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024;
 
@@ -198,6 +201,9 @@ function ProfileEditor({ organization, onDone, onCancel }: { organization: Org; 
   const [logoError, setLogoError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const dirty = name.trim() !== organization.name || logo !== null;
+  const guard = useLeaveGuard(dirty);
+  const router = useRouter();
 
   function pickLogo() {
     const input = document.createElement("input");
@@ -217,9 +223,13 @@ function ProfileEditor({ organization, onDone, onCancel }: { organization: Org; 
     input.click();
   }
 
-  async function save() {
+  /** True once saved (the editor then closes); false leaves the editor open with its error. */
+  async function save(): Promise<boolean> {
     const trimmed = name.trim();
-    if (!trimmed) return setNameError("Give your workspace a name.");
+    if (!trimmed) {
+      setNameError("Give your workspace a name.");
+      return false;
+    }
     setSaving(true);
     setNameError(null);
     try {
@@ -228,16 +238,32 @@ function ProfileEditor({ organization, onDone, onCancel }: { organization: Org; 
       if (logoUrl) URL.revokeObjectURL(logoUrl);
       toast.success("Workspace updated.");
       onDone();
+      return true;
     } catch {
       setSaving(false);
       setNameError("Couldn't save your changes. Try again.");
+      return false;
     }
+  }
+
+  /** From the leave dialog: save, then go where the person was headed. */
+  async function saveAndLeave() {
+    const href = guard.pendingHref;
+    guard.stay();
+    if ((await save()) && href) router.push(href);
   }
 
   const preview = logoUrl ?? (organization.hasImage ? organization.imageUrl : null);
 
   return (
-    <div className="flex flex-col gap-4">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+      className="flex flex-col gap-4"
+    >
       <div className="flex flex-col gap-2">
         <Label>Logo</Label>
         <div className="flex items-center gap-4">
@@ -274,15 +300,17 @@ function ProfileEditor({ organization, onDone, onCancel }: { organization: Org; 
         />
       </Field>
 
-      <div className="flex gap-2">
-        <Button variant="primary" size="sm" loading={saving} onClick={save}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-        <Button variant="ghost" size="sm" disabled={saving} onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </div>
+      {/* Nothing changed yet: a way out. Once it has, the bottom bar's Discard does the same. */}
+      {!dirty && (
+        <div>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+        </div>
+      )}
+      <SaveBar visible={dirty} pending={saving} error={nameError} onDiscard={onCancel} />
+      <LeaveDialog open={guard.pendingHref !== null} what="your workspace changes" onStay={guard.stay} onLeave={guard.leave} onSave={saveAndLeave} />
+    </form>
   );
 }
 

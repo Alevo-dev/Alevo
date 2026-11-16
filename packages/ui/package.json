@@ -20,6 +20,7 @@
     "./page-header": "./src/page-header.tsx",
     "./pager": "./src/pager.tsx",
     "./pill": "./src/pill.tsx",
+    "./save-bar": "./src/save-bar.tsx",
     "./select": "./src/select.tsx",
     "./skeleton": "./src/skeleton.tsx",
     "./stat-tile": "./src/stat-tile.tsx",
@@ -28,6 +29,7 @@
     "./theme-script": "./src/theme-script.ts",
     "./theme-toggle": "./src/theme-toggle.tsx",
     "./tone": "./src/tone.ts",
+    "./unsaved-changes": "./src/unsaved-changes.tsx",
     "./window-switch": "./src/window-switch.tsx",
     "./theme.css": "./theme.css"
   },

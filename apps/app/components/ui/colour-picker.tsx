@@ -103,10 +103,10 @@ function Panel({ value, onChange }: { value: string; onChange: (hex: string) => 
 }
 
 /**
- * One colour setting as a row: a label, a swatch showing the colour and a hex field beside it. Click the
+ * One colour setting as a row: a label, a swatch showing the colour and its hex beside it. Click the
  * swatch for the picker (a popover; Esc, Done or a click elsewhere closes it, and Esc does not close the
- * dialog behind it). The hex field takes #rrggbb or #rgb, with or without the #, and tidies when you leave
- * it. Blank means "use the default": the swatch then shows `emptyHex` with a dashed edge.
+ * dialog behind it). The hex field is in the picker, beside a small Use default, with a full-width primary Done below: it takes #rrggbb or #rgb, with or without
+ * the #, and tidies when you leave it. Blank means "use the default" (the picker has a Use default button): the swatch then shows `emptyHex` with a dashed edge.
  */
 export function ColourField({
   id,
@@ -162,6 +162,7 @@ export function ColourField({
       <div className="flex items-center gap-3">
         <button
           ref={swatchRef}
+          id={id}
           type="button"
           disabled={disabled}
           aria-haspopup="dialog"
@@ -175,27 +176,9 @@ export function ColourField({
             FOCUS,
           )}
         />
-        <Input
-          id={id}
-          name={name}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={() => {
-            if (typed && typed !== value) onChange(typed);
-          }}
-          invalid={!!error}
-          disabled={disabled}
-          placeholder={typed ? undefined : "Default"}
-          maxLength={7}
-          spellCheck={false}
-          autoComplete="off"
-          className="max-w-36 font-mono"
-        />
-        {value.trim() && !disabled && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
-            Use default
-          </Button>
-        )}
+        {/* The value posted with the form; the field you type in lives in the picker, beside Done. */}
+        <input type="hidden" name={name} value={value} />
+        <span className={cx("font-mono text-sm", typed ? "text-ink" : "text-ink-muted")}>{typed ?? "Default"}</span>
       </div>
       <FieldError>{error}</FieldError>
 
@@ -203,14 +186,41 @@ export function ColourField({
         <div
           role="dialog"
           aria-label={`${label} picker`}
-          className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[calc(100vw-4rem)] space-y-3 rounded-md border border-hairline bg-surface p-3 shadow-float"
+          className="absolute left-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-4rem)] space-y-3 rounded-md border border-hairline bg-surface p-3 shadow-float"
         >
           <Panel value={value} onChange={onChange} />
-          <div className="flex justify-end">
-            <Button type="button" size="sm" variant="secondary" onClick={() => { setOpen(false); swatchRef.current?.focus(); }}>
-              Done
-            </Button>
+          <div className="flex items-center gap-2">
+            <Input
+              id={`${id}-hex`}
+              aria-label={`${label} hex code`}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={() => {
+                if (typed && typed !== value) onChange(typed);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault(); // Enter confirms the colour, it does not submit the form
+                  setOpen(false);
+                  swatchRef.current?.focus();
+                }
+              }}
+              invalid={!!error}
+              placeholder="#rrggbb"
+              maxLength={7}
+              spellCheck={false}
+              autoComplete="off"
+              className="min-w-0 flex-1 font-mono"
+            />
+            {value.trim() && (
+              <Button type="button" size="sm" variant="ghost" className="shrink-0" onClick={() => onChange("")}>
+                Use default
+              </Button>
+            )}
           </div>
+          <Button type="button" variant="primary" className="w-full" onClick={() => { setOpen(false); swatchRef.current?.focus(); }}>
+            Done
+          </Button>
         </div>
       )}
     </div>

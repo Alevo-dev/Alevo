@@ -6,6 +6,7 @@ import { FieldError, Input } from "@/components/ui/field";
 import { SecretField } from "@/components/workspace/secret-field";
 import { keyField } from "@/lib/secrets-registry";
 import { useActionToast } from "@/lib/ui/use-action-toast";
+import { useCloseOnSave } from "@/components/workspace/tool-dialog";
 import { saveCalendly, type CalendlyState } from "./actions";
 import { SavedKeys } from "./integrations-ui";
 
@@ -28,6 +29,7 @@ export function CalendlyForm({ link, signingKeySet, canModify }: { link: string;
     INITIAL,
   );
   useActionToast(state, "Calendly saved.");
+  useCloseOnSave(state);
 
   const savedLink = state.values?.calendlyUrl ?? link;
   const dirty = url.trim() !== savedLink.trim() || key.trim() !== "";

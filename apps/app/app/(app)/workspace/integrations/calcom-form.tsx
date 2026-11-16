@@ -6,6 +6,7 @@ import { FieldError, Input } from "@/components/ui/field";
 import { SecretField } from "@/components/workspace/secret-field";
 import { keyField } from "@/lib/secrets-registry";
 import { useActionToast } from "@/lib/ui/use-action-toast";
+import { useCloseOnSave } from "@/components/workspace/tool-dialog";
 import { saveCalcom, type CalcomState } from "./actions";
 import { SavedKeys } from "./integrations-ui";
 
@@ -31,6 +32,7 @@ export function CalcomForm({ eventTypeId, apiKeySet, webhookSecretSet, canModify
     INITIAL,
   );
   useActionToast(state, "Cal.com saved.");
+  useCloseOnSave(state);
 
   const savedTypeId = state.values?.calcomEventTypeId ?? eventTypeId;
   const dirty = typeId.trim() !== savedTypeId.trim() || Object.values(secrets).some((v) => v.trim() !== "");

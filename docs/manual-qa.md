@@ -1241,7 +1241,7 @@ Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voi
 - [ ] Workspace → Agent → **Channels** holds the SMS number, **Phone calls**, **Voice** and **Outside office hours**. There is no separate Phone calls card and only one Save bar for the page's Agent form.
 - [ ] With the SMS number empty the Phone calls switch is disabled and the hint says to add a number. Type a number: the switch enables without saving first. Clear the field again: it switches off and disables.
 - [ ] Type a new number, turn Phone calls on, **Save once**: the number is saved and calls are on. In Vapi's dashboard the number exists with no assistant and the Server URL ending in `/api/webhooks/vapi`.
-- [ ] **Voices** lists Savannah, Emma, Clara (female) and Elliot, Nico, Sid (male), each with a switch and a play button. Play plays a short sample, pressing it again stops it, and playing another voice stops the first. Savannah is on for a new org.
+- [ ] **Voices** lists Clara (first, the default), Savannah, Emma (female) and Elliot, Nico, Sid (male), each with a switch and a play button. Play plays a short sample, pressing it again stops it, and playing another voice stops the first. Savannah is on for a new org.
 - [ ] Each voice box has a **Name callers hear (optional)** field. Give Savannah "Sophie" and Elliot "Max", turn both on, Save, and call a few times: the greeting is "Thanks for calling <company>, this is Sophie. This call may be recorded…" when Savannah answers and "…this is Max…" when Elliot does. Ask who you are speaking to: it answers with that voice's name. A voice with no name just says "Thanks for calling <company>." with no introduction.
 - [ ] A name with digits or symbols ("Agent 007", "<b>") turns only that voice's box red, with "Use letters, spaces, . ' and - only, up to 30 characters." under it (the other five stay normal and keep what you typed), and nothing is saved.
 - [ ] Turn on two or three voices, Save, and call several times: each call uses one of the voices you turned on, never one that is off, and never the same voice as the call just before it (with two on they alternate; with one on it is always that one). The last voice that is on cannot be switched off. Turn all but one off, Save, call: always that voice.
@@ -1362,3 +1362,19 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 - [ ] Send: a toast says thanks and the dialog closes. Alevo's internal Slack channel (Admin → Settings → Internal alerts) gets a message with who, workspace, page, browser, the text and the screenshots. Nothing goes to the workspace's own Slack.
 - [ ] With no internal webhook saved, sending shows "We could not send your report just now" inside the dialog.
 - [ ] Send 6 reports within an hour: the 6th says to wait a little.
+
+## Save bar and leaving with unsaved changes
+
+- [ ] Brand: change the tone, the sign-off or a colour (pick it, or type a hex in the picker). The bottom bar shows Unsaved changes, Discard and Save changes. Discard puts everything back.
+- [ ] Save changes saves tone, sign-off and both colours together and toasts once. The header has no Save or Discard.
+- [ ] With an unsaved change, click any sidebar link: a dialog offers Stay, Discard and leave, and Save and leave. Save and leave saves, then opens the page you clicked. If a field is invalid it stays on the page with the error.
+- [ ] Same bar and dialog on Agent, Profile and Manage → General (Update profile: change the name), and in the admin console on Settings (type a webhook) and an organization's Plan (pick another plan).
+- [ ] Dialogs (Manage dialogs on Integrations, Add document, Reschedule, Account) keep their own Save in the dialog footer.
+
+## Integrations windows
+
+- [ ] Integrations has an "On this page" list on the right (hidden under 980px): a dot per section (green set up, amber needs attention, grey nothing yet), the open one highlighted. Clicking a name opens that tab.
+- [ ] Website form window: tabs Embed on your site / Your own form. Switch "Use Brand colour" off and `data-accent` and `data-color` appear in the code; switch "Phone, address and hours" off and `data-details="false"` appears. Copy copies the code shown.
+- [ ] Your own form tab: the request code, the Fields list (name, email, message, consent required) and the three responses.
+- [ ] Chat widget window: the On / Off switch is beside the close button. Typing in Greeting or Agent name updates the preview at once and the footer reads "1 unsaved change" with Discard and Save changes. Discard puts it back. Bubble position moves the bubble in the preview and `data-position` in the code.
+- [ ] Slack window: a masked box with Replace and a trash button once saved (never the saved URL), Replace shows an input with Save and Cancel, Send test shows "delivered at <time>" or the reason it failed.

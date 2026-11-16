@@ -7,6 +7,7 @@ import { Notice } from "@/components/ui/notice";
 import { SecretField } from "@/components/workspace/secret-field";
 import { keyField } from "@/lib/secrets-registry";
 import { useActionToast } from "@/lib/ui/use-action-toast";
+import { useCloseOnSave } from "@/components/workspace/tool-dialog";
 import { saveConnectWise, testConnectWise, type ConnectWiseState, type ConnectWiseTestState } from "./actions";
 import { SavedKeys } from "./integrations-ui";
 
@@ -65,6 +66,7 @@ export function ConnectWiseForm({ site, companyId, member, publicKeySet, private
     INITIAL,
   );
   useActionToast(state, "ConnectWise saved.");
+  useCloseOnSave(state);
   const [test, testAction, testing] = useActionState<ConnectWiseTestState, FormData>(testConnectWise, {});
 
   const current = state.values ?? saved;
