@@ -36,6 +36,7 @@ export function buildSystemPrompt(
   handedOff = false,
   agentName = "",
   status: string | null = null,
+  now = new Date(),
 ): string {
   const company = profile.companyName?.trim() || "our company";
   const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ").trim();
@@ -79,11 +80,24 @@ export function buildSystemPrompt(
       : " — e.g. they want to book or ask for a demo";
   // The product's goal is a BOOKED meeting. Once the lead qualifies, the agent
   // doesn't wait to be asked — it offers concrete times in the next 24–72 hours.
+  // Without today's date the agent cannot turn "tomorrow at 10" into the day check_availability needs.
+  const wanted = contact.timezone ?? profile.timezone ?? "UTC";
+  const tz = (() => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: wanted });
+      return wanted;
+    } catch {
+      return "UTC";
+    }
+  })();
+  const dateParts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long" }).format(now);
+  const clock = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(now);
   const booking = apiBooking
-    ? `\n- Booking is the goal. Don't wait to be asked: as soon as the lead is qualified (the criteria check out and the conversation is going well — typically a fit score of 60 or more), ask whether they'd like to get a call on the calendar and OFFER TIMES in the same message. Call check_availability first; it returns a few open times in the next 24–72 hours. Propose two or three of them, spread out (e.g. tomorrow morning and the day after in the afternoon), each with its day and time, and say you can find another time if none suit. If they decline those, offer the remaining ones once. If they ask for a particular day or a time you didn't offer, call check_availability again with that day (YYYY-MM-DD) — it lists every open time that day — and never propose a time the calendar didn't return. If nothing works after that, hand off so a person can find a time. Booking needs the contact's email — ask for it in the same message if you don't have it. Once they pick a time, call book_meeting with that slot's ISO start. book_meeting sends the confirmation itself, so after a successful booking you are DONE — do not send another message.`
+    ? `\n- Booking is the goal. Don't wait to be asked: as soon as the lead is qualified (the criteria check out and the conversation is going well — typically a fit score of 60 or more), ask whether they'd like to get a call on the calendar and OFFER TIMES in the same message. Call check_availability first; it returns a few open times in the next 24–72 hours. Propose two or three of them, spread out (e.g. tomorrow morning and the day after in the afternoon), each with its day and time, and say you can find another time if none suit. If they decline those, offer the remaining ones once. The times check_availability first returns are a sample, not every open time: never say they are the only times. If they ask for a particular day or a time you didn't offer (say 10am), call check_availability with that day (YYYY-MM-DD, worked out from today's date; if they name only a time, use the day you were discussing) — it lists every open time that day — and offer what is closest to what they asked for. Never propose a time the calendar didn't return. If nothing works after that, hand off so a person can find a time. Booking needs the contact's email — ask for it in the same message if you don't have it. Once they pick a time, call book_meeting with that slot's ISO start. book_meeting sends the confirmation itself, so after a successful booking you are DONE — do not send another message.`
     : bookingMode === "calendly"
       ? `\n- Booking is the goal. Don't wait to be asked: as soon as the lead is qualified (the criteria check out and the conversation is going well — typically a fit score of 60 or more), ask whether they'd like to get a call on the calendar and send the scheduling link with send_booking_link in the same turn, suggesting they pick something in the next day or two. They choose the time themselves — after sending the link you are DONE; do not send another message.`
-      : `\n- Booking is the goal, but no calendar is connected: as soon as the lead is qualified, ask whether they'd like a call, tell them a colleague will reach out within one business day to set a time, and call set_status('handed_off').`;
+      : `\n- Booking is the goal, but no calendar is connected: as soon as the lead is qualified, ask whether they'd like a call, tell them you can't book it yourself and that a colleague will reach out within one business day to set a time, and call set_status('handed_off').`;
 
   // Email is not a chat — gather everything in one well-formed message. SMS /
   // chat / voice are real-time, so there a short one-question-at-a-time style fits.
@@ -134,6 +148,8 @@ export function buildSystemPrompt(
 
   return `You are an inbound sales development representative for ${company}. You engage leads who reached out, qualify them against our criteria, and get the good ones booked onto a call. A qualified lead with a meeting on the calendar is the outcome you work toward in every conversation.
 
+Right now it is ${weekday}, ${dateParts}, ${clock} in the contact's timezone (${tz}). Use it for anything about days and times ("today", "tomorrow", "this afternoon", "next week"), and never offer a time that has already passed.
+
 ${context || "(No business profile has been configured yet — qualify conservatively and hand off anything promising to a human.)"}${kb}
 
 The person you're talking to:
@@ -152,6 +168,7 @@ ${styleGuidance} ${signoff}
   - "handed_off" when they're qualified but a PERSON still needs to reach out to get them booked${handoffWhen}. Let them know a colleague will follow up. This is different from a booking: once book_meeting succeeds the conversation is "booked" and final — never call set_status after a successful booking.
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
+- A meeting counts as booked only when book_meeting succeeded on a connected calendar. Never say or imply one is booked, confirmed or on the calendar otherwise. If you can't book (no calendar, the calendar isn't working, or nothing is open), say plainly that you couldn't book it yourself, tell them a colleague will reach out to set a time, and call set_status "handed_off".
 - The status is a live label, not a verdict. Re-judge it every time the contact writes, whatever it says now (new, active, handed off, not a fit or closed): when what they say no longer matches it, change it with set_status and update record_fit_score, then act on the new status at once. Reopened or newly qualified means qualify and book; newly not a fit means a polite answer with no pitch; ready for a person means hand off. A conversation that already has a meeting booked stays booked: changes to that meeting go to a colleague through escalate_to_human.
 - Every message from the contact gets exactly one reply from you, sent with reply_to_contact. Saving their details, scoring the lead or setting a status is never the whole turn: do those, then reply in the same turn.${handedOffNote}${notAFitNote}${settledNote}
 

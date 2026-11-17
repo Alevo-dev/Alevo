@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
-import { conversations, isSuppressed, meetings, messages, replyOutcome, withService, type Channel } from "@alevo/db";
+import { contacts, conversations, isSuppressed, meetings, messages, replyOutcome, withService, type Channel } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
 import { notifyBookingFailed, notifyMeetingBooked, notifyQualifiedLead } from "@/lib/notifications/lead-events";
 import { crossedStrongFit, type BookingFailure } from "@/lib/notifications/lead-messages";
@@ -214,7 +214,7 @@ async function bookingBroke(target: DispatchTarget, effects: QualifierEffects, f
     effects.status = "handed_off";
     await requestPsaWriteback(target.orgId, target.conversationId, "handed_off");
   }
-  return "Booking isn't working right now. The team has been alerted and this lead is handed to a person: tell the contact a colleague will reach out shortly to set a time, and don't offer times again.";
+  return "Booking isn't working right now. The team has been alerted and this lead is handed to a person: tell the contact plainly that you couldn't book it yourself and a colleague will reach out shortly to set a time. Do not say anything is booked, and don't offer times again.";
 }
 
 /**
@@ -353,6 +353,20 @@ export async function dispatchTool(
         company: field("company"),
       });
       target.contactId = contactId; // the contact may have just merged into an existing one
+      // A booking later in this same run reads these, so they must follow what was just saved.
+      if (saved.length) {
+        const [row] = await withService((tx) =>
+          tx
+            .select({ email: contacts.email, firstName: contacts.firstName, lastName: contacts.lastName })
+            .from(contacts)
+            .where(and(eq(contacts.id, contactId), eq(contacts.orgId, target.orgId)))
+            .limit(1),
+        );
+        if (row) {
+          target.contactEmail = row.email;
+          target.contactName = [row.firstName, row.lastName].filter(Boolean).join(" ").trim() || row.email || target.contactName;
+        }
+      }
       return saved.length ? `Saved ${saved.join(", ")}.` : "Nothing new to save.";
     }
 
@@ -423,7 +437,7 @@ export async function dispatchTool(
       // is a hand-off, never a guess: the agent must not offer times it cannot see.
       try {
         const adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
-        if (!adapter) return "Booking isn't connected for this org — hand off instead.";
+        if (!adapter) return bookingBroke(target, effects, { step: "availability", detail: "no calendar connected" });
         const line = (s: { startIso: string }) => `- ${formatSlot(s.startIso, tz, "written")} — ${s.startIso}`;
         if (day) {
           const slots = await daySlots(adapter, day, tz);
@@ -432,9 +446,9 @@ export async function dispatchTool(
           return `Open times on ${day} in the contact's timezone (${tz}). Offer the ones closest to what they asked for, then call book_meeting with the chosen ISO start:\n${slots.slice(0, 16).map(line).join("\n")}`;
         }
         const offer = await offerSlots(adapter, tz);
-        if (offer.window === "none") return "No open slots in the next 7 days — hand off to a human.";
+        if (offer.window === "none") return "No open slots in the next 7 days, so you can't book this yourself: tell the contact plainly that you couldn't book it, that a colleague will reach out to set a time, and call set_status \"handed_off\".";
         const note = offer.window === "7d" ? "Nothing open in the next 72 hours, so these are the soonest times this week. " : "";
-        return `${note}Open times in the contact's timezone (${tz}). Offer two or three of them; if the contact asks for another day or time, call check_availability again with that day. Then call book_meeting with the chosen ISO start:\n${offer.slots.map(line).join("\n")}`;
+        return `${note}Open times in the contact's timezone (${tz}). This is a sample, not every open time. Offer two or three of them; if the contact asks for another day or time, call check_availability again with that day (YYYY-MM-DD) to see every open time. Then call book_meeting with the chosen ISO start:\n${offer.slots.map(line).join("\n")}`;
       } catch (err) {
         Sentry.captureException(err);
         return bookingBroke(target, effects, { step: "availability", detail: err instanceof Error ? err.message : null });
@@ -453,7 +467,7 @@ export async function dispatchTool(
       let result: Awaited<ReturnType<NonNullable<typeof adapter>["book"]>>;
       try {
         adapter = await getBookingAdapter(target.orgId, target.bookingConfig);
-        if (!adapter) return "Booking isn't connected for this org — hand off instead.";
+        if (!adapter) return bookingBroke(target, effects, { step: "booking", detail: "no calendar connected" });
         result = await adapter.book({
           startIso,
           attendeeName: target.contactName,
