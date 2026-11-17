@@ -148,7 +148,10 @@
       ".alevo-info li div{min-width:0;overflow-wrap:anywhere;white-space:pre-line}",
       ".alevo-info a{color:inherit;text-underline-offset:3px;display:inline-block;padding:6px 0}",
       ".alevo-form{flex:7 1 440px;min-width:0;padding:36px;background:var(--alevo-bg)}",
-      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:22px 24px}",
+      ".alevo-form fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 24px}",
+      // Two columns, always: name and email, then phone and company under them. One column only when the form itself is narrow (a phone).
+      ".alevo-form{container-type:inline-size}",
+      "@container (max-width:420px){.alevo-form fieldset{grid-template-columns:minmax(0,1fr)}}",
       ".alevo-form fieldset:disabled{opacity:.7}",
       ".alevo-full{grid-column:1/-1}",
       ".alevo-form label.alevo-l{display:block;font-size:.8125em;font-weight:600;margin:0 0 2px}",

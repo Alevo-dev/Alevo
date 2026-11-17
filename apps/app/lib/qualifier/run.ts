@@ -1,7 +1,7 @@
 import "server-only";
 import { refreshTokenKey } from "@/lib/booking/oauth";
 import Anthropic from "@anthropic-ai/sdk";
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import {
   contacts,
   conversations,
@@ -15,6 +15,7 @@ import {
   type OrgProfile,
 } from "@alevo/db";
 import { bookingConfigFromProfile } from "@/lib/booking";
+import { contactMessagesNotIn } from "./fresh";
 import { driveAgent, type RunTrace } from "./loop";
 import { buildSystemPrompt, type BookingMode, type ContactInfo } from "./prompt";
 import {
@@ -37,7 +38,7 @@ export type QualifierContext = {
   channel: Channel;
   profile: OrgProfile;
   contact: ContactInfo;
-  thread: { author: "contact" | "assistant" | "human"; body: string; createdAt?: Date }[];
+  thread: { id?: string; author: "contact" | "assistant" | "human"; body: string }[];
   /** How the Qualifier can book: Cal.com API, Calendly link, or not at all. */
   bookingMode: BookingMode;
   /** Where the conversation stands; a handed-off one is still answered. */
@@ -113,7 +114,7 @@ export async function loadQualifierContext(
     }
 
     const thread = await tx
-      .select({ author: messages.author, body: messages.body, createdAt: messages.createdAt })
+      .select({ id: messages.id, author: messages.author, body: messages.body })
       .from(messages)
       .where(and(eq(messages.conversationId, conversationId), eq(messages.orgId, orgId)))
       .orderBy(asc(messages.createdAt));
@@ -246,7 +247,7 @@ export async function runQualifier(
 
   // Messages the contact sends while this run works are answered in the same run (a later run would see our reply as
   // the last turn and skip them).
-  let seen = ctx.thread.at(-1)?.createdAt ?? new Date();
+  const known = new Set(ctx.thread.flatMap((m) => (m.id ? [m.id] : [])));
   const trace = await driveAgent(
     messagesForClaude,
     {
@@ -262,21 +263,8 @@ export async function runQualifier(
         }),
       dispatch: (name, input) => dispatchTool(name, input, target, effects),
       fresh: async () => {
-        const rows = await withService((tx) =>
-          tx
-            .select({ body: messages.body, createdAt: messages.createdAt })
-            .from(messages)
-            .where(
-              and(
-                eq(messages.conversationId, ctx.conversationId),
-                eq(messages.orgId, ctx.orgId),
-                eq(messages.author, "contact"),
-                gt(messages.createdAt, seen),
-              ),
-            )
-            .orderBy(asc(messages.createdAt)),
-        );
-        seen = rows.at(-1)?.createdAt ?? seen;
+        const rows = await contactMessagesNotIn(ctx.orgId, ctx.conversationId, known);
+        for (const r of rows) known.add(r.id);
         return rows.map((r) => r.body);
       },
     },
