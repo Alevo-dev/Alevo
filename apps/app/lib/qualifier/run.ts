@@ -15,6 +15,7 @@ import {
   type OrgProfile,
 } from "@alevo/db";
 import { bookingConfigFromProfile } from "@/lib/booking";
+import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/cadence/send-window";
 import { contactMessagesNotIn } from "./fresh";
 import { trackClaude } from "@/lib/usage/spend";
 import { driveAgent, type RunTrace } from "./loop";
@@ -221,6 +222,8 @@ export async function runQualifier(
     [ctx.contact.firstName, ctx.contact.lastName].filter(Boolean).join(" ").trim() ||
     ctx.contact.email ||
     "unknown contact";
+  const contactTz = isValidTimeZone(ctx.contact.timezone) ? ctx.contact.timezone : null;
+  const orgTz = isValidTimeZone(ctx.profile.timezone) ? ctx.profile.timezone : DEFAULT_TIMEZONE;
   const target = {
     orgId: ctx.orgId,
     conversationId: ctx.conversationId,
@@ -230,7 +233,8 @@ export async function runQualifier(
     contactEmail: ctx.contact.email,
     contactPhone: ctx.contact.phone,
     contactPreference: ctx.contact.contactPreference ?? null,
-    contactTimezone: ctx.contact.timezone ?? ctx.profile.timezone,
+    contactTimezone: contactTz ?? orgTz,
+    timezoneKnown: Boolean(contactTz),
     smsFromNumber: ctx.profile.smsFromNumber,
     bookingConfig: bookingConfigFromProfile(ctx.profile),
     calendlyUrl: ctx.profile.calendlyUrl,

@@ -55,6 +55,18 @@ export function tzLabel(tz = DEFAULT_TIMEZONE, at: Date = new Date()): string {
   return part?.value ?? timeZone;
 }
 
+/** Hours from UTC for the moment, e.g. `UTC-5`, `UTC+5:30`, `UTC+0` (daylight saving moves it through the year). */
+export function utcOffsetLabel(tz: string, at: Date = new Date()): string {
+  const timeZone = isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;
+  const raw = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" })
+    .formatToParts(at)
+    .find((p) => p.type === "timeZoneName")?.value; // "GMT-05:00", "GMT+05:30" or "GMT"
+  const m = /^GMT([+-])(\d{2}):(\d{2})$/.exec(raw ?? "");
+  if (!m) return "UTC+0";
+  const hours = Number(m[2]);
+  return `UTC${m[1]}${hours}${m[3] === "00" ? "" : `:${m[3]}`}`;
+}
+
 /** A contact with no name or address yet: a website-chat visitor until the agent learns who they are. */
 export function anonymousLabel(channel: string | null | undefined): string | undefined {
   return channel === "chat" ? "Website visitor" : undefined;

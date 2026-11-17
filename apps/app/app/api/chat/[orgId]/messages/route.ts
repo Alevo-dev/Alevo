@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bearerToken, CHAT_CORS, cleanMessage } from "@/lib/chat/rules";
+import { bearerToken, CHAT_CORS, cleanMessage, cleanTimeZone } from "@/lib/chat/rules";
 import { listChatMessages, postChatMessage, resolveSession, startChat, touchSession } from "@/lib/chat/service";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +20,9 @@ const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =
 
 export async function POST(req: Request, { params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
-  let body: { message?: unknown };
+  let body: { message?: unknown; timezone?: unknown };
   try {
-    body = (await req.json()) as { message?: unknown };
+    body = (await req.json()) as { message?: unknown; timezone?: unknown };
   } catch {
     return json({ ok: false, error: "Could not read the message." }, 400);
   }
@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ orgId: 
 
   const token = bearerToken(req.headers);
   if (!token) {
-    const started = await startChat(orgId, text, { headers: req.headers });
+    const started = await startChat(orgId, text, { headers: req.headers, timezone: cleanTimeZone(body.timezone) });
     return started.ok ? json(started) : json({ ok: false, error: started.error }, started.status);
   }
   const session = await resolveSession(orgId, token);

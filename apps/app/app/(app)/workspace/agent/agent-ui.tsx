@@ -13,6 +13,7 @@ import { PanelRow } from "@/components/workspace/panel-row";
 import { SaveBar } from "@/components/workspace/save-bar";
 import type { ConnectedTool } from "@/lib/booking/connected";
 import { JUMP } from "@/lib/jump";
+import { timezoneOptions } from "@/lib/timezones";
 import { useActionToast } from "@/lib/ui/use-action-toast";
 import { VoicePicker } from "./voice-picker";
 import { BookingPanel } from "./booking-ui";
@@ -21,21 +22,6 @@ import type { AgentErrors, AgentValues } from "./actions";
 import type { BookingValues } from "./booking-actions";
 
 const INITIAL: PageState = {};
-
-/** Common US/Canada timezones (empty = fall back to the app default). */
-const TIMEZONES = [
-  ["", "App default (Eastern)"],
-  ["America/New_York", "Eastern, New York"],
-  ["America/Toronto", "Eastern, Toronto"],
-  ["America/Chicago", "Central, Chicago"],
-  ["America/Winnipeg", "Central, Winnipeg"],
-  ["America/Denver", "Mountain, Denver"],
-  ["America/Edmonton", "Mountain, Edmonton"],
-  ["America/Phoenix", "Mountain (no DST), Phoenix"],
-  ["America/Los_Angeles", "Pacific, Los Angeles"],
-  ["America/Vancouver", "Pacific, Vancouver"],
-  ["America/Halifax", "Atlantic, Halifax"],
-] as const;
 
 /** Whole-hour options as "HH:00" over [from, to]. */
 function hourOptions(from: number, to: number): SelectOption[] {
@@ -50,7 +36,6 @@ const AFTER_HOURS_OPTIONS: SelectOption[] = [
 ];
 const HOURS_START = hourOptions(0, 23);
 const HOURS_END = hourOptions(1, 24);
-const TIMEZONE_OPTIONS: SelectOption[] = TIMEZONES.map(([value, label]) => ({ value, label }));
 export const LENGTH_OPTIONS: SelectOption[] = [15, 30, 45, 60].map((m) => ({ value: String(m), label: `${m} minutes` }));
 
 /** Two hour selects side by side (send window, booking hours). */
@@ -178,8 +163,8 @@ export function AgentForm({ initial, booking, connected, profileReady, slackConn
             />
             <span className="text-ink-muted">in the contact&apos;s timezone</span>
           </PanelRow>
-          <PanelRow label="Default timezone" htmlFor="timezone" hint="Used when a contact's own is not known" error={e("timezone")}>
-            <Select id="timezone" name="timezone" inline className="min-w-56" options={TIMEZONE_OPTIONS} defaultValue={v("timezone")} invalid={!!e("timezone")} onChange={touch} />
+          <PanelRow label="Default timezone" htmlFor="timezone" hint="Required to turn the agent on. Times are offered in it until a contact's own is known" error={e("timezone")}>
+            <Select id="timezone" name="timezone" inline className="min-w-56" options={timezoneOptions(initial.timezone)} defaultValue={v("timezone")} invalid={!!e("timezone")} onChange={touch} />
           </PanelRow>
         </Card>
       </div>

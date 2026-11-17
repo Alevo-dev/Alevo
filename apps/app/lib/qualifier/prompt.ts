@@ -1,5 +1,6 @@
 import type { OrgProfile } from "@alevo/db";
 import { toneForPrompt } from "../profile/tone";
+import { DEFAULT_TIMEZONE, isValidTimeZone } from "../cadence/send-window";
 import { fenceKnowledge, PRICING_RULES, UNTRUSTED_INPUT_RULES } from "./guard";
 
 export type ContactInfo = {
@@ -81,15 +82,12 @@ export function buildSystemPrompt(
   // The product's goal is a BOOKED meeting. Once the lead qualifies, the agent
   // doesn't wait to be asked — it offers concrete times in the next 24–72 hours.
   // Without today's date the agent cannot turn "tomorrow at 10" into the day check_availability needs.
-  const wanted = contact.timezone ?? profile.timezone ?? "UTC";
-  const tz = (() => {
-    try {
-      new Intl.DateTimeFormat("en-US", { timeZone: wanted });
-      return wanted;
-    } catch {
-      return "UTC";
-    }
-  })();
+  // The contact's own timezone when we have it; otherwise the organization's (Eastern if it never chose), and the agent says so.
+  const contactTz = isValidTimeZone(contact.timezone) ? contact.timezone : null;
+  const tz = contactTz ?? (isValidTimeZone(profile.timezone) ? profile.timezone : DEFAULT_TIMEZONE);
+  const timezoneNote = contactTz
+    ? `in the contact's timezone (${tz})`
+    : `in the organization's timezone (${tz}). You don't know the contact's timezone, so assume the organization's timezone (${tz}) and name the timezone with every time you give (say "10:00 AM EST", not just "10:00 AM"), inviting them to correct you ("tell me if you're in a different timezone"). If they say they're in another timezone, save it with save_contact_details (timezone, e.g. America/Chicago) and give the times again in theirs`;
   const dateParts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
   const weekday = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "long" }).format(now);
   const clock = new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(now);
@@ -148,7 +146,7 @@ export function buildSystemPrompt(
 
   return `You are an inbound sales development representative for ${company}. You engage leads who reached out, qualify them against our criteria, and get the good ones booked onto a call. A qualified lead with a meeting on the calendar is the outcome you work toward in every conversation.
 
-Right now it is ${weekday}, ${dateParts}, ${clock} in the contact's timezone (${tz}). Use it for anything about days and times ("today", "tomorrow", "this afternoon", "next week"), and never offer a time that has already passed.
+Right now it is ${weekday}, ${dateParts}, ${clock} ${timezoneNote}. Use it for anything about days and times ("today", "tomorrow", "this afternoon", "next week"), and never offer a time that has already passed.
 
 ${context || "(No business profile has been configured yet — qualify conservatively and hand off anything promising to a human.)"}${kb}
 

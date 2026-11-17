@@ -21,6 +21,14 @@
   var left = script.getAttribute("data-position") === "left";
   var api = origin + "/api/chat/" + encodeURIComponent(org);
   var storeKey = "alevo-chat:" + org;
+  // The visitor's own timezone, so the agent offers (and books) times in it.
+  function tz() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch (e) {
+      return "";
+    }
+  }
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   fetch(api, { headers: { accept: "application/json" } })
@@ -370,7 +378,7 @@
       input.disabled = true;
       var headers = { "content-type": "application/json", accept: "application/json" };
       if (session) headers.authorization = "Bearer " + session.token;
-      fetch(api + "/messages", { method: "POST", headers: headers, body: JSON.stringify({ message: text }) })
+      fetch(api + "/messages", { method: "POST", headers: headers, body: JSON.stringify({ message: text, timezone: tz() }) })
         .then(function (r) {
           return r.json().then(function (j) {
             return { status: r.status, json: j };

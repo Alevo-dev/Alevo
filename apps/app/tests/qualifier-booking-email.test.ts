@@ -3,9 +3,10 @@ import { eq } from "drizzle-orm";
 import { contacts, conversations, organizations, withService } from "@alevo/db";
 
 const book = vi.fn();
+const availableSlots = vi.fn(async () => [{ startIso: "2026-11-18T15:00:00.000Z" }, { startIso: "2026-11-18T19:00:00.000Z" }]);
 vi.mock("@/lib/booking", async (orig) => ({
   ...(await orig<typeof import("@/lib/booking")>()),
-  getBookingAdapter: async () => ({ provider: "google", availableSlots: async () => [], book }),
+  getBookingAdapter: async () => ({ provider: "google", availableSlots, book }),
 }));
 
 import { dispatchTool, type DispatchTarget, type QualifierEffects } from "../lib/qualifier/tools";
@@ -64,5 +65,44 @@ describe.skipIf(!HAS_DB)("book_meeting right after save_contact_details", () => 
 
     expect(out).not.toContain("Ask the contact for their email");
     expect(book).toHaveBeenCalledWith(expect.objectContaining({ attendeeEmail: "sam@example.com", attendeeName: "Sam Rivera" }));
+  });
+});
+
+describe.skipIf(!HAS_DB)("times in the right timezone", () => {
+  const make = (over: Partial<DispatchTarget>) =>
+    ({
+      orgId, conversationId, contactId, channel: "chat", contactName: "x", contactEmail: null, contactPhone: null, contactPreference: null,
+      contactTimezone: "America/New_York", timezoneKnown: false, smsFromNumber: null, bookingConfig: {}, calendlyUrl: null, orgName: "Acme", businessAddress: null,
+      ...over,
+    }) as unknown as DispatchTarget;
+  const fx = () => ({ replied: false, score: null, status: null, escalated: false, booked: false, bookingFailed: false }) as QualifierEffects;
+
+  it("still offers times when the contact's timezone is unknown, in the org's, and says so", async () => {
+    const out = await dispatchTool("check_availability", {}, make({ timezoneKnown: false }), fx());
+    expect(out).toContain("the organization's timezone (America/New_York)");
+    expect(out).toContain("say which timezone");
+    expect(out).toContain("EST"); // each time carries its zone
+  });
+
+  it("does not say that when the contact's own timezone is known", async () => {
+    const out = await dispatchTool("check_availability", {}, make({ timezoneKnown: true, contactTimezone: "America/Chicago" }), fx());
+    expect(out).not.toContain("the organization's timezone");
+    expect(out).toContain("CST");
+  });
+
+  it("uses the timezone the contact gives, from then on", async () => {
+    const target = make({ timezoneKnown: false });
+    await dispatchTool("save_contact_details", { timezone: "America/Los_Angeles" }, target, fx());
+    expect(target.contactTimezone).toBe("America/Los_Angeles");
+    expect(target.timezoneKnown).toBe(true);
+    const [row] = await withService((tx) => tx.select({ tz: contacts.timezone }).from(contacts).where(eq(contacts.id, contactId)));
+    expect(row?.tz).toBe("America/Los_Angeles");
+  });
+
+  it("ignores a timezone that isn't real", async () => {
+    const target = make({ timezoneKnown: false });
+    await dispatchTool("save_contact_details", { timezone: "Mars/Olympus" }, target, fx());
+    expect(target.contactTimezone).toBe("America/New_York");
+    expect(target.timezoneKnown).toBe(false);
   });
 });

@@ -146,7 +146,7 @@ async function notifyQualifier(orgId: string, conversationId: string): Promise<v
 export async function startChat(
   orgId: string,
   body: string,
-  meta: { headers: Headers },
+  meta: { headers: Headers; timezone?: string | null },
 ): Promise<ChatResult<{ token: string; conversationId: string; message: ChatMessage }>> {
   const config = await chatConfig(orgId);
   if (!config?.enabled) return { ok: false, status: 404, error: "Chat is not available." };
@@ -155,7 +155,7 @@ export async function startChat(
   const token = newToken();
   try {
     const result = await withService(async (tx) => {
-      const [contact] = await tx.insert(contacts).values({ orgId, source: "chat" }).returning({ id: contacts.id });
+      const [contact] = await tx.insert(contacts).values({ orgId, source: "chat", timezone: meta.timezone ?? null }).returning({ id: contacts.id });
       if (!contact) throw new Error("Failed to create contact");
       const [conversation] = await tx
         .insert(conversations)

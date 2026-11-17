@@ -1,9 +1,10 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
+import { cleanTimeZone } from "@/lib/chat/rules";
 import { claimIdentity, contacts, withService } from "@alevo/db";
 
 /** What an agent can learn about a contact mid-conversation. */
-export type ContactDetails = { name?: string; email?: string; company?: string };
+export type ContactDetails = { name?: string; email?: string; company?: string; timezone?: string };
 
 /**
  * One tool definition shared by the Qualifier (Anthropic tool format) and the
@@ -17,6 +18,7 @@ export const CONTACT_DETAILS_TOOL = {
     name: { type: "string", description: "The contact's full name as they gave it." },
     email: { type: "string", description: "Their email address." },
     company: { type: "string", description: "The company they work for." },
+    timezone: { type: "string", description: "Their timezone as an IANA name, e.g. America/Chicago, when they tell you." },
   } as Record<string, unknown>,
 };
 
@@ -50,11 +52,12 @@ export async function saveContactDetails(orgId: string, contactId: string, detai
   const email = details.email?.trim().toLowerCase();
   const name = details.name?.trim();
   const company = details.company?.trim();
+  const timezone = cleanTimeZone(details.timezone);
 
   const current = (id: string) =>
     withService((tx) =>
       tx
-        .select({ email: contacts.email, firstName: contacts.firstName, company: contacts.company })
+        .select({ email: contacts.email, firstName: contacts.firstName, company: contacts.company, timezone: contacts.timezone })
         .from(contacts)
         .where(and(eq(contacts.id, id), eq(contacts.orgId, orgId))),
     ).then((r) => r[0]);
@@ -86,6 +89,11 @@ export async function saveContactDetails(orgId: string, contactId: string, detai
   if (company && (!merged || !row.company) && company !== row.company) {
     set.company = company;
     saved.push("company");
+  }
+  // The contact told us where they are: it replaces a guess (the org's) and any earlier answer.
+  if (timezone && timezone !== row.timezone) {
+    set.timezone = timezone;
+    saved.push("timezone");
   }
   if (Object.keys(set).length) {
     await withService((tx) => tx.update(contacts).set({ ...set, updatedAt: new Date() }).where(and(eq(contacts.id, id), eq(contacts.orgId, orgId))));

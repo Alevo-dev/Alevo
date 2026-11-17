@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/nextjs";
 import { orgProfiles, pgErrorCode, recordAudit, safeErrorMessage } from "@alevo/db";
 import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
+import { timezoneRequiredError } from "@/lib/timezones";
 import { applyVoice, type AfterHours } from "@/lib/voice/apply";
 import { numberChanged } from "@/lib/voice/number";
 import { cleanVoiceLabel, DEFAULT_VOICE, isVoice, VOICES } from "@/lib/voice/voices";
@@ -82,6 +83,8 @@ export async function saveAgentSettings(_prev: ActionState, formData: FormData):
 
     const errors: AgentErrors = {};
     if (values.timezone && !isValidTimeZone(values.timezone)) errors.timezone = "Pick a valid timezone.";
+    const needsTimezone = timezoneRequiredError(values.enabled, values.timezone);
+    if (needsTimezone) errors.timezone = needsTimezone;
     if (values.sendWindowStartHour >= values.sendWindowEndHour) {
       errors.sendWindow = "The start time must be before the end time.";
     }

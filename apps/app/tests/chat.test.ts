@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { bearerToken, cleanMessage, hashToken, isHexColor, MAX_MESSAGE_CHARS, newToken, PRESENCE_MS, visitorPresent } from "../lib/chat/rules";
+import { bearerToken, cleanMessage, cleanTimeZone, hashToken, isHexColor, MAX_MESSAGE_CHARS, newToken, PRESENCE_MS, visitorPresent } from "../lib/chat/rules";
 
 /** Pure rules behind the website chat: message hygiene, tokens, presence. No DB. */
+
+describe("cleanTimeZone", () => {
+  it("keeps a real IANA zone the browser reported", () => {
+    expect(cleanTimeZone("America/Chicago")).toBe("America/Chicago");
+    expect(cleanTimeZone("  Asia/Tokyo ")).toBe("Asia/Tokyo");
+  });
+  it("drops anything else so a made-up value never reaches the calendar", () => {
+    expect(cleanTimeZone("Mars/Olympus")).toBeNull();
+    expect(cleanTimeZone("")).toBeNull();
+    expect(cleanTimeZone(undefined)).toBeNull();
+    expect(cleanTimeZone(42)).toBeNull();
+    expect(cleanTimeZone("x".repeat(200))).toBeNull();
+  });
+});
 
 describe("cleanMessage", () => {
   it("trims, normalises line endings and keeps line breaks", () => {

@@ -1420,6 +1420,10 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 - [ ] Put a price in Workspace → Knowledge (a text doc with "Plans start at $99") and ask about pricing again: still no figure.
 - [ ] Phone call (voice): ask about pricing; the agent gives the same line and offers a call with a sales rep.
 - [ ] Fast cadence switch on: a quiet lead is still nudged; a nudge never fails for "no reply".
+- [ ] Timezones: open the chat from a browser in a different timezone than the org's. The agent offers times in YOUR timezone (it knows it from the browser). Ask "what time is it?": it answers in your timezone.
+- [ ] A contact whose timezone is unknown (email or text lead): the agent offers times in the organization's timezone and names it with each time ("10:00 AM EST"), inviting a correction. Say "I'm in Pacific": it saves it and gives the times again in Pacific.
+- [ ] Workspace → Agent → Default timezone: one entry per zone with its hours from UTC ("Eastern (UTC-5)"). With none chosen, turning the agent on is refused with "Choose the organization's timezone".
+- [ ] Agree to a time, then check the calendar: the event is at the time you said, in your timezone. If the calendar is disconnected the agent says it couldn't book and hands off.
 
 ## Spend (admin console)
 

@@ -43,6 +43,19 @@ export function cleanMessage(raw: unknown): string | null {
   return text.length > MAX_MESSAGE_CHARS ? text.slice(0, MAX_MESSAGE_CHARS) : text;
 }
 
+/** The visitor's browser timezone, only when it is a real zone: it ends up deciding what time a booking lands on. */
+export function cleanTimeZone(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const tz = raw.trim();
+  if (!tz || tz.length > 64) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch {
+    return null;
+  }
+}
+
 export function isHexColor(value: string): boolean {
   return /^#[0-9a-f]{6}$/i.test(value);
 }

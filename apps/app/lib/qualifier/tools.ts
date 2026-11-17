@@ -98,6 +98,8 @@ export type DispatchTarget = {
   /** "email" or "text" from the lead form; null when never asked. */
   contactPreference: string | null;
   contactTimezone: string | null;
+  /** True when contactTimezone is the contact's own; false when it is the org's, standing in until we learn theirs. */
+  timezoneKnown: boolean;
   smsFromNumber: string | null;
   bookingConfig: BookingConfig;
   calendlyUrl: string | null;
@@ -351,19 +353,24 @@ export async function dispatchTool(
         name: field("name"),
         email: field("email"),
         company: field("company"),
+        timezone: field("timezone"),
       });
       target.contactId = contactId; // the contact may have just merged into an existing one
       // A booking later in this same run reads these, so they must follow what was just saved.
       if (saved.length) {
         const [row] = await withService((tx) =>
           tx
-            .select({ email: contacts.email, firstName: contacts.firstName, lastName: contacts.lastName })
+            .select({ email: contacts.email, firstName: contacts.firstName, lastName: contacts.lastName, timezone: contacts.timezone })
             .from(contacts)
             .where(and(eq(contacts.id, contactId), eq(contacts.orgId, target.orgId)))
             .limit(1),
         );
         if (row) {
           target.contactEmail = row.email;
+          if (row.timezone) {
+            target.contactTimezone = row.timezone;
+            target.timezoneKnown = true;
+          }
           target.contactName = [row.firstName, row.lastName].filter(Boolean).join(" ").trim() || row.email || target.contactName;
         }
       }
@@ -432,6 +439,10 @@ export async function dispatchTool(
 
     case "check_availability": {
       const tz = target.contactTimezone ?? "UTC";
+      // Until the contact tells us theirs the times are in the org's: say so, so they can correct it.
+      const zoneNote = target.timezoneKnown
+        ? ""
+        : `These are in the organization's timezone (${tz}) because the contact's isn't known: say which timezone the times are in (e.g. "10:00 AM EST") and invite them to correct you. `;
       const day = String(input.day ?? "").trim();
       // Anything that fails here — token refresh, free/busy, an unreadable calendar —
       // is a hand-off, never a guess: the agent must not offer times it cannot see.
@@ -443,12 +454,12 @@ export async function dispatchTool(
           const slots = await daySlots(adapter, day, tz);
           if (!slots) return "Error: day must be YYYY-MM-DD.";
           if (slots.length === 0) return `Nothing open on ${day} — offer another day.`;
-          return `Open times on ${day} in the contact's timezone (${tz}). Offer the ones closest to what they asked for, then call book_meeting with the chosen ISO start:\n${slots.slice(0, 16).map(line).join("\n")}`;
+          return `${zoneNote}Open times on ${day} in the contact's timezone (${tz}). Offer the ones closest to what they asked for, then call book_meeting with the chosen ISO start:\n${slots.slice(0, 16).map(line).join("\n")}`;
         }
         const offer = await offerSlots(adapter, tz);
         if (offer.window === "none") return "No open slots in the next 7 days, so you can't book this yourself: tell the contact plainly that you couldn't book it, that a colleague will reach out to set a time, and call set_status \"handed_off\".";
         const note = offer.window === "7d" ? "Nothing open in the next 72 hours, so these are the soonest times this week. " : "";
-        return `${note}Open times in the contact's timezone (${tz}). This is a sample, not every open time. Offer two or three of them; if the contact asks for another day or time, call check_availability again with that day (YYYY-MM-DD) to see every open time. Then call book_meeting with the chosen ISO start:\n${offer.slots.map(line).join("\n")}`;
+        return `${note}${zoneNote}Open times in the contact's timezone (${tz}). This is a sample, not every open time. Offer two or three of them; if the contact asks for another day or time, call check_availability again with that day (YYYY-MM-DD) to see every open time. Then call book_meeting with the chosen ISO start:\n${offer.slots.map(line).join("\n")}`;
       } catch (err) {
         Sentry.captureException(err);
         return bookingBroke(target, effects, { step: "availability", detail: err instanceof Error ? err.message : null });

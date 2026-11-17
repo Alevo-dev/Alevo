@@ -108,6 +108,32 @@ describe("Qualifier prompt: always knows the date and time right now", () => {
   });
 });
 
+describe("Qualifier prompt: without the contact's timezone it uses the org's and says so", () => {
+  const withTz = (contactTz: string | null, orgTz: string | null) =>
+    buildSystemPrompt({ ...(profile as object), timezone: orgTz } as never, { ...contact, timezone: contactTz }, [], "google", false, true, false, "", null, new Date("2026-11-17T19:05:00Z"));
+
+  it("assumes the organization's timezone, names the zone with every time, and takes a correction", () => {
+    const p = withTz(null, "America/Chicago");
+    expect(p).toContain("don't know the contact's timezone");
+    expect(p).toContain("assume the organization's timezone (America/Chicago)");
+    expect(p).toContain("name the timezone with every time you give");
+    expect(p).toContain("another timezone, save it with save_contact_details");
+  });
+
+  it("does not ask when their timezone is known", () => {
+    const p = withTz("America/Denver", "America/Chicago");
+    expect(p).not.toContain("don't know the contact's timezone");
+    expect(p).toContain("in the contact's timezone (America/Denver)");
+    expect(p).not.toContain("assume the organization's timezone");
+  });
+
+  it("never falls back to UTC: with no org timezone either it is Eastern", () => {
+    const p = withTz(null, null);
+    expect(p).toContain("America/New_York");
+    expect(p).not.toContain("(UTC)");
+  });
+});
+
 describe("Qualifier prompt: only a real calendar booking counts as booked", () => {
   it.each(["google", "calendly", null] as const)("never claims a booking it did not make (mode: %s)", (mode) => {
     const p = chat(mode);
