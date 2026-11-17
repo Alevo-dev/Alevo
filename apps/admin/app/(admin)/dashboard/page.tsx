@@ -10,7 +10,7 @@ import { ActivityTable } from "@/components/activity-table";
 import { OrgsTable } from "@/components/orgs-table";
 import { ViewAll } from "@/components/view-all";
 import { activityPage } from "@/lib/activity";
-import { bucketCount, fmtDuration, parseWindow, pct, speedView, toSeries, WINDOWS } from "@/lib/metrics-format";
+import { bucketCount, fmtDuration, parseWindow, pct, periodFor, speedView, toSeries, windowText, WINDOWS } from "@/lib/metrics-format";
 import { orgCounts, orgsById, orgsPage, type OrgRow } from "@/lib/orgs";
 
 export const dynamic = "force-dynamic";
@@ -68,7 +68,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         description={
           <>
             <StatusDot tone={counts.live > 0 ? "success" : "muted"} live={counts.live > 0} />
-            {counts.live} of {counts.total} agents on, last {days} days
+            {counts.live} of {counts.total} agents on, {windowText(days)}
           </>
         }
       >
@@ -76,17 +76,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </PageHeader>
 
       <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-5" aria-label="Platform totals">
-        <StatTile label="Leads in" value={totals.leads} delta={`Last ${days} days`} series={series.leads} unit="leads" period={days >= 90 ? "week" : "day"} featured />
-        <StatTile label="Qualified" value={totals.qualified} delta={totals.leads ? `${pct(totals.qualified, totals.leads)} of leads` : "Booked or handed off"} series={series.qualified} unit="qualified" period={days >= 90 ? "week" : "day"} tone="violet" />
-        <StatTile label="Meetings booked" value={totals.meetings} delta={totals.leads ? `${pct(totals.meetings, totals.leads)} conversion` : `Last ${days} days`} series={series.meetings} unit="meetings" period={days >= 90 ? "week" : "day"} tone="success" />
-        <StatTile label="Calls answered" value={totals.calls} delta="By the agent" series={series.calls} unit="calls" period={days >= 90 ? "week" : "day"} tone="warning" />
+        <StatTile label="Leads in" value={totals.leads} delta={windowText(days)} series={series.leads} unit="leads" period={periodFor(days)} featured />
+        <StatTile label="Qualified" value={totals.qualified} delta={totals.leads ? `${pct(totals.qualified, totals.leads)} of leads` : "Booked or handed off"} series={series.qualified} unit="qualified" period={periodFor(days)} tone="violet" />
+        <StatTile label="Meetings booked" value={totals.meetings} delta={totals.leads ? `${pct(totals.meetings, totals.leads)} conversion` : windowText(days)} series={series.meetings} unit="meetings" period={periodFor(days)} tone="success" />
+        <StatTile label="Calls answered" value={totals.calls} delta="By the agent" series={series.calls} unit="calls" period={periodFor(days)} tone="warning" />
         <StatTile label="Over 60s" value={slow} hint={slow ? "Orgs replying slower than target" : "Every org on target"} tone="danger" />
       </section>
 
       <Card padding="none">
         <CardHeader
           title="Funnel per organization"
-          hint={`What each tenant's dashboard shows for the last ${days} days. Speed to lead is the p95 first reply against the 60-second promise.`}
+          hint={`What each tenant's dashboard shows for ${days === 1 ? "today" : `the last ${days} days`}. Speed to lead is the p95 first reply against the 60-second promise.`}
           aside={moreOrgs ? `Busiest ${ranked.length} of ${counts.total}` : undefined}
         />
         <Table>

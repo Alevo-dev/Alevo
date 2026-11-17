@@ -1,4 +1,4 @@
-import { Activity, Building2, LayoutDashboard, Settings, type LucideIcon } from "lucide-react";
+import { Activity, Building2, CircleDollarSign, LayoutDashboard, Settings, type LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
 export type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -12,6 +12,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/organizations", label: "Organizations", icon: Building2 },
       { href: "/activity", label: "Activity", icon: Activity },
+      { href: "/spend", label: "Spend", icon: CircleDollarSign },
     ],
   },
   { id: "platform", label: "Platform", items: [{ href: "/settings", label: "Settings", icon: Settings }] },

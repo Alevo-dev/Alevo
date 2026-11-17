@@ -5,7 +5,7 @@ import type { Tone } from "@alevo/ui/tone";
  * speed-to-lead grading match the tenant dashboard (`apps/app/lib/dashboard/window.ts`).
  */
 
-export const WINDOWS = [7, 30, 90] as const;
+export const WINDOWS = [1, 7, 30, 90] as const;
 export type Window = (typeof WINDOWS)[number];
 
 export function parseWindow(value: unknown, fallback: Window = 7): Window {
@@ -43,9 +43,19 @@ export function fmtWhen(value: Date | string | null): string {
   return value ? WHEN.format(new Date(value)) : "—";
 }
 
-/** How many bars a window draws: per day under 90 days, per week at 90 (13). */
+/** How many bars a window draws: per hour for Today (24), per day under 90 days, per week at 90 (13). */
 export function bucketCount(days: Window): number {
-  return days >= 90 ? Math.ceil(days / 7) : days;
+  return days <= 1 ? 24 : days >= 90 ? Math.ceil(days / 7) : days;
+}
+
+/** What one bar stands for in that window. */
+export function periodFor(days: Window): "hour" | "day" | "week" {
+  return days <= 1 ? "hour" : days >= 90 ? "week" : "day";
+}
+
+/** "today" for the one-day window, otherwise "last 7 days" (lower case, for running text). */
+export function windowText(days: Window): string {
+  return days === 1 ? "today" : `last ${days} days`;
 }
 
 /** `(periods ago, count)` rows → a fixed-length series, oldest first, zeros where nothing happened. */

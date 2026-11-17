@@ -1,4 +1,5 @@
 import "server-only";
+import { trackSms } from "@/lib/usage/spend";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { vendorFetch } from "@/lib/http/vendor-fetch";
 
@@ -36,11 +37,12 @@ export async function sendSms(params: {
       headers: { authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" },
       body: form,
     }, { track: { provider: "twilio", orgId: params.orgId } });
-    const json = (await res.json()) as { sid?: string; error_code?: number; message?: string };
+    const json = (await res.json()) as { sid?: string; error_code?: number; message?: string; num_segments?: string };
     if (!res.ok) {
       // 21610 = recipient previously sent STOP. Not a hard failure — they opted out.
       return { ok: false, error: json.message ?? `twilio ${res.status}`, optedOut: json.error_code === 21610 };
     }
+    trackSms("out", Number(json.num_segments) || 1, params.orgId);
     return { ok: true, sid: json.sid };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "send-failed" };

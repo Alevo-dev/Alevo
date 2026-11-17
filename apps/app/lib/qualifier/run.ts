@@ -16,6 +16,7 @@ import {
 } from "@alevo/db";
 import { bookingConfigFromProfile } from "@/lib/booking";
 import { contactMessagesNotIn } from "./fresh";
+import { trackClaude } from "@/lib/usage/spend";
 import { driveAgent, type RunTrace } from "./loop";
 import { buildSystemPrompt, type BookingMode, type ContactInfo } from "./prompt";
 import {
@@ -251,8 +252,8 @@ export async function runQualifier(
   const trace = await driveAgent(
     messagesForClaude,
     {
-      create: (msgs) =>
-        client.messages.create({
+      create: async (msgs) => {
+        const res = await client.messages.create({
           model: MODEL,
           max_tokens: 8192,
           thinking: { type: "adaptive" },
@@ -260,7 +261,10 @@ export async function runQualifier(
           system,
           messages: msgs,
           tools,
-        }),
+        });
+        trackClaude(MODEL, res.usage, "agent_turn", ctx.orgId);
+        return res;
+      },
       dispatch: (name, input) => dispatchTool(name, input, target, effects),
       fresh: async () => {
         const rows = await contactMessagesNotIn(ctx.orgId, ctx.conversationId, known);

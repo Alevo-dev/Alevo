@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { calls, conversations, recordConsent, withService } from "@alevo/db";
 import { putObject } from "@/lib/r2";
 import { meterUsage } from "@/lib/usage/limits";
+import { trackCall } from "@/lib/usage/spend";
 import { notifyOrg } from "@/lib/notifications/notify";
 import type { VoiceCallEndedData } from "@/lib/inngest/client";
 import { fetchCallRecording, isVapiConfigured } from "./vapi";
@@ -61,6 +62,7 @@ export async function recordCall(data: VoiceCallEndedData, recordingKey: string 
   if (updated.length === 0) return { ok: true, duplicate: true, needsSummary: false };
 
   const minutes = Math.max(1, Math.ceil((data.durationSec ?? 0) / 60));
+  if (data.costUsd != null) trackCall(data.orgId, minutes, data.costUsd, data.callRef);
 
   // Independent writes, run together: caller consent (voice channel, idempotent —
   // as for form, email and SMS), the minutes, and the alert.

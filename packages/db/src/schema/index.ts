@@ -15,6 +15,7 @@ export * from "./rate-limits";
 export * from "./psa";
 export * from "./platform-secrets";
 export * from "./chat-sessions";
+export * from "./vendor-spend";
 
 import * as identity from "./identity";
 import * as billing from "./billing";
@@ -33,6 +34,7 @@ import * as rateLimits from "./rate-limits";
 import * as psa from "./psa";
 import * as platformSecrets from "./platform-secrets";
 import * as chatSessions from "./chat-sessions";
+import * as vendorSpend from "./vendor-spend";
 
 /** Aggregate passed to drizzle() so `tx.query.*` is available for every table. */
 export const schema = {
@@ -53,4 +55,5 @@ export const schema = {
   ...psa,
   ...platformSecrets,
   ...chatSessions,
+  ...vendorSpend,
 };

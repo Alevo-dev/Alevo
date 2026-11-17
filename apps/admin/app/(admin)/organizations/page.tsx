@@ -9,7 +9,7 @@ import { PageHeader } from "@alevo/ui/page-header";
 import { cursorHref } from "@alevo/ui/pager";
 import { StatTile } from "@alevo/ui/stat-tile";
 import { WindowSwitch } from "@alevo/ui/window-switch";
-import { bucketCount, fmtDuration, parseWindow, speedView, toSeries, WINDOWS } from "@/lib/metrics-format";
+import { bucketCount, fmtDuration, parseWindow, periodFor, speedView, toSeries, windowText, WINDOWS } from "@/lib/metrics-format";
 import { orgsPage, orgTotals } from "@/lib/orgs";
 import { activePlans } from "@/lib/plans";
 import { NewOrgDialogButton } from "./new-org-dialog";
@@ -40,6 +40,7 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
   // The window before this one = the double window minus this one.
   const lastLeads = sum(prior).leads - now.leads;
   const diff = now.leads - lastLeads;
+  const before = days === 1 ? "day before" : `last ${days} days`;
   const slow = funnel.filter((f) => ["danger", "warning"].includes(speedView(f.p95, f.replied).tone)).length;
   const n = bucketCount(days);
   const leadSeries = toSeries(buckets.map((b) => ({ ago: b.ago, n: b.leads })), n);
@@ -56,18 +57,18 @@ export default async function OrganizationsPage({ searchParams }: { searchParams
       </PageHeader>
 
       <section className="grid grid-cols-2 border-y border-hairline lg:grid-cols-4" aria-label="Platform totals">
-        <StatTile label="Organizations" value={total} delta={totals.recent ? `${totals.recent} new in last ${days} days` : undefined} hint={totals.recent ? undefined : `None new in last ${days} days`} />
+        <StatTile label="Organizations" value={total} delta={totals.recent ? `${totals.recent} new ${windowText(days)}` : undefined} hint={totals.recent ? undefined : `None new ${windowText(days)}`} />
         <StatTile
           label="Leads"
           value={now.leads}
           tone="violet"
           series={leadSeries}
           unit="leads"
-          period={days >= 90 ? "week" : "day"}
-          delta={diff > 0 ? `${diff.toLocaleString("en-US")} more than the last ${days} days` : undefined}
-          hint={diff > 0 ? undefined : `${Math.abs(diff).toLocaleString("en-US")} fewer than the last ${days} days`}
+          period={periodFor(days)}
+          delta={diff > 0 ? `${diff.toLocaleString("en-US")} more than the ${before}` : undefined}
+          hint={diff > 0 ? undefined : `${Math.abs(diff).toLocaleString("en-US")} fewer than the ${before}`}
         />
-        <StatTile label="Median reply" value={now.replied ? fmtDuration(now.median / now.replied) : "—"} tone="success" hint={`${now.replied.toLocaleString("en-US")} answered, last ${days} days`} />
+        <StatTile label="Median reply" value={now.replied ? fmtDuration(now.median / now.replied) : "—"} tone="success" hint={`${now.replied.toLocaleString("en-US")} answered, ${windowText(days)}`} />
         <StatTile label="Needs attention" value={slow} tone="warning" hint={slow ? "Orgs replying over the 60-second target" : "Every org on target"} />
       </section>
 

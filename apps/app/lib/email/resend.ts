@@ -1,4 +1,5 @@
 import "server-only";
+import { trackEmail } from "@/lib/usage/spend";
 import { Resend } from "resend";
 import { recordWebhookDelivery } from "@alevo/db";
 import { makeUnsubscribeToken } from "./unsubscribe-token";
@@ -138,6 +139,7 @@ export async function sendQualifierEmail(params: {
     });
     await recordWebhookDelivery({ orgId: params.orgId, provider: "resend", outcome: error ? "failed" : "ok", direction: "outbound" });
     if (error) return { ok: false, error: error.message };
+    trackEmail(params.orgId);
     return { ok: true, id: data?.id };
   } catch (err) {
     await recordWebhookDelivery({ orgId: params.orgId, provider: "resend", outcome: "failed", direction: "outbound" });
@@ -186,6 +188,7 @@ export async function sendPlatformEmail(params: { to: string[]; subject: string;
       html: toHtml(params.body),
     });
     if (error) return { ok: false, error: error.message };
+    trackEmail();
     return { ok: true, id: data?.id };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "send-failed" };

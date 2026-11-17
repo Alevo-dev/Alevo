@@ -1420,3 +1420,11 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 - [ ] Put a price in Workspace → Knowledge (a text doc with "Plans start at $99") and ask about pricing again: still no figure.
 - [ ] Phone call (voice): ask about pricing; the agent gives the same line and offers a call with a sales rep.
 - [ ] Fast cadence switch on: a quiet lead is still nudged; a nudge never fails for "no reply".
+
+## Spend (admin console)
+
+- [ ] Admin console → Spend shows a tile and a table for Production, Staging and Development, with a Today / 7 / 30 / 90 day switch (Alt+1 to Alt+4 pick them, like the app). Today draws 24 hourly bars; the same switch on Dashboard and Organizations also offers Today.
+- [ ] Send a chat message to the agent in dev: Development gets an "Agent replies" row (AI, estimated). On staging the same lands under Staging.
+- [ ] Send a text and an email through the agent: "Texts sent" / "Emails sent" appear. Reply by text: "Texts received".
+- [ ] Add a knowledge-base document: "Knowledge base" (embeddings) appears.
+- [ ] Make a test phone call: "Calls" appears with the figure marked "From vendor".

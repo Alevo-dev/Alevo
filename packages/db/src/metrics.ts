@@ -90,17 +90,20 @@ export type FunnelBucket = { ago: number; leads: number; qualified: number; meet
 /**
  * The same funnel as `funnelByOrg`, summed across every org, per period:
  * one row per calendar day (UTC) for windows under 90 days, per week for 90
- * (`ago` = 0 is today / this week). Feeds the console's stat-tile mini bars.
+ * (`ago` = 0 is today / this week); Today (1) is per hour, 24 bars. Feeds the console's stat-tile mini bars.
  */
 export async function funnelSeries(days: number): Promise<FunnelBucket[]> {
   const span = Math.max(1, Math.floor(days));
   const weekly = span >= 90;
   const cover = weekly ? Math.ceil(span / 7) * 7 : span;
   const since = sql`(current_date - ${cover - 1}::int)::timestamptz`;
+  // Today (1 day) reads per hour: `ago` = hours back from 11 PM, so 0 is the last hour of the day.
   const ago = (col: unknown) =>
-    weekly
-      ? sql<number>`floor((current_date - (${col} at time zone 'UTC')::date) / 7)`.mapWith(Number)
-      : sql<number>`(current_date - (${col} at time zone 'UTC')::date)`.mapWith(Number);
+    span === 1
+      ? sql<number>`(23 - extract(hour from (${col} at time zone 'UTC')))`.mapWith(Number)
+      : weekly
+        ? sql<number>`floor((current_date - (${col} at time zone 'UTC')::date) / 7)`.mapWith(Number)
+        : sql<number>`(current_date - (${col} at time zone 'UTC')::date)`.mapWith(Number);
 
   const [convRows, meetingRows, callRows] = await Promise.all([
     withService((tx) =>

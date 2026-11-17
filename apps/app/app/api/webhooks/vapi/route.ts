@@ -187,6 +187,7 @@ export const POST = trackDeliveries("vapi", async (req, track) => {
           transcript: str(artifact.transcript) ?? str(message.transcript),
           customerNumber: str(obj(call.customer).number),
           toNumber: str(obj(call.phoneNumber).number) ?? str(obj(message.phoneNumber).number),
+          costUsd: typeof message.cost === "number" ? message.cost : null,
         };
         await inngest.send({ name: "voice/call.ended", data }).catch((err) => Sentry.captureException(err));
         return new Response("ok", { status: 200 });

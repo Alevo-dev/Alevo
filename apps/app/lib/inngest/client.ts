@@ -54,6 +54,8 @@ export type VoiceCallEndedData = {
   transcript: string | null;
   customerNumber: string | null;
   toNumber: string | null;
+  /** Vapi's own cost for the call, in USD, when the report carries it. */
+  costUsd?: number | null;
 };
 
 /**

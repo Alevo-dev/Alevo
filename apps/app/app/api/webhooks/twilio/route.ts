@@ -1,3 +1,4 @@
+import { trackSms } from "@/lib/usage/spend";
 import { and, desc, eq } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import {
@@ -128,6 +129,7 @@ export const POST = trackDeliveries("twilio", async (req, track) => {
     // actually recorded a new message. The best-effort ones never fail the webhook.
     await Promise.all([
       result.createdConversation ? meterUsage(orgId, "inbound_conversations") : null,
+      result.isNewMessage ? trackSms("in", Number(params.NumSegments) || 1, orgId) : null,
       result.isNewMessage
         ? recordConsent(orgId, result.contactId, "sms", "inbound_message", { source: "sms" }).catch((e) =>
             Sentry.captureException(e),

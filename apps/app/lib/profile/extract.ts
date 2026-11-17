@@ -1,3 +1,4 @@
+import { trackClaude } from "@/lib/usage/spend";
 import Anthropic from "@anthropic-ai/sdk";
 import type { CrawlFacts, CrawlResult } from "./crawl";
 import { ImportError } from "./import-error";
@@ -56,6 +57,7 @@ export async function extractProfile(crawl: CrawlResult): Promise<ImportedProfil
       tool_choice: { type: "tool", name: TOOL.name },
       messages: [{ role: "user", content: pages }],
     });
+    trackClaude(MODEL, res.usage, "profile_import");
     const call = res.content.find((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
     if (!call) throw new ImportError("extract_failed");
     const found = Object.fromEntries(

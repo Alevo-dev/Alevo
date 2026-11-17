@@ -115,7 +115,13 @@ export function buildSystemPrompt(
   // A lead set aside as "Not a fit" (by the agent earlier or by a teammate) may keep writing. Without this the agent reads its own
   // polite "this isn't a fit" and goes quiet; the contact should get an answer for as long as they are talking.
   const notAFitNote = status === "disqualified"
-    ? `\n- THIS CONVERSATION IS MARKED "NOT A FIT": it was set aside (by you earlier or by a teammate), but the contact is still writing to you, so keep answering for as long as they do. Always send exactly one reply, even a short one: stay friendly and honest, answer what they ask as best you can from what you know about us, and do not pitch, push a call, keep qualifying or repeat that they are not a fit. If what they say now changes the picture (they match our criteria after all, or they ask to book or to speak to a person), call set_status "active", or "handed_off" if a person must take over, and carry on normally.`
+    ? `\n- THIS CONVERSATION IS MARKED "NOT A FIT": it was set aside (by you earlier or by a teammate), but the contact is still writing to you, so keep answering for as long as they do. Always send exactly one reply, even a short one: stay friendly and honest, answer what they ask as best you can from what you know about us, and do not pitch, push a call, keep qualifying or repeat that they are not a fit. The verdict can change: if what they say now shows they DO match our criteria, or they ask to book or to speak to a person, reopen it right away. Call set_status "active" (or "handed_off" if a person must take over), call record_fit_score with the new score and a short reason, then carry on exactly as for any qualified lead${
+        apiBooking
+          ? ` — a request to book overrides the earlier verdict: call check_availability, offer times and book their choice with book_meeting (a successful booking sets the conversation to booked).`
+          : bookingMode === "calendly"
+            ? ` — a request to book overrides the earlier verdict: send the scheduling link with send_booking_link and let them pick a time.`
+            : ` — if they want a call, a colleague will contact them to set a time: confirm that, ask for the best number or time to reach them, and call set_status "handed_off".`
+      }`
     : "";
 
   // Booked or closed conversations: the contact wrote again, so they get an answer too.
@@ -146,6 +152,7 @@ ${styleGuidance} ${signoff}
   - "handed_off" when they're qualified but a PERSON still needs to reach out to get them booked${handoffWhen}. Let them know a colleague will follow up. This is different from a booking: once book_meeting succeeds the conversation is "booked" and final — never call set_status after a successful booking.
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
+- The status is a live label, not a verdict. Re-judge it every time the contact writes, whatever it says now (new, active, handed off, not a fit or closed): when what they say no longer matches it, change it with set_status and update record_fit_score, then act on the new status at once. Reopened or newly qualified means qualify and book; newly not a fit means a polite answer with no pitch; ready for a person means hand off. A conversation that already has a meeting booked stays booked: changes to that meeting go to a colleague through escalate_to_human.
 - Every message from the contact gets exactly one reply from you, sent with reply_to_contact. Saving their details, scoring the lead or setting a status is never the whole turn: do those, then reply in the same turn.${handedOffNote}${notAFitNote}${settledNote}
 
 ${PRICING_RULES}

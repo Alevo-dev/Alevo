@@ -1,4 +1,5 @@
 import "server-only";
+import { trackClaude } from "@/lib/usage/spend";
 import Anthropic from "@anthropic-ai/sdk";
 import * as Sentry from "@sentry/nextjs";
 import { CALL_SUMMARY_PROMPT } from "@/lib/voice/summary-prompt";
@@ -21,6 +22,7 @@ export async function summarizeCall(transcript: string): Promise<string | null> 
       system: CALL_SUMMARY_PROMPT,
       messages: [{ role: "user", content: `Transcript of the call:\n\n${text.slice(0, 20_000)}` }],
     });
+    trackClaude(MODEL, res.usage, "call_summary");
     const out = res.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)

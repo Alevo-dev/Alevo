@@ -65,3 +65,50 @@ describe("Voice prompt", () => {
     expect(buildVoicePrompt({ companyName: "Acme IT" } as never, "open", true)).toContain(PRICING_REPLY);
   });
 });
+
+describe("Qualifier prompt: a lead marked not a fit can turn out to fit", () => {
+  const notAFit = (mode: Parameters<typeof buildSystemPrompt>[3]) =>
+    buildSystemPrompt(profile, contact, [], mode, false, true, false, "", "disqualified");
+
+  it("reopens the conversation and re-scores when they now match", () => {
+    const p = notAFit("google");
+    expect(p).toContain('set_status "active"');
+    expect(p).toContain("record_fit_score with the new score");
+  });
+
+  it("books them when a calendar is connected, overriding the earlier verdict", () => {
+    const p = notAFit("google");
+    expect(p).toContain("a request to book overrides the earlier verdict");
+    expect(p).toContain("check_availability");
+    expect(p).toContain("book_meeting");
+  });
+
+  it("sends the scheduling link in link mode", () => {
+    expect(notAFit("calendly")).toContain("send_booking_link");
+  });
+
+  it("promises a colleague's call and hands off when there is no calendar", () => {
+    const p = notAFit(null);
+    expect(p).toContain("a colleague will contact them");
+    expect(p).toContain("handed_off");
+  });
+});
+
+describe("Qualifier prompt: the status is a live label, whatever it is now", () => {
+  const withStatus = (status: string | null) =>
+    buildSystemPrompt(profile, contact, [], "google", false, true, status === "handed_off", "", status);
+
+  it.each([null, "active", "handed_off", "disqualified", "closed", "booked"])("re-judges it on every message (status: %s)", (status) => {
+    const p = withStatus(status);
+    expect(p).toContain("live label, not a verdict");
+    expect(p).toContain("change it with set_status");
+  });
+
+  it("tells the agent to act on the new status straight away", () => {
+    expect(withStatus("disqualified")).toContain("act on the new status at once");
+  });
+
+  it("keeps a booked meeting booked and sends meeting changes to a colleague", () => {
+    expect(withStatus("booked")).toContain("already has a meeting booked stays booked");
+  });
+});

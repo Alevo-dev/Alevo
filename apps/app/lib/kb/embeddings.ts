@@ -1,5 +1,6 @@
 import "server-only";
 import { vendorFetch } from "@/lib/http/vendor-fetch";
+import { trackEmbedding } from "@/lib/usage/spend";
 
 /**
  * Voyage AI embeddings (Anthropic's recommended RAG embeddings). Raw HTTP — no
@@ -33,7 +34,8 @@ async function embed(texts: string[], inputType: "document" | "query"): Promise<
   if (!res.ok) {
     throw new Error(`Voyage embeddings failed (${res.status}): ${await res.text()}`);
   }
-  const json = (await res.json()) as { data: { embedding: number[]; index: number }[] };
+  const json = (await res.json()) as { data: { embedding: number[]; index: number }[]; usage?: { total_tokens?: number } };
+  if (json.usage?.total_tokens) trackEmbedding(EMBEDDING_MODEL, json.usage.total_tokens);
   // The API preserves order, but sort by index defensively before dropping it.
   return [...json.data].sort((a, b) => a.index - b.index).map((d) => d.embedding);
 }
