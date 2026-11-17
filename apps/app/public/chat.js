@@ -94,12 +94,12 @@
       (left ? "left" : "right") +
       ":0;width:380px;max-width:calc(100vw - 48px);height:560px;max-height:calc(100vh - 120px);background:#fff;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.22);display:none;flex-direction:column;overflow:hidden}" +
       ".alevo-chat.is-open .alevo-chat-panel{display:flex}" +
-      ".alevo-chat-head{background:var(--a);color:var(--on);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}" +
+      ".alevo-chat-head{flex:none;background:var(--a);color:var(--on);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}" +
       ".alevo-chat-head strong{display:block;font-size:15px}.alevo-chat-head span{display:block;font-size:12px;opacity:.85;margin-top:2px}" +
       ".alevo-chat-who{display:flex;align-items:center;gap:10px;min-width:0}.alevo-chat-av{flex:none;border-radius:50%;object-fit:cover;object-position:center}" +
       ".alevo-chat-who .alevo-chat-ini{flex:none;border-radius:50%;background:rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;opacity:1;margin:0}" +
       ".alevo-chat-close{background:transparent;border:0;color:var(--on);cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center}.alevo-chat-close:hover{background:rgba(128,128,128,.25)}" +
-      ".alevo-chat-log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f6f7f9}" +
+      ".alevo-chat-log{flex:1;min-height:0;overscroll-behavior:contain;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f6f7f9}" +
       ".alevo-chat-msg{max-width:85%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word}" +
       ".alevo-chat-msg.them{align-self:flex-start;background:#fff;border:1px solid #e3e6ec;border-bottom-left-radius:4px}" +
       ".alevo-chat-msg.me{align-self:flex-end;background:var(--a);color:var(--on);border-bottom-right-radius:4px}" +
@@ -109,7 +109,7 @@
       ".alevo-chat-typing i:nth-child(2){animation-delay:.2s}.alevo-chat-typing i:nth-child(3){animation-delay:.4s}" +
       "@keyframes alevo-bounce{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}" +
       (reduceMotion ? ".alevo-chat-typing i{animation:none;opacity:.6}" : "") +
-      ".alevo-chat-foot{border-top:1px solid #e3e6ec;padding:10px 12px 8px;background:#fff}" +
+      ".alevo-chat-foot{flex:none;border-top:1px solid #e3e6ec;padding:10px 12px 8px;background:#fff}" +
       ".alevo-chat-row{display:flex;gap:8px;align-items:flex-end}" +
       ".alevo-chat-row textarea{flex:1;resize:none;font:inherit;color:inherit;border:1px solid #cfd5e0;border-radius:10px;padding:9px 12px;max-height:120px;min-height:40px}" +
       ".alevo-chat-row textarea:focus{outline:2px solid var(--a);outline-offset:1px;border-color:var(--a)}" +
@@ -117,7 +117,7 @@
       ".alevo-chat-send:disabled{opacity:.5;cursor:not-allowed}.alevo-chat-send svg{width:18px;height:18px}" +
       ".alevo-chat-err{color:#c8323b;font-size:12px;margin:6px 2px 0;min-height:0}.alevo-chat-err:empty{display:none}" +
       ".alevo-chat-note{font-size:11px;color:#6b7386;margin:8px 2px 0;text-align:center}.alevo-chat-note a{color:inherit}" +
-      "@media (max-width:480px){.alevo-chat.is-open{inset:0}.alevo-chat.is-open .alevo-chat-launch{display:none}.alevo-chat-panel{position:fixed;inset:0;width:auto;max-width:none;height:auto;max-height:none;border-radius:0}}";
+      "@media (max-width:480px){.alevo-chat.is-open{inset:0}.alevo-chat.is-open .alevo-chat-launch{display:none}.alevo-chat-panel{position:fixed;left:0;right:0;top:0;bottom:auto;width:auto;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0}.alevo-chat-row textarea{font-size:16px}}";
     document.head.appendChild(css);
 
     // The agent's picture (any size the workspace chose), else the first letter of the name in a circle.
@@ -250,7 +250,7 @@
           /* transient: try again next tick */
         })
         .then(function () {
-          if (open && session) pollTimer = setTimeout(poll, Date.now() < fastUntil ? 2000 : 10000);
+          if (open && session) pollTimer = setTimeout(poll, Date.now() < fastUntil ? 1000 : 10000);
         });
     }
 
@@ -263,8 +263,57 @@
       poll();
     }
 
+    // Phones: the window is exactly the part of the screen that is visible, so when the keyboard opens the whole chat
+    // moves up with it: the name bar stays at the top, the box stays above the keyboard and the newest message stays in view.
+    var phone = window.matchMedia ? window.matchMedia("(max-width:480px)") : null;
+    var vv = window.visualViewport;
+    var lockedScroll = null;
+    function atBottom() {
+      return log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+    }
+    function fitViewport() {
+      var on = open && phone && phone.matches && vv;
+      if (!on) {
+        panel.style.top = "";
+        panel.style.height = "";
+        return;
+      }
+      var stick = atBottom();
+      panel.style.top = vv.offsetTop + "px";
+      panel.style.height = vv.height + "px";
+      if (stick) log.scrollTop = log.scrollHeight;
+    }
+    function lockPage(on) {
+      var html = document.documentElement;
+      if (on && phone && phone.matches && !lockedScroll) {
+        lockedScroll = { html: html.style.overflow, body: document.body.style.overflow };
+        html.style.overflow = "hidden";
+        document.body.style.overflow = "hidden";
+      } else if (!on && lockedScroll) {
+        html.style.overflow = lockedScroll.html;
+        document.body.style.overflow = lockedScroll.body;
+        lockedScroll = null;
+      }
+    }
+    if (vv) {
+      vv.addEventListener("resize", fitViewport);
+      vv.addEventListener("scroll", fitViewport);
+    }
+    if (phone && phone.addEventListener) phone.addEventListener("change", function () { fitViewport(); lockPage(open); });
+    // Opening the keyboard: show the last message above it (the keyboard takes a moment to slide up).
+    input.addEventListener("focus", function () {
+      [0, 150, 350].forEach(function (ms) {
+        setTimeout(function () {
+          fitViewport();
+          log.scrollTop = log.scrollHeight;
+        }, ms);
+      });
+    });
+
     function setOpen(next) {
       open = next;
+      lockPage(open);
+      fitViewport();
       root.className = "alevo-chat" + (open ? " is-open" : "");
       launch.setAttribute("aria-expanded", open ? "true" : "false");
       launch.setAttribute("aria-label", open ? "Close chat" : "Open chat");

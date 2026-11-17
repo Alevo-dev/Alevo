@@ -95,6 +95,8 @@
     wrap.style.setProperty("--alevo-accent", css(brand || pageText));
     wrap.style.setProperty("--alevo-on", css(chosenOn || onSaved || (brand ? (lum(brand) > 0.18 ? [6, 9, 26] : [255, 255, 255]) : bg)));
     wrap.style.setProperty("--alevo-bg", css(bg));
+    // The browser draws the open menu of a select itself: tell it whether this page is light or dark.
+    wrap.style.colorScheme = lum(bg) > 0.18 ? "light" : "dark";
     // Error red that stays readable (4.5:1) on both light and dark pages.
     wrap.style.setProperty("--alevo-danger", lum(bg) > 0.18 ? "#c8323b" : "#ff6b70");
   }
@@ -158,6 +160,9 @@
       ".alevo-form .is-invalid{border-bottom-color:var(--alevo-danger)!important}",
       ".alevo-form .alevo-error{color:var(--alevo-danger);font-size:.8125em;margin:6px 0 0}",
       ".alevo-form .alevo-error:empty{display:none}",
+      ".alevo-form select{display:block;width:100%;font:inherit;font-size:max(16px,1em);color:inherit;background:transparent;border:0;border-bottom:1px solid rgba(128,128,128,.6);border-bottom:1px solid color-mix(in srgb,currentColor 35%,transparent);border-radius:0;padding:10px 0;cursor:pointer}",
+      ".alevo-form select option{color:inherit;background:var(--alevo-bg)}",
+      ".alevo-form select:focus{outline:0;border-bottom-color:var(--alevo-accent);box-shadow:0 1px 0 0 var(--alevo-accent)}",
       ".alevo-form .alevo-consent{display:flex;gap:10px;align-items:flex-start;font-size:.875em;padding:12px;border-radius:10px;background:rgba(128,128,128,.07);background:color-mix(in srgb,currentColor 5%,transparent)}",
       ".alevo-form .alevo-consent span{opacity:.8}",
       ".alevo-form .alevo-consent input{width:16px;height:16px;margin:2px 0 0;flex:none;accent-color:var(--alevo-accent)}",
@@ -249,8 +254,9 @@
       "<fieldset>" +
       '<div><label class="alevo-l" for="' + id + 'n">Full name</label><input id="' + id + 'n" name="name" placeholder="Pat Lee" autocomplete="name" aria-required="true"><p class="alevo-error" role="alert" data-for="name"></p></div>' +
       '<div><label class="alevo-l" for="' + id + 'e">Email</label><input id="' + id + 'e" name="email" type="email" placeholder="pat@example.com" autocomplete="email" aria-required="true"><p class="alevo-error" role="alert" data-for="email"></p></div>' +
-      '<div><label class="alevo-l" for="' + id + 'p">Phone <span>(optional)</span></label><input id="' + id + 'p" name="phone" type="tel" placeholder="(614) 555-0100" autocomplete="tel"></div>' +
+      '<div><label class="alevo-l" for="' + id + 'p">Phone <span class="alevo-phone-note">(optional)</span></label><input id="' + id + 'p" name="phone" type="tel" placeholder="(614) 555-0100" autocomplete="tel"><p class="alevo-error" role="alert" data-for="phone"></p></div>' +
       '<div><label class="alevo-l" for="' + id + 'c">Company <span>(optional)</span></label><input id="' + id + 'c" name="company" placeholder="Your company" autocomplete="organization"></div>' +
+      '<div class="alevo-full"><label class="alevo-l" for="' + id + 'r">How should we reach you?</label><select id="' + id + 'r" name="contactPreference" aria-required="true"><option value="email" selected>Email</option><option value="text">Text message</option></select><p class="alevo-error" role="alert" data-for="contactPreference"></p></div>' +
       '<div class="alevo-full"><label class="alevo-l" for="' + id + 'm">How can we help?</label><textarea id="' + id + 'm" name="message" rows="5" placeholder="A few lines about what you need and when." aria-required="true"></textarea><p class="alevo-error" role="alert" data-for="message"></p></div>' +
       '<div class="alevo-full"><label class="alevo-consent"><input type="checkbox" name="consent" value="yes"><span>I agree to be contacted about my inquiry.</span></label><p class="alevo-error" role="alert" data-for="consent"></p></div>' +
       '<p class="alevo-error alevo-full" data-for="form"></p>' +
@@ -280,7 +286,7 @@
       }
     }
     function clearErrors() {
-      ["name", "email", "message", "consent", "form"].forEach(function (n) {
+      ["name", "email", "phone", "message", "contactPreference", "consent", "form"].forEach(function (n) {
         setError(n, "");
       });
     }
@@ -292,6 +298,17 @@
       ico.innerHTML = on ? '<span class="alevo-spin" aria-hidden="true"></span>' : svg(ICON.send);
     }
 
+    // Choosing "Text message" says the phone number is needed.
+    var phoneNote = form.querySelector(".alevo-phone-note");
+    form.addEventListener("change", function (ev) {
+      if (ev.target.name !== "contactPreference") return;
+      var needed = ev.target.value === "text";
+      // Texting needs a number: the phone field says so, is marked required and drops any old error.
+      if (phoneNote) phoneNote.textContent = needed ? "(required for Text)" : "(optional)";
+      var phoneInput = form.querySelector('[name="phone"]');
+      if (phoneInput) phoneInput.setAttribute("aria-required", needed ? "true" : "false");
+      setError("phone", "");
+    });
     // Typing in a field (or ticking consent) dismisses that field's error.
     form.addEventListener("input", function (ev) {
       if (ev.target.name) setError(ev.target.name, "");
@@ -308,6 +325,7 @@
         phone: data.get("phone"),
         company: data.get("company"),
         message: data.get("message"),
+        contactPreference: data.get("contactPreference") || "email",
         consent: data.get("consent") === "yes",
         website: data.get("website"),
         startedAt: startedAt,

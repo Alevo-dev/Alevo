@@ -12,11 +12,12 @@ const TABS = [
   { key: "own", label: "Your own form" },
 ];
 
-const FIELDS: { name: string; required: boolean }[] = [
+const FIELDS: { name: string; required: boolean; note?: string }[] = [
   { name: "name", required: true },
   { name: "email", required: true },
   { name: "message", required: true },
   { name: "consent", required: true },
+  { name: "contactPreference", required: true, note: "email or text, default email" },
   { name: "phone", required: false },
   { name: "company", required: false },
 ];
@@ -58,6 +59,7 @@ export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { o
     `  "email": "pat@example.com",`,
     `  "phone": "",`,
     `  "company": "",`,
+    `  "contactPreference": "email",`,
     `  "message": "Hi",`,
     `  "consent": true`,
     `}`,
@@ -127,6 +129,7 @@ export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { o
               ["email", '"pat@example.com"'],
               ["phone", '""'],
               ["company", '""'],
+              ["contactPreference", '"email"'],
               ["message", '"Hi"'],
             ].map(([k, v]) => (
               <span key={k}>
@@ -149,7 +152,7 @@ export function EmbedSnippets({ orgId, origin, company, accent, textColor }: { o
             {FIELDS.map((f) => (
               <div key={f.name} className="flex justify-between gap-2.5 border-t border-hairline py-1.5">
                 <b className="font-mono text-[12.5px] font-medium text-ink">{f.name}</b>
-                <span className={f.required ? "text-warning" : "text-ink-muted"}>{f.required ? "Required" : "Optional"}</span>
+                <span className={f.required ? "text-warning" : "text-ink-muted"}>{f.note ? f.note : f.required ? "Required" : "Optional"}</span>
               </div>
             ))}
           </div>

@@ -41,6 +41,8 @@ export const contacts = pgTable(
     company: text("company"),
     source: text("source"),
     timezone: text("timezone"), // IANA; best-effort (lead-form browser tz). Picks nudge send windows.
+    // How they asked to be reached on the lead form (migration 0050): 'email' or 'text'; null = never asked.
+    contactPreference: text("contact_preference"),
     // Most recent message / conversation / call; kept by a trigger (0038), never by app code.
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
     ...timestamps,

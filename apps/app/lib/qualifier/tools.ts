@@ -95,6 +95,8 @@ export type DispatchTarget = {
   contactName: string;
   contactEmail: string | null;
   contactPhone: string | null;
+  /** "email" or "text" from the lead form; null when never asked. */
+  contactPreference: string | null;
   contactTimezone: string | null;
   smsFromNumber: string | null;
   bookingConfig: BookingConfig;
@@ -233,9 +235,12 @@ async function deliverMessage(target: DispatchTarget, body: string): Promise<str
   // the page. Once they have left, the reply falls through to email (when we
   // have one) so a follow-up is not lost; the widget still shows it if they return.
   const chatLive = target.channel === "chat" && (await chatVisitorPresent(target.orgId, target.conversationId));
+  // Text: an SMS thread, or a form / email lead who chose "Text message" (when there is a number and a sending number;
+  // otherwise it falls through to email below).
+  const smsWanted = target.channel === "sms" || ((target.channel === "form" || target.channel === "email") && target.contactPreference === "text");
   if (chatLive) {
     note = "shown in the chat widget";
-  } else if (target.channel === "sms" && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
+  } else if (smsWanted && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {
     const sent = await sendSms({
       orgId: target.orgId,
       fromNumber: target.smsFromNumber,

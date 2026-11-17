@@ -1,7 +1,7 @@
 import "server-only";
 import { refreshTokenKey } from "@/lib/booking/oauth";
 import Anthropic from "@anthropic-ai/sdk";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gt, sql } from "drizzle-orm";
 import {
   contacts,
   conversations,
@@ -15,6 +15,7 @@ import {
   type OrgProfile,
 } from "@alevo/db";
 import { bookingConfigFromProfile } from "@/lib/booking";
+import { driveAgent, type RunTrace } from "./loop";
 import { buildSystemPrompt, type BookingMode, type ContactInfo } from "./prompt";
 import {
   BOOKING_TOOLS,
@@ -28,8 +29,6 @@ import { overAllowance } from "@/lib/usage/limits";
 
 /** The Qualifier runs on Sonnet 5 (near-Opus agentic quality at Sonnet cost). */
 const MODEL = "claude-sonnet-5";
-/** Guard against a runaway tool loop; a normal turn is 1–2 iterations. */
-const MAX_TURNS = 6;
 
 export type QualifierContext = {
   orgId: string;
@@ -38,7 +37,7 @@ export type QualifierContext = {
   channel: Channel;
   profile: OrgProfile;
   contact: ContactInfo;
-  thread: { author: "contact" | "assistant" | "human"; body: string }[];
+  thread: { author: "contact" | "assistant" | "human"; body: string; createdAt?: Date }[];
   /** How the Qualifier can book: Cal.com API, Calendly link, or not at all. */
   bookingMode: BookingMode;
   /** Where the conversation stands; a handed-off one is still answered. */
@@ -47,7 +46,7 @@ export type QualifierContext = {
 
 export type QualifierResult =
   | { ran: false; skipped: string }
-  | ({ ran: true } & QualifierEffects);
+  | ({ ran: true; trace: RunTrace } & QualifierEffects);
 
 /**
  * Load everything the Qualifier needs for one conversation, scoped to the org
@@ -90,6 +89,7 @@ export async function loadQualifierContext(
         email: contacts.email,
         phone: contacts.phone,
         timezone: contacts.timezone,
+        contactPreference: contacts.contactPreference,
       })
       .from(contacts)
       .where(and(eq(contacts.id, conv.contactId), eq(contacts.orgId, orgId)))
@@ -113,7 +113,7 @@ export async function loadQualifierContext(
     }
 
     const thread = await tx
-      .select({ author: messages.author, body: messages.body })
+      .select({ author: messages.author, body: messages.body, createdAt: messages.createdAt })
       .from(messages)
       .where(and(eq(messages.conversationId, conversationId), eq(messages.orgId, orgId)))
       .orderBy(asc(messages.createdAt));
@@ -227,6 +227,7 @@ export async function runQualifier(
     contactName,
     contactEmail: ctx.contact.email,
     contactPhone: ctx.contact.phone,
+    contactPreference: ctx.contact.contactPreference ?? null,
     contactTimezone: ctx.contact.timezone ?? ctx.profile.timezone,
     smsFromNumber: ctx.profile.smsFromNumber,
     bookingConfig: bookingConfigFromProfile(ctx.profile),
@@ -243,37 +244,46 @@ export async function runQualifier(
     bookingFailed: false,
   };
 
-  for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 8192,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
-      system,
-      messages: messagesForClaude,
-      tools,
-    });
+  // Messages the contact sends while this run works are answered in the same run (a later run would see our reply as
+  // the last turn and skip them).
+  let seen = ctx.thread.at(-1)?.createdAt ?? new Date();
+  const trace = await driveAgent(
+    messagesForClaude,
+    {
+      create: (msgs) =>
+        client.messages.create({
+          model: MODEL,
+          max_tokens: 8192,
+          thinking: { type: "adaptive" },
+          output_config: { effort: "medium" },
+          system,
+          messages: msgs,
+          tools,
+        }),
+      dispatch: (name, input) => dispatchTool(name, input, target, effects),
+      fresh: async () => {
+        const rows = await withService((tx) =>
+          tx
+            .select({ body: messages.body, createdAt: messages.createdAt })
+            .from(messages)
+            .where(
+              and(
+                eq(messages.conversationId, ctx.conversationId),
+                eq(messages.orgId, ctx.orgId),
+                eq(messages.author, "contact"),
+                gt(messages.createdAt, seen),
+              ),
+            )
+            .orderBy(asc(messages.createdAt)),
+        );
+        seen = rows.at(-1)?.createdAt ?? seen;
+        return rows.map((r) => r.body);
+      },
+    },
+    // A cadence nudge has no contact message to answer; every other run owes the contact a reply.
+    { mustReply: !opts.directive },
+    effects,
+  );
 
-    const toolUses = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-    );
-    if (toolUses.length === 0) break; // end_turn — the Qualifier is done
-
-    // Preserve the full assistant turn (incl. thinking blocks) before replying.
-    messagesForClaude.push({ role: "assistant", content: response.content });
-
-    const results: Anthropic.ToolResultBlockParam[] = [];
-    for (const call of toolUses) {
-      const content = await dispatchTool(
-        call.name,
-        (call.input ?? {}) as Record<string, unknown>,
-        target,
-        effects,
-      );
-      results.push({ type: "tool_result", tool_use_id: call.id, content });
-    }
-    messagesForClaude.push({ role: "user", content: results });
-  }
-
-  return { ran: true, ...effects };
+  return { ran: true, trace, ...effects };
 }

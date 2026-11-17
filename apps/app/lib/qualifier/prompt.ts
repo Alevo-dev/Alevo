@@ -1,6 +1,6 @@
 import type { OrgProfile } from "@alevo/db";
 import { toneForPrompt } from "../profile/tone";
-import { fenceKnowledge, UNTRUSTED_INPUT_RULES } from "./guard";
+import { fenceKnowledge, PRICING_RULES, UNTRUSTED_INPUT_RULES } from "./guard";
 
 export type ContactInfo = {
   firstName: string | null;
@@ -9,6 +9,8 @@ export type ContactInfo = {
   email: string | null;
   phone: string | null;
   timezone: string | null;
+  /** "email" or "text" from the lead form; null when never asked. */
+  contactPreference?: string | null;
 };
 
 /** A labelled profile section, omitted entirely when the admin left it blank. */
@@ -61,6 +63,8 @@ export function buildSystemPrompt(
     contactName && `Name: ${contactName}`,
     contact.company && `Company: ${contact.company}`,
     contact.email && `Email: ${contact.email}`,
+    contact.contactPreference === "text" && contact.phone && `Prefers: a text message to ${contact.phone} (they chose this on the form; your replies go by text)`,
+    contact.contactPreference === "email" && "Prefers: email",
   ]
     .filter(Boolean)
     .join("\n");
@@ -69,10 +73,10 @@ export function buildSystemPrompt(
   // link mode. (null → no booking; hand off instead.)
   const apiBooking = bookingMode === "calcom" || bookingMode === "google" || bookingMode === "m365";
   const handoffWhen = apiBooking
-    ? " — e.g. none of the offered times work, they'd rather be called, or they have pricing / contract questions you can't answer"
+    ? " — e.g. none of the offered times work, they'd rather be called, or they have contract questions you can't answer"
     : bookingMode === "calendly"
-      ? " — e.g. they won't use the link, or they have pricing / contract questions you can't answer"
-      : " — e.g. they want to book, pricing, or a demo";
+      ? " — e.g. they won't use the link, or they have contract questions you can't answer"
+      : " — e.g. they want to book or ask for a demo";
   // The product's goal is a BOOKED meeting. Once the lead qualifies, the agent
   // doesn't wait to be asked — it offers concrete times in the next 24–72 hours.
   const booking = apiBooking
@@ -85,13 +89,14 @@ export function buildSystemPrompt(
   // chat / voice are real-time, so there a short one-question-at-a-time style fits.
   const styleGuidance = emailStyle
     ? `- You are replying by EMAIL — write a complete, well-structured email, not a chat line. In your first reply, ask for everything you need to qualify in a single message: adapt to the criteria above, but typically company size / headcount, industry, region, current IT setup or provider, timeline, and what prompted them to reach out. Open with a brief greeting, group the questions as a short numbered or bulleted list, and close with a sign-off. Do not drip one question at a time across emails. When you offer meeting times, list them as short bullets.`
-    : `- You are on a real-time channel (SMS / chat / voice) — keep replies short and human, and ask ONE question at a time; don't interrogate. When you offer meeting times, keep it to one short line per option.`;
+    : `- You are on a real-time channel (SMS / chat / voice) — keep replies short and human (one to three sentences). Ask AT MOST ONE question per message: never two, not even as "also…" or "and…". If you need two things, ask the one that matters most now and the other next turn; asking for their name and email together counts as one question. When you offer meeting times, keep it to one short line per option.`;
 
   // Website chat: the visitor starts anonymous, so get a name and email early
   // (follow-up by email is what keeps the lead once they close the tab).
   const chatName = chat && agentName.trim() ? ` Visitors see you as "${agentName.trim()}" at the top of the chat window: that is your name, so use it if you introduce yourself or are asked who they are talking to.` : "";
   const chatGuidance = chat
-    ? `\n- You are the live chat on our website.${chatName} The visitor is anonymous until they tell you who they are: after answering their first message, ask for their name and email so a person can follow up if the chat ends, then carry on qualifying.`
+    ? `\n- You are the live chat on our website.${chatName} The visitor is anonymous until they tell you who they are: after answering their first message, ask for their name and email so a person can follow up if the chat ends.
+- Your goal in this chat is a booked appointment: every reply moves the visitor one step closer to a call on the calendar. Answer what they asked in a sentence or two, then ask the ONE next thing you need. As soon as you have their name and email and they show any interest, offer to book a call right away; don't hold the offer back until every qualifying question is answered. Except for a thank-you or a goodbye, never end a message without a next step toward the booking.`
     : "";
 
   // After a hand-off the team has been told, but the contact is still talking to us. Without this the
@@ -141,7 +146,9 @@ ${styleGuidance} ${signoff}
   - "handed_off" when they're qualified but a PERSON still needs to reach out to get them booked${handoffWhen}. Let them know a colleague will follow up. This is different from a booking: once book_meeting succeeds the conversation is "booked" and final — never call set_status after a successful booking.
   - "active" (or leave unset) while you're still qualifying and awaiting their reply.
 - Call escalate_to_human for anything that needs a person immediately (complaints, urgent requests, or you're unsure). It hands off and notifies the team.${booking}
-- If the latest message doesn't need a reply, you may just score and/or set status. Otherwise always send exactly one reply.${handedOffNote}${notAFitNote}${settledNote}
+- Every message from the contact gets exactly one reply from you, sent with reply_to_contact. Saving their details, scoring the lead or setting a status is never the whole turn: do those, then reply in the same turn.${handedOffNote}${notAFitNote}${settledNote}
+
+${PRICING_RULES}
 
 ${UNTRUSTED_INPUT_RULES}
 

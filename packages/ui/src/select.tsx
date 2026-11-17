@@ -37,6 +37,16 @@ const OPTION_H = 36;
 const MENU_MAX = 280;
 
 /**
+ * Where the open menu is drawn: inside the nearest themed container (a page that sets its own `.light` / `.dark` on an inner
+ * element, like the public form on an app in dark mode), so the menu is in the same theme as its control. The theme class on
+ * the page's root (`html` / `body`) is the normal case and keeps the menu in the body.
+ */
+function menuRoot(trigger: HTMLElement | null): HTMLElement {
+  const themed = trigger?.closest<HTMLElement>(".light, .dark");
+  return themed && themed !== document.documentElement && themed !== document.body ? themed : document.body;
+}
+
+/**
  * The app's dropdown: a combobox trigger + a listbox menu drawn on our own
  * surface, never the browser's. Works in plain server-action forms through a
  * hidden input, and fully by keyboard (arrows, Home/End, Enter, Escape).
@@ -258,7 +268,7 @@ export function Select({
               );
             })}
           </ul>,
-          document.body,
+          menuRoot(triggerRef.current),
         )}
     </>
   );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readLeadFields, validateLead } from "../lib/leads/fields";
+import { normalisePreference, readLeadFields, validateLead } from "../lib/leads/fields";
 import { clientIp, ipKey, MIN_FILL_MS, parseStartedAt, spamReason } from "../lib/leads/spam";
 
 const NOW = 1_800_000_000_000;
@@ -13,6 +13,7 @@ describe("validateLead", () => {
         phone: "",
         company: "",
         message: "",
+        contactPreference: "email",
         consent: false,
       }),
     ).toEqual({
@@ -28,6 +29,7 @@ describe("validateLead", () => {
       phone: "",
       company: "",
       message: "Hi",
+      contactPreference: "email",
       consent: true,
     };
     expect(validateLead({ ...base, email: "pat@" }).email).toBe("Enter a valid email address.");
@@ -93,5 +95,25 @@ describe("contact form presentation", () => {
     expect(parseAccent("#12345")).toBeUndefined();
     expect(telHref("(614) 555-0100 ext 2")).toBe("tel:6145550100" + "2");
     expect(telHref("+1 614 555 0100")).toBe("tel:+16145550100");
+  });
+});
+
+describe("contact preference", () => {
+  const good = { name: "Pat", email: "pat@example.com", phone: "", company: "", message: "Hi", consent: true };
+
+  it("is email when it is empty or missing, so a form that never sends it keeps working", () => {
+    expect(normalisePreference("")).toBe("email");
+    expect(readLeadFields(() => undefined).contactPreference).toBe("email");
+    expect(readLeadFields((n) => ({ contactPreference: "   " })[n]).contactPreference).toBe("email");
+    expect(validateLead({ ...good, contactPreference: "email" })).toEqual({});
+  });
+  it("reads text however it is written", () => {
+    for (const raw of ["text", "TEXT", " Text message ", "sms"]) expect(normalisePreference(raw)).toBe("text");
+    expect(readLeadFields((n) => ({ contactPreference: "Text" })[n]).contactPreference).toBe("text");
+  });
+  it("needs a phone number to text, and refuses anything but email or text", () => {
+    expect(validateLead({ ...good, contactPreference: "text" }).phone).toBe("Add a phone number so we can text you.");
+    expect(validateLead({ ...good, contactPreference: "text", phone: "+1 613 555 0100" })).toEqual({});
+    expect(validateLead({ ...good, contactPreference: "carrier pigeon" }).contactPreference).toBe("Choose email or text.");
   });
 });

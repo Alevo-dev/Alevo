@@ -1,6 +1,6 @@
 # Alevo — Build Plan
 
-**Last updated:** 2026-11-02
+**Last updated:** 2026-11-17
 **Status:** Active
 **Related:** [`decisions/backend-and-workflows.md`](decisions/backend-and-workflows.md)
 

@@ -66,6 +66,7 @@ export default async function ConversationThread({ params, searchParams }: { par
         phone: contacts.phone,
         company: contacts.company,
         timezone: contacts.timezone,
+        contactPreference: contacts.contactPreference,
       })
       .from(conversations)
       .innerJoin(contacts, eq(contacts.id, conversations.contactId))
@@ -360,6 +361,7 @@ export default async function ConversationThread({ params, searchParams }: { par
               <Row k="Email">{conv.email ?? "—"}</Row>
               <Row k="Phone">{conv.phone ? <span className="font-mono">{conv.phone}</span> : "—"}</Row>
               <Row k="Company">{conv.company ?? "—"}</Row>
+              <Row k="Prefers">{conv.contactPreference === "text" ? "Text message" : conv.contactPreference === "email" ? "Email" : "—"}</Row>
               <Row k="Timezone">{conv.timezone ?? "—"}</Row>
               <Row k="Consent source">{consent?.source ?? "—"}</Row>
               <Row k="Other conversations">

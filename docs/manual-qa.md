@@ -1399,3 +1399,24 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 - [ ] On a chat or email thread, send questions after each of: marked Not a fit, Handed off, Booked, Closed. The agent answers every time, once, and does not go quiet. On a Booked thread it does not book a second meeting.
 - [ ] Reply with only "thank you": one short closing line, the thread becomes Closed (a Booked one stays Booked) and no follow-up nudges are sent. Write again afterwards: it answers.
 - [ ] Admin console → Settings → Testing: turn Fast cadence on, Save changes. Within about 15 seconds a quiet lead is nudged after 20s, 30s and 40s, and an unanswered message alerts after 30s. Turn it off again.
+
+## Contact preference and the phone chat
+
+- [ ] The website form (embed, hosted page `/form/<id>`) has a dropdown "How should we reach you?" with Email (selected) and Text message. Pick Text message: the phone label says "(required for Text)". Submit with no phone: an error under Phone. With a phone: it sends.
+- [ ] POST the API without `contactPreference` (an old custom form): it still works and counts as email. POST `"contactPreference": "carrier pigeon"`: 400 with "Choose email or text.".
+- [ ] The thread's Details shows "Prefers: Text message" (or Email). As that lead, the agent's first reply arrives as a text when the workspace has an SMS number (and by email when it does not).
+- [ ] On a phone (or a 390px-wide window): open the chat bubble; the window fills the screen with the avatar and name bar at the top. Tap the message box: the keyboard slides up, the whole chat moves up with it, the bar stays at the top and the last message stays visible above the box. The page behind does not scroll and the screen does not zoom in.
+
+## Chat agent: always replies, one question, no pricing (2026-11-17)
+
+Run against staging with a fresh chat (Integrations → Chat widget on). Watch Inngest → staging → Runs: each `qualify-conversation` output now has a `trace`.
+
+- [ ] Reply time: send a message and time the answer. It should arrive in about 5 to 8 seconds (it was about 12).
+- [ ] Say "my name is Sam": the agent saves the name AND replies in the same turn (it used to go quiet). Then "Sam, sam@example.com": it replies too. In Inngest the run output shows `replied: true`.
+- [ ] Send two messages a second or two apart ("hi" then "I need help with IT"): you get a reply to both; neither is skipped. The output may show `catchUps: 1`.
+- [ ] Every agent message asks at most ONE question (name + email together counts as one). Try a long chat of 8 messages.
+- [ ] After you give name and email, the agent offers to book a call (times from the calendar, or the scheduling link) without waiting to be asked. Choose a time: the meeting appears under Meetings and the thread says Booked.
+- [ ] Ask "how much does it cost?", "what are your prices?", "do you have a quote?": the agent answers with "I love all of these questions. Would you be open to having a live discussion with one of our sales reps and they can provide answers?" and never names a figure. Say "yes": it moves to booking. The thread is NOT handed off by the pricing question alone.
+- [ ] Put a price in Workspace → Knowledge (a text doc with "Plans start at $99") and ask about pricing again: still no figure.
+- [ ] Phone call (voice): ask about pricing; the agent gives the same line and offers a call with a sales rep.
+- [ ] Fast cadence switch on: a quiet lead is still nudged; a nudge never fails for "no reply".

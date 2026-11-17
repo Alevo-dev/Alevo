@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { eq } from "drizzle-orm";
-import { consents, conversations, hitRateLimit, messages, organizations, resolveContact, withService, safeErrorMessage } from "@alevo/db";
+import { and } from "drizzle-orm";
+import { consents, contacts, conversations, hitRateLimit, messages, organizations, resolveContact, withService, safeErrorMessage } from "@alevo/db";
 import { inngest } from "@/lib/inngest/client";
 import { meterUsage } from "@/lib/usage/limits";
 import { isValidTimeZone } from "@/lib/cadence/send-window";
@@ -79,6 +80,11 @@ export async function captureLead(
     );
 
     const conversationId = await withService(async (tx) => {
+      // The latest answer wins: someone who asked for texts last time may ask for email now.
+      await tx
+        .update(contacts)
+        .set({ contactPreference: fields.contactPreference })
+        .where(and(eq(contacts.id, contactId), eq(contacts.orgId, orgId)));
       const [conversation] = await tx
         .insert(conversations)
         .values({ orgId, contactId, channel: "form", status: "new" })

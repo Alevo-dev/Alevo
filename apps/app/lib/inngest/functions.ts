@@ -78,7 +78,8 @@ export const orgProvisioned = inngest.createFunction(
  * retried in-process by the Anthropic SDK, inside a single attempt.
  *
  * `debounce` per conversation (rule 10) coalesces a burst of inbound messages
- * into one agent run; kept short so it barely dents speed-to-lead. `priority`
+ * into one agent run; 2s (it was 8s, which was most of a chat reply's wait; a
+ * message that lands mid-run is answered by that run, see `driveAgent`). `priority`
  * marks inbound replies as high-priority so they jump ahead of proactive work
  * (cadence nudges, future outbound/KB) once those compete for capacity.
  */
@@ -86,7 +87,7 @@ export const qualifyConversation = inngest.createFunction(
   {
     id: "qualify-conversation",
     concurrency: { key: "event.data.orgId", limit: 2 },
-    debounce: { key: "event.data.conversationId", period: "8s", timeout: "20s" },
+    debounce: { key: "event.data.conversationId", period: "2s", timeout: "6s" },
     priority: { run: "120" },
     retries: 1,
     triggers: [{ event: "conversation/message.received" }],

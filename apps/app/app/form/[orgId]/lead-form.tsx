@@ -4,7 +4,9 @@ import { useActionState, useEffect, useRef, useState, type InputHTMLAttributes, 
 import { Check, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldError, Label } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { cx } from "@/lib/cx";
+import { CONTACT_PREFERENCES } from "@/lib/leads/fields";
 import { HONEYPOT_FIELD } from "@/lib/leads/spam";
 import { submitLead, type LeadState } from "./actions";
 
@@ -45,6 +47,8 @@ function Row({ id, label, optional, error, children }: { id: string; label: stri
 
 export function LeadForm({ orgId, company, submitted = false }: { orgId: string; company: string; submitted?: boolean }) {
   const [state, action, pending] = useActionState(submitLead, INITIAL);
+  // Choosing "Text message" makes the phone number required.
+  const [pref, setPref] = useState(state.values?.contactPreference === "text" ? "text" : "email");
 
   // Set after mount (not during SSR) to avoid a hydration mismatch: the
   // visitor's timezone so follow-up nudges land in their daytime, and when the
@@ -115,12 +119,25 @@ export function LeadForm({ orgId, company, submitted = false }: { orgId: string;
         <Row id="lf-email" label="Email" error={e?.email}>
           <LineInput id="lf-email" name="email" type="email" autoComplete="email" aria-required="true" defaultValue={v?.email} invalid={!!e?.email} placeholder="pat@example.com" />
         </Row>
-        <Row id="lf-phone" label="Phone" optional>
-          <LineInput id="lf-phone" name="phone" type="tel" autoComplete="tel" defaultValue={v?.phone} placeholder="(614) 555-0100" />
+        <Row id="lf-phone" label={pref === "text" ? "Phone (required for Text)" : "Phone"} optional={pref !== "text"} error={e?.phone}>
+          <LineInput id="lf-phone" name="phone" type="tel" autoComplete="tel" aria-required={pref === "text" || undefined} defaultValue={v?.phone} invalid={!!e?.phone} placeholder="(614) 555-0100" />
         </Row>
         <Row id="lf-company" label="Company" optional>
           <LineInput id="lf-company" name="company" autoComplete="organization" defaultValue={v?.company} placeholder="Your company" />
         </Row>
+        <div className="sm:col-span-2">
+          <Row id="lf-pref" label="How should we reach you?" error={e?.contactPreference}>
+            <Select
+              id="lf-pref"
+              name="contactPreference"
+              options={CONTACT_PREFERENCES.map((p) => ({ value: p.value, label: p.label }))}
+              defaultValue={v?.contactPreference === "text" ? "text" : "email"}
+              onChange={setPref}
+              invalid={!!e?.contactPreference}
+              aria-label="How should we reach you?"
+            />
+          </Row>
+        </div>
         <div className="sm:col-span-2">
           <Row id="lf-message" label="How can we help?" error={e?.message}>
             <LineTextarea id="lf-message" name="message" rows={5} aria-required="true" defaultValue={v?.message} invalid={!!e?.message} placeholder="A few lines about what you need and when." />
