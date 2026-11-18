@@ -716,6 +716,13 @@ booking (Sprint 3), and PSA write-back (Sprint 5).
   the agent replied and the lead is still active it fires
   `conversation/awaiting-reply`. It is deliberately **stepless** (see the agent
   retry caveat above).
+- `chat-cadence` (`lib/chat/cadence.ts`) is the **website chat's own** follow-up: after the agent replies in a
+  `chat` conversation the Qualifier fires `chat/awaiting-reply` (not `conversation/awaiting-reply`, so a chat never
+  gets the days-long cadence directly). Fixed lines, no model call: a nudge at +30s, another +1m later, and at +2m
+  more a closing line and the status goes `closed` (the pause). A visitor message cancels it
+  (`cancelOn`) and `postChatMessage` flips `closed` back to `active`. If the contact has an email or phone, the pause
+  hands over to `conversation/awaiting-reply` with `fromChat: true` (the days-long cadence otherwise stops on
+  `closed`); a chat visitor with a phone but no email is then texted (`smsWanted` in `qualifier/tools.ts`).
 - `conversation-cadence` reacts to `conversation/awaiting-reply` and follows up a
   quiet lead on a schedule (`schedule.ts`: +1d, +3d, +3d, then disqualify;
   `CADENCE_FAST=1` shrinks the gaps to seconds for local testing). It

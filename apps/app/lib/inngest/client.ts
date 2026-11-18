@@ -31,7 +31,12 @@ export type ConversationMessageReceivedData = { orgId: string; conversationId: s
  * (awaiting the contact). Starts the follow-up cadence, which nudges on a
  * schedule and is cancelled the moment a new inbound message arrives.
  */
-export type ConversationAwaitingReplyData = { orgId: string; conversationId: string };
+export type ConversationAwaitingReplyData = {
+  orgId: string;
+  conversationId: string;
+  /** Set when a paused (closed) chat hands over to this cadence, which would otherwise stop on a closed conversation. */
+  fromChat?: boolean;
+};
 
 /**
  * Fired when a KB document is created or re-ingested. The ingest function

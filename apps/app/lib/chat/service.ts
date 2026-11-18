@@ -198,7 +198,11 @@ export async function postChatMessage(session: ChatSession, body: string, meta: 
         .values({ orgId: session.orgId, conversationId: session.conversationId, direction: "inbound", author: "contact", channel: "chat", body })
         .returning({ id: messages.id, createdAt: messages.createdAt });
       if (!row) throw new Error("Failed to store message");
-      await tx.update(conversations).set({ updatedAt: new Date() }).where(eq(conversations.id, session.conversationId));
+      // A paused chat (closed) reopens the moment the visitor writes again.
+      await tx
+        .update(conversations)
+        .set({ status: sql`case when ${conversations.status} = 'closed' then 'active' else ${conversations.status} end`, updatedAt: new Date() })
+        .where(eq(conversations.id, session.conversationId));
       await tx.update(chatSessions).set({ lastSeenAt: new Date() }).where(eq(chatSessions.id, session.id));
       return row;
     });

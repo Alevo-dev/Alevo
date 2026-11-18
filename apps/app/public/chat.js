@@ -254,6 +254,7 @@
       status = next;
       if (next === "handed_off") bubble("sys", "We've passed this on to the team. Someone will follow up with you.");
       if (next === "booked") bubble("sys", "Your meeting is booked. See you then!");
+      if (next === "closed") bubble("sys", "This chat is paused. Send a message to pick it back up.");
     }
 
     function reset(message) {

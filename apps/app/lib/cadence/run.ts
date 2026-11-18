@@ -26,6 +26,8 @@ export type CadenceState =
 export async function loadCadenceState(
   orgId: string,
   conversationId: string,
+  /** A paused chat handing over: its "closed" status is the pause, not an ending. */
+  fromChat = false,
 ): Promise<CadenceState> {
   return withService(async (tx) => {
     const [conv] = await tx
@@ -34,7 +36,7 @@ export async function loadCadenceState(
       .where(and(eq(conversations.id, conversationId), eq(conversations.orgId, orgId)))
       .limit(1);
     if (!conv) return { proceed: false, reason: "not-found" };
-    if (!WORKABLE.has(conv.status)) return { proceed: false, reason: `status:${conv.status}` };
+    if (!WORKABLE.has(conv.status) && !(fromChat && conv.status === "closed")) return { proceed: false, reason: `status:${conv.status}` };
 
     const [profile] = await tx
       .select({

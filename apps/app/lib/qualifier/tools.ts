@@ -241,7 +241,11 @@ async function deliverMessage(target: DispatchTarget, text: string): Promise<str
   const chatLive = target.channel === "chat" && (await chatVisitorPresent(target.orgId, target.conversationId));
   // Text: an SMS thread, or a form / email lead who chose "Text message" (when there is a number and a sending number;
   // otherwise it falls through to email below).
-  const smsWanted = target.channel === "sms" || ((target.channel === "form" || target.channel === "email") && target.contactPreference === "text");
+  // A chat visitor who has gone and left a number but no email is texted instead (only reached after the chat pauses).
+  const smsWanted =
+    target.channel === "sms" ||
+    ((target.channel === "form" || target.channel === "email") && target.contactPreference === "text") ||
+    (target.channel === "chat" && !target.contactEmail);
   if (chatLive) {
     note = "shown in the chat widget";
   } else if (smsWanted && target.contactPhone && target.smsFromNumber && isSmsConfigured()) {

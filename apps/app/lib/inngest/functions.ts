@@ -13,6 +13,7 @@ import { loadQualifierContext, runQualifier } from "@/lib/qualifier/run";
 import { disqualifyStaleConversation, loadCadenceState, runFollowup } from "@/lib/cadence/run";
 import { followupSchedule } from "@/lib/cadence/schedule";
 import { nextSendTime } from "@/lib/cadence/send-window";
+import { CHAT_NUDGES, chatNudgeAllowed, pauseChat, postChatNudge } from "@/lib/chat/cadence";
 import { ingestDocument } from "@/lib/kb/ingest";
 import { summarizeCall } from "@/lib/qualifier/summarize-call";
 import { recordCall, setCallSummary, storeRecording } from "@/lib/voice/process-call";
@@ -139,7 +140,8 @@ export const qualifyConversation = inngest.createFunction(
     ) {
       try {
         await inngest.send({
-          name: "conversation/awaiting-reply",
+          // A website chat has its own, seconds-long follow-up; everything else gets the days-long one.
+          name: ctx.channel === "chat" ? "chat/awaiting-reply" : "conversation/awaiting-reply",
           data: { orgId, conversationId },
         });
       } catch {
@@ -174,7 +176,7 @@ export const conversationCadence = inngest.createFunction(
     triggers: [{ event: "conversation/awaiting-reply" }],
   },
   async ({ event, step }) => {
-    const { orgId, conversationId } = event.data as ConversationAwaitingReplyData;
+    const { orgId, conversationId, fromChat } = event.data as ConversationAwaitingReplyData;
 
     // Decided once per run (a step, so a replay keeps it): the real schedule or the testing one.
     const fast = await step.run("schedule", () => isFastCadence());
@@ -185,7 +187,7 @@ export const conversationCadence = inngest.createFunction(
 
       // Re-check right before nudging: a reply, hand-off, disqualification, or a
       // disabled Qualifier all stop the cadence here.
-      const state = await step.run(`check-${i}`, () => loadCadenceState(orgId, conversationId));
+      const state = await step.run(`check-${i}`, () => loadCadenceState(orgId, conversationId, fromChat));
       if (!state.proceed) return { ok: true, stopped: state.reason };
 
       // Hold until the next in-window instant in the contact's timezone, then
@@ -207,6 +209,38 @@ export const conversationCadence = inngest.createFunction(
     // Exhausted the schedule with no reply → disqualify the non-responsive lead.
     await step.run("disqualify-stale", () => disqualifyStaleConversation(orgId, conversationId));
     return { ok: true, stopped: "exhausted" };
+  },
+);
+
+/**
+ * The website chat's follow-up (see `lib/chat/cadence.ts`): fixed nudges at 30s and 1 min, then at 2 min a closing line
+ * and the chat is paused. A new message from the visitor cancels this and reopens the chat. If we hold an email or a
+ * phone for them, the days-long email/SMS cadence takes over from the pause.
+ */
+export const chatCadence = inngest.createFunction(
+  {
+    id: "chat-cadence",
+    concurrency: { key: "event.data.orgId", limit: 4 },
+    cancelOn: [{ event: "conversation/message.received", match: "data.conversationId" }],
+    singleton: { key: "event.data.conversationId", mode: "cancel" },
+    retries: 1,
+    triggers: [{ event: "chat/awaiting-reply" }],
+  },
+  async ({ event, step }) => {
+    const { orgId, conversationId } = event.data as ConversationAwaitingReplyData;
+    for (const [i, nudge] of CHAT_NUDGES.entries()) {
+      await step.sleep(`gap-${i}`, nudge.after);
+      const state = await step.run(`check-${i}`, () => chatNudgeAllowed(orgId, conversationId));
+      if (!state.proceed) return { ok: true, stopped: state.reason };
+      await step.run(`nudge-${i}`, () => postChatNudge(orgId, conversationId, nudge.body));
+      if (nudge.closes) {
+        const { reachable } = await step.run("pause", () => pauseChat(orgId, conversationId));
+        // Hand over to the email/SMS follow-up: a paused chat with a way to reach the visitor is not a dead lead.
+        if (reachable) await step.sendEvent("hand-over", { name: "conversation/awaiting-reply", data: { orgId, conversationId, fromChat: true } });
+        return { ok: true, stopped: "paused", handedOver: reachable };
+      }
+    }
+    return { ok: true };
   },
 );
 
@@ -355,6 +389,7 @@ export const functions = [
   orgProvisioned,
   qualifyConversation,
   conversationCadence,
+  chatCadence,
   ingestKbDocument,
   processVoiceCall,
   psaWriteback,

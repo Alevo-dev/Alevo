@@ -1407,6 +1407,19 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 - [ ] The thread's Details shows "Prefers: Text message" (or Email). As that lead, the agent's first reply arrives as a text when the workspace has an SMS number (and by email when it does not).
 - [ ] On a phone (or a 390px-wide window): open the chat bubble; the window fills the screen with the avatar and name bar at the top. Tap the message box: the keyboard slides up, the whole chat moves up with it, the bar stays at the top and the last message stays visible above the box. The page behind does not scroll and the screen does not zoom in.
 
+## Chat follow-up and pause (2026-11-18)
+
+Needs Inngest running (dev server or staging) and a chat with the widget on. Watch Inngest → Runs → `chat-cadence`.
+
+- [ ] Send a message, get the agent's reply, then say nothing. After about 30 seconds a short line appears ("Still there? ..."); about a minute after that, a second one; about two minutes after that, a closing line and a grey note "This chat is paused. Send a message to pick it back up."
+- [ ] The conversation shows as Closed in Conversations after the pause.
+- [ ] Type a message in the paused chat: the agent replies as usual, the status goes back to Active, and the 30s / 1m / 2m nudges start again after the reply.
+- [ ] Reply during the wait (before the second nudge): no more nudges arrive until the agent's next reply, and the run shows Cancelled.
+- [ ] A chat that was handed off or booked gets no nudges and is not paused.
+- [ ] Give an email in the chat, then leave without replying: after the pause the days-long email follow-up starts (Inngest → `conversation-cadence`; turn on Admin → Settings → Testing → fast cadence to see it in seconds) and the first nudge arrives by email.
+- [ ] Give only a phone number (no email), then leave: the first follow-up arrives as a text from the org's number.
+- [ ] A chat with no email and no phone just stays paused and never gets the days-long follow-up.
+
 ## Chat agent: always replies, one question, no pricing (2026-11-17)
 
 Run against staging with a fresh chat (Integrations → Chat widget on). Watch Inngest → staging → Runs: each `qualify-conversation` output now has a `trace`.
