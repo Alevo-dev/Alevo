@@ -1,4 +1,5 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { organizations } from "./schema/identity";
 import { vendorSpend } from "./schema/vendor-spend";
 import { withService } from "./with-tenant";
 
@@ -32,7 +33,10 @@ export async function recordSpend(e: SpendEvent): Promise<void> {
   );
 }
 
-export type SpendRow = { env: string; provider: string; kind: string; calls: number; units: number; costUsd: number; estimatedUsd: number };
+/** The model behind a row: AI and embedding rows store it in `detail`; other vendors have none. */
+const modelOf = sql<string | null>`case when ${vendorSpend.provider} in ('anthropic', 'voyage') then ${vendorSpend.detail} end`;
+
+export type SpendRow = { env: string; provider: string; kind: string; model: string | null; calls: number; units: number; costUsd: number; estimatedUsd: number };
 
 /** Spend over the last `days` days, grouped by environment, provider and kind. Cross-tenant: the admin console only. */
 export async function spendSummary(days: number): Promise<SpendRow[]> {
@@ -44,6 +48,7 @@ export async function spendSummary(days: number): Promise<SpendRow[]> {
         env: vendorSpend.env,
         provider: vendorSpend.provider,
         kind: vendorSpend.kind,
+        model: modelOf.as("model"),
         calls: sql<number>`count(*)`.mapWith(Number),
         units: sql<number>`coalesce(sum(${vendorSpend.units}), 0)`.mapWith(Number),
         costUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}), 0)`.mapWith(Number),
@@ -51,9 +56,30 @@ export async function spendSummary(days: number): Promise<SpendRow[]> {
       })
       .from(vendorSpend)
       .where(sql`${vendorSpend.createdAt} >= ${since}`)
-      .groupBy(vendorSpend.env, vendorSpend.provider, vendorSpend.kind),
+      .groupBy(vendorSpend.env, vendorSpend.provider, vendorSpend.kind, sql`model`),
   );
   return rows;
+}
+
+export type OrgSpend = { orgId: string | null; name: string | null; env: string; calls: number; costUsd: number };
+
+/** Spend over the same calendar window per organization and environment (`orgId` null = not tied to an org). */
+export async function spendByOrg(days: number): Promise<OrgSpend[]> {
+  const since = sql`(current_date - ${Math.max(1, Math.floor(days)) - 1}::int)::timestamptz`;
+  return withService((tx) =>
+    tx
+      .select({
+        orgId: vendorSpend.orgId,
+        name: organizations.name,
+        env: vendorSpend.env,
+        calls: sql<number>`count(*)`.mapWith(Number),
+        costUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}), 0)`.mapWith(Number),
+      })
+      .from(vendorSpend)
+      .leftJoin(organizations, eq(organizations.id, vendorSpend.orgId))
+      .where(sql`${vendorSpend.createdAt} >= ${since}`)
+      .groupBy(vendorSpend.orgId, organizations.name, vendorSpend.env),
+  );
 }
 
 /**

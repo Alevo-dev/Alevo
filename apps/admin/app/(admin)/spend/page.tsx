@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { spendSeries, spendSummary, type SpendRow } from "@alevo/db";
+import { spendByOrg, spendSeries, spendSummary, type SpendRow } from "@alevo/db";
 import { Card, CardHeader } from "@alevo/ui/card";
 import { PageHeader } from "@alevo/ui/page-header";
 import { Pill } from "@alevo/ui/pill";
@@ -42,7 +42,27 @@ const sum = (rows: SpendRow[]) => rows.reduce((t, r) => t + r.costUsd, 0);
 /** What our vendors cost us, by environment, so dev and staging testing is visible next to production. */
 export default async function SpendPage({ searchParams }: { searchParams: Promise<{ window?: string }> }) {
   const days = parseWindow((await searchParams).window);
-  const [rows, daily] = await Promise.all([spendSummary(days), spendSeries(days)]);
+  const [rows, daily, orgRows] = await Promise.all([spendSummary(days), spendSeries(days), spendByOrg(days)]);
+  const byOrg = new Map<string, { id: string; name: string; byEnv: Record<string, number>; total: number }>();
+  for (const r of orgRows) {
+    const id = r.orgId ?? "none";
+    const o = byOrg.get(id) ?? { id, name: r.name ?? (id === "none" ? "Not tied to an organization" : "Deleted organization"), byEnv: {}, total: 0 };
+    o.byEnv[r.env] = (o.byEnv[r.env] ?? 0) + r.costUsd;
+    o.total += r.costUsd;
+    byOrg.set(id, o);
+  }
+  const orgs = [...byOrg.values()].sort((a, b) => b.total - a.total);
+  // Every model separately, all environments together, so a price change or a new model is easy to see.
+  const byModel = new Map<string, { provider: string; model: string; calls: number; units: number; costUsd: number }>();
+  for (const r of rows) {
+    if (!r.model) continue;
+    const m = byModel.get(`${r.provider}/${r.model}`) ?? { provider: r.provider, model: r.model, calls: 0, units: 0, costUsd: 0 };
+    m.calls += r.calls;
+    m.units += r.units;
+    m.costUsd += r.costUsd;
+    byModel.set(`${r.provider}/${r.model}`, m);
+  }
+  const models = [...byModel.values()].sort((a, b) => b.costUsd - a.costUsd);
   const n = bucketCount(days);
   const total = sum(rows);
 
@@ -62,6 +82,68 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
         })}
       </section>
 
+      <Card padding="none">
+        <CardHeader title="By organization" hint="Who the spend was for, across every environment." aside={usd(total)} />
+        <Table>
+          <thead>
+            <tr>
+              <Th>Organization</Th>
+              {ENVS.map((e) => (
+                <Th key={e.key} className="text-right">{e.label}</Th>
+              ))}
+              <Th className="text-right">Total</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {orgs.length === 0 ? (
+              <EmptyRow colSpan={5}>No spend recorded in this window.</EmptyRow>
+            ) : (
+              orgs.map((o) => (
+                <Tr key={o.id}>
+                  <Td className="font-medium text-ink">{o.name}</Td>
+                  {ENVS.map((e) => (
+                    <Td key={e.key} className={NUM}>{o.byEnv[e.key] ? usd(o.byEnv[e.key]!) : "—"}</Td>
+                  ))}
+                  <Td className={`${NUM} font-medium text-ink`}>{usd(o.total)}</Td>
+                </Tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      </Card>
+
+      <Card padding="none">
+        <CardHeader title="By model" hint="Each AI and embedding model priced at its own rate, every environment together." aside={usd(models.reduce((t, m) => t + m.costUsd, 0))} />
+        <Table>
+          <thead>
+            <tr>
+              <Th>Model</Th>
+              <Th>Vendor</Th>
+              <Th className="text-right">Calls</Th>
+              <Th className="text-right">Tokens</Th>
+              <Th className="text-right">Avg per 1M tokens</Th>
+              <Th className="text-right">Cost</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.length === 0 ? (
+              <EmptyRow colSpan={6}>No AI spend recorded in this window.</EmptyRow>
+            ) : (
+              models.map((m) => (
+                <Tr key={`${m.provider}/${m.model}`}>
+                  <Td className="font-mono font-medium text-ink">{m.model}</Td>
+                  <Td className="text-ink-muted">{PROVIDERS[m.provider]?.label ?? m.provider}</Td>
+                  <Td className={NUM}>{m.calls.toLocaleString("en-US")}</Td>
+                  <Td className={NUM}>{Math.round(m.units).toLocaleString("en-US")}</Td>
+                  <Td className={NUM}>{m.units > 0 ? usd((m.costUsd / m.units) * 1e6) : "—"}</Td>
+                  <Td className={NUM}>{usd(m.costUsd)}</Td>
+                </Tr>
+              ))
+            )}
+          </tbody>
+        </Table>
+      </Card>
+
       {ENVS.map((e) => {
         const mine = rows.filter((r) => r.env === e.key).sort((a, b) => b.costUsd - a.costUsd);
         return (
@@ -71,7 +153,8 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
               <thead>
                 <tr>
                   <Th>Vendor</Th>
-                  <Th>What for</Th>
+                  <Th>Model</Th>
+                  <Th>Used for</Th>
                   <Th className="text-right">Calls</Th>
                   <Th className="text-right">Volume</Th>
                   <Th className="text-right">Cost</Th>
@@ -80,12 +163,13 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
               </thead>
               <tbody>
                 {mine.length === 0 ? (
-                  <EmptyRow colSpan={6}>No spend recorded in this window.</EmptyRow>
+                  <EmptyRow colSpan={7}>No spend recorded in this window.</EmptyRow>
                 ) : (
                   mine.map((r) => (
-                    <Tr key={`${r.provider}/${r.kind}`}>
+                    <Tr key={`${r.provider}/${r.kind}/${r.model ?? ""}`}>
                       <Td className="font-medium text-ink">{PROVIDERS[r.provider]?.label ?? r.provider}</Td>
-                      <Td className="text-ink-muted">{KINDS[r.kind] ?? r.kind}</Td>
+                      <Td className="font-mono text-ink-muted">{r.model ?? "—"}</Td>
+                      <Td className="text-ink-muted">{KINDS[r.kind] ?? "Other"}</Td>
                       <Td className={NUM}>{r.calls.toLocaleString("en-US")}</Td>
                       <Td className={NUM}>
                         {Math.round(r.units).toLocaleString("en-US")} <span className="text-ink-muted">{PROVIDERS[r.provider]?.unit}</span>

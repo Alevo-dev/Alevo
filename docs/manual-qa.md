@@ -1432,7 +1432,7 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 
 ## Spend (admin console)
 
-- [ ] Admin console → Spend shows a tile and a table for Production, Staging and Development, with a Today / 7 / 30 / 90 day switch (Alt+1 to Alt+4 pick them, like the app). Today draws 24 hourly bars; the same switch on Dashboard and Organizations also offers Today.
+- [ ] Admin console → Spend shows a tile and a table for Production, Staging and Development, with a Today / 7 / 30 / 90 day switch (Alt+1 to Alt+4 pick them, like the app). A "By model" table lists each AI and embedding model on its own (calls, tokens, average price per 1M tokens, cost); a new model is priced from `CLAUDE_RATES` in `apps/app/lib/usage/spend.ts`. A "By organization" table lists each org's spend per environment, biggest first (spend with no org shows as "Not tied to an organization"). Today draws 24 hourly bars; the same switch on Dashboard and Organizations also offers Today.
 - [ ] Send a chat message to the agent in dev: Development gets an "Agent replies" row (AI, estimated). On staging the same lands under Staging.
 - [ ] Send a text and an email through the agent: "Texts sent" / "Emails sent" appear. Reply by text: "Texts received".
 - [ ] Add a knowledge-base document: "Knowledge base" (embeddings) appears.

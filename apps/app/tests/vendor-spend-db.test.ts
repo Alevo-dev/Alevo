@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
-import { recordSpend, spendSeries, spendSummary, vendorSpend, withService } from "@alevo/db";
-import { trackClaude } from "../lib/usage/spend";
+import { recordSpend, spendByOrg, spendSeries, spendSummary, vendorSpend, withService } from "@alevo/db";
+import { claudeCost } from "../lib/usage/spend";
 
 /** The Spend page's data: rows are grouped by environment and provider. Real Postgres (migration 0051). */
 const TAG = "vitest-spend";
@@ -18,8 +18,14 @@ describe("vendor spend", () => {
     expect(sms!.costUsd).toBeGreaterThanOrEqual(0.0249);
     expect(rows.find((r) => r.env === "production" && r.provider === "vapi")!.estimatedUsd).toBeGreaterThanOrEqual(0);
     expect((await spendSeries(1)).some((d) => d.env === "staging")).toBe(true);
+    // Rows with no org land in the "not tied to an organization" group.
+    expect((await spendByOrg(1)).some((r) => r.orgId === null && r.env === "production")).toBe(true);
   });
-  it("prices Claude tokens by model", () => {
-    expect(() => trackClaude("claude-haiku-5-5", { input_tokens: 1000, output_tokens: 100 }, "x")).not.toThrow();
+  it("prices Claude tokens by model, with an unknown model at the Sonnet rate", () => {
+    const u = { input_tokens: 1_000_000, output_tokens: 1_000_000 };
+    expect(claudeCost("claude-haiku-5-5", u)).toBeCloseTo(6);
+    expect(claudeCost("claude-sonnet-5", u)).toBeCloseTo(18);
+    expect(claudeCost("claude-opus-5-5", u)).toBeCloseTo(90);
+    expect(claudeCost("claude-future-9", u)).toBeCloseTo(18);
   });
 });

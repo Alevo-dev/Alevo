@@ -14,8 +14,15 @@ export function currentEnv(): SpendEnv {
   return process.env.NODE_ENV === "production" ? "production" : "development";
 }
 
-/** USD per million tokens (input, output). Matched by model-name prefix; anything unknown uses the Sonnet rate. */
-const CLAUDE_RATES: [prefix: string, input: number, output: number][] = [
+/**
+ * USD per million tokens (input, output), per model. A new model: add its exact id here first (an exact id wins),
+ * or it is priced by its family prefix, and anything else at the Sonnet rate. The Spend page lists each model separately.
+ */
+const CLAUDE_RATES: [model: string, input: number, output: number][] = [
+  ["claude-haiku-5-5", 1, 5],
+  ["claude-sonnet-5", 3, 15],
+  ["claude-opus-5-5", 15, 75],
+  // Family fallbacks for a model id not listed above.
   ["claude-haiku", 1, 5],
   ["claude-sonnet", 3, 15],
   ["claude-opus", 15, 75],
@@ -30,17 +37,21 @@ function track(e: Parameters<typeof recordSpend>[0]) {
 
 type ClaudeUsage = { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null };
 
-/** One Claude call. Cached input is billed at about a tenth of a normal input token, so it counts at that rate. */
-export function trackClaude(model: string, usage: ClaudeUsage, kind: string, orgId?: string | null) {
-  const [, inRate, outRate] = CLAUDE_RATES.find(([p]) => model.startsWith(p)) ?? CLAUDE_RATES[1]!;
+/** What one Claude call costs at that model's rate. Cached input is billed at about a tenth of a normal input token, so it counts at that rate. */
+export function claudeCost(model: string, usage: ClaudeUsage): number {
+  const [, inRate, outRate] = CLAUDE_RATES.find(([m]) => model === m) ?? CLAUDE_RATES.find(([m]) => model.startsWith(m)) ?? CLAUDE_RATES[1]!;
   const input = usage.input_tokens + (usage.cache_creation_input_tokens ?? 0) * 1.25 + (usage.cache_read_input_tokens ?? 0) * 0.1;
+  return (input * inRate + usage.output_tokens * outRate) / 1e6;
+}
+
+export function trackClaude(model: string, usage: ClaudeUsage, kind: string, orgId?: string | null) {
   track({
     env: currentEnv(),
     provider: "anthropic",
     kind,
     orgId,
     units: usage.input_tokens + usage.output_tokens,
-    costUsd: (input * inRate + usage.output_tokens * outRate) / 1e6,
+    costUsd: claudeCost(model, usage),
     detail: model,
   });
 }
