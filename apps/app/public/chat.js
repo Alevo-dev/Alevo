@@ -119,6 +119,8 @@
       "@keyframes alevo-bounce{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}" +
       (reduceMotion ? ".alevo-chat-typing i{animation:none;opacity:.6}" : "") +
       ".alevo-chat-foot{flex:none;border-top:1px solid #e3e6ec;padding:10px 12px 8px;background:#fff}" +
+      ".alevo-chat-new{display:flex;align-items:center;gap:6px;margin:0 0 8px;padding:4px 8px 4px 6px;border:0;border-radius:8px;background:transparent;color:#5c6578;font:inherit;font-size:12px;cursor:pointer}" +
+      ".alevo-chat-new[hidden]{display:none}.alevo-chat-new:hover{background:#eef0f4;color:#1b2030}.alevo-chat-new:focus-visible{outline:2px solid var(--a);outline-offset:1px}.alevo-chat-new svg{width:14px;height:14px}" +
       ".alevo-chat-row{display:flex;gap:8px;align-items:flex-end}" +
       ".alevo-chat-row textarea{flex:1;resize:none;font:inherit;color:inherit;border:1px solid #cfd5e0;border-radius:10px;padding:9px 12px;max-height:120px;min-height:40px}" +
       ".alevo-chat-row textarea:focus{outline:2px solid var(--a);outline-offset:1px;border-color:var(--a)}" +
@@ -149,7 +151,8 @@
       "</span></div></div>" +
       '<button type="button" class="alevo-chat-close" aria-label="Close chat"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>' +
       '<div class="alevo-chat-log" aria-live="polite" aria-relevant="additions"></div>' +
-      '<div class="alevo-chat-foot"><form class="alevo-chat-row" novalidate><textarea rows="1" placeholder="Write a message…" aria-label="Your message" maxlength="2000"></textarea>' +
+      '<div class="alevo-chat-foot"><button type="button" class="alevo-chat-new" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New conversation</button>' +
+      '<form class="alevo-chat-row" novalidate><textarea rows="1" placeholder="Write a message…" aria-label="Your message" maxlength="2000"></textarea>' +
       '<button type="submit" class="alevo-chat-send" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg></button></form>' +
       '<p class="alevo-chat-err" role="alert"></p>' +
       '<p class="alevo-chat-note">By chatting with us you agree to be contacted about your inquiry. Powered by Alevo · <a href="https://getalevo.com/privacy" target="_blank" rel="noopener noreferrer">Privacy</a></p></div></div>' +
@@ -181,7 +184,11 @@
     var fastUntil = 0;
     var open = false;
 
+    var newBtn = root.querySelector(".alevo-chat-new");
+    newBtn.hidden = !session;
     function save() {
+      // "New conversation" only makes sense while there is a conversation to close.
+      newBtn.hidden = !session;
       try {
         if (session) localStorage.setItem(storeKey, JSON.stringify(session));
         else localStorage.removeItem(storeKey);
@@ -260,6 +267,9 @@
     function reset(message) {
       session = null;
       save();
+      clearTimeout(pollTimer);
+      fastUntil = 0;
+      showTyping(false);
       seen = {};
       lastAt = null;
       status = "new";
@@ -272,8 +282,9 @@
     function poll() {
       clearTimeout(pollTimer);
       if (!open || !session || document.hidden) return;
+      var tok = session.token;
       fetch(api + "/messages" + (lastAt ? "?after=" + encodeURIComponent(lastAt) : ""), {
-        headers: { accept: "application/json", authorization: "Bearer " + session.token },
+        headers: { accept: "application/json", authorization: "Bearer " + tok },
       })
         .then(function (r) {
           return r.json().then(function (j) {
@@ -281,6 +292,8 @@
           });
         })
         .then(function (r) {
+          // The visitor started a new conversation while this poll was in flight: its answer is for the old one.
+          if (!session || session.token !== tok) return;
           if (r.json && r.json.restart) return reset("That conversation has ended. Start a new one below.");
           if (!r.json || !r.json.ok) return;
           if (addMessages(r.json.messages, true)) {
@@ -383,6 +396,18 @@
 
     launch.addEventListener("click", function () {
       setOpen(!open);
+    });
+    // Close the current conversation (best effort; the widget starts fresh either way) and show a clean one. The new
+    // conversation is created with the visitor's first message.
+    newBtn.addEventListener("click", function () {
+      if (session) {
+        fetch(api + "/end", { method: "POST", headers: { accept: "application/json", authorization: "Bearer " + session.token } }).catch(function () {});
+      }
+      reset();
+      err.textContent = "";
+      input.value = "";
+      input.style.height = "auto";
+      input.focus();
     });
     root.querySelector(".alevo-chat-close").addEventListener("click", function () {
       setOpen(false);

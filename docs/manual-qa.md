@@ -1407,6 +1407,14 @@ Run `npx supabase db push --remote` first (migrations 0046 and 0047).
 - [ ] The thread's Details shows "Prefers: Text message" (or Email). As that lead, the agent's first reply arrives as a text when the workspace has an SMS number (and by email when it does not).
 - [ ] On a phone (or a 390px-wide window): open the chat bubble; the window fills the screen with the avatar and name bar at the top. Tap the message box: the keyboard slides up, the whole chat moves up with it, the bar stays at the top and the last message stays visible above the box. The page behind does not scroll and the screen does not zoom in.
 
+## Chat: New conversation button (2026-11-18)
+
+- [ ] Open the chat on a fresh browser: no "New conversation" button yet (there is nothing to close). Send a message: a small "+ New conversation" button appears just above the message box.
+- [ ] Click it: the thread clears to the greeting, the button disappears, and the box is empty and focused. The old conversation shows as Closed in Conversations; it is not deleted.
+- [ ] Send a message: a brand-new conversation (and no link to the old one) starts, and the agent replies in it.
+- [ ] Reload the page after clicking it: the chat is still the new, empty one. Click it on a booked or handed-off chat: the widget starts fresh, but that conversation keeps its Booked / Handed off status.
+- [ ] On a phone: the button is easy to tap and does not push the message box off the screen.
+
 ## Chat follow-up and pause (2026-11-18)
 
 Needs Inngest running (dev server or staging) and a chat with the widget on. Watch Inngest → Runs → `chat-cadence`.

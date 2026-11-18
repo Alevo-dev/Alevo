@@ -1,6 +1,6 @@
 import "server-only";
 import * as Sentry from "@sentry/nextjs";
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import {
   chatSessions,
   consents,
@@ -212,6 +212,19 @@ export async function postChatMessage(session: ChatSession, body: string, meta: 
     Sentry.captureException(error);
     return { ok: false, status: 500, error: "Could not send. Please try again." };
   }
+}
+
+/**
+ * The visitor chose "New conversation": close this one. Only a chat still being worked is closed; a booked, handed-off
+ * or not-a-fit outcome stays as it is. Closing also stops the chat's follow-up nudges (they re-check the status).
+ */
+export async function endChat(session: ChatSession): Promise<void> {
+  await withService((tx) =>
+    tx
+      .update(conversations)
+      .set({ status: "closed", updatedAt: new Date() })
+      .where(and(eq(conversations.id, session.conversationId), eq(conversations.orgId, session.orgId), inArray(conversations.status, ["new", "active"]))),
+  );
 }
 
 /** The thread since `after` (ISO), oldest first, plus where the conversation stands. */
