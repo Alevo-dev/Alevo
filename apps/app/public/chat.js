@@ -111,6 +111,7 @@
       ".alevo-chat-msg{max-width:85%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;word-wrap:break-word}" +
       ".alevo-chat-msg.them{align-self:flex-start;background:#fff;border:1px solid #e3e6ec;border-bottom-left-radius:4px}" +
       ".alevo-chat-msg.me{align-self:flex-end;background:var(--a);color:var(--on);border-bottom-right-radius:4px}" +
+      ".alevo-chat-time{display:block;font-size:11px;line-height:1.2;opacity:.65;margin-top:3px;text-align:right}" +
       ".alevo-chat-sys{align-self:center;font-size:12px;color:#5c6578;text-align:center;padding:4px 8px}" +
       ".alevo-chat-typing{align-self:flex-start;background:#fff;border:1px solid #e3e6ec;border-radius:14px;border-bottom-left-radius:4px;padding:10px 12px;display:none;gap:4px}" +
       ".alevo-chat-typing.on{display:flex}.alevo-chat-typing i{width:6px;height:6px;border-radius:50%;background:#9aa3b5;animation:alevo-bounce 1.2s infinite}" +
@@ -189,12 +190,41 @@
       }
     }
 
-    function bubble(kind, text) {
-      var el = document.createElement("div");
-      el.className = kind === "sys" ? "alevo-chat-sys" : "alevo-chat-msg " + kind;
-      el.textContent = text;
+    function put(el) {
       log.insertBefore(el, typing.parentNode === log ? typing : null);
       log.scrollTop = log.scrollHeight;
+    }
+
+    // A day divider (Today, Yesterday, or the date) whenever the day changes, like WhatsApp, in the visitor's own clock.
+    var lastDay = "";
+    function dayLabel(d) {
+      var yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (d.toDateString() === new Date().toDateString()) return "Today";
+      if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+      return d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    // `at` (an ISO time) puts the time under the message and starts a new day divider when needed.
+    function bubble(kind, text, at) {
+      var when = at ? new Date(at) : null;
+      if (when && !isNaN(when) && when.toDateString() !== lastDay) {
+        lastDay = when.toDateString();
+        var day = document.createElement("div");
+        day.className = "alevo-chat-sys";
+        day.textContent = dayLabel(when);
+        put(day);
+      }
+      var el = document.createElement("div");
+      el.className = kind === "sys" ? "alevo-chat-sys" : "alevo-chat-msg " + kind;
+      el.appendChild(document.createTextNode(text));
+      if (when && !isNaN(when)) {
+        var t = document.createElement("span");
+        t.className = "alevo-chat-time";
+        t.textContent = when.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+        el.appendChild(t);
+      }
+      put(el);
       return el;
     }
 
@@ -204,13 +234,16 @@
       if (on) log.scrollTop = log.scrollHeight;
     }
 
-    function addMessages(list) {
+    // `polled`: the list came from the server's thread. Only those move the "after" cursor: the visitor's own message
+    // (returned by the send) is newer than a reply that is written but not fetched yet, and moving the cursor past it
+    // made that reply invisible until the visitor wrote again.
+    function addMessages(list, polled) {
       var gotReply = false;
       list.forEach(function (m) {
+        if (polled && (!lastAt || m.createdAt > lastAt)) lastAt = m.createdAt;
         if (seen[m.id]) return;
         seen[m.id] = true;
-        lastAt = m.createdAt;
-        bubble(m.author === "contact" ? "me" : "them", m.body);
+        bubble(m.author === "contact" ? "me" : "them", m.body, m.createdAt);
         if (m.author !== "contact") gotReply = true;
       });
       return gotReply;
@@ -229,6 +262,7 @@
       seen = {};
       lastAt = null;
       status = "new";
+      lastDay = "";
       log.innerHTML = "";
       bubble("them", cfg.greeting);
       if (message) bubble("sys", message);
@@ -248,7 +282,7 @@
         .then(function (r) {
           if (r.json && r.json.restart) return reset("That conversation has ended. Start a new one below.");
           if (!r.json || !r.json.ok) return;
-          if (addMessages(r.json.messages)) {
+          if (addMessages(r.json.messages, true)) {
             showTyping(false);
             fastUntil = 0;
           }

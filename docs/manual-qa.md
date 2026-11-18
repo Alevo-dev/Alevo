@@ -1416,7 +1416,12 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 - [ ] Send two messages a second or two apart ("hi" then "I need help with IT"): you get a reply to both; neither is skipped. The output may show `catchUps: 1`.
 - [ ] Every agent message asks at most ONE question (name + email together counts as one). Try a long chat of 8 messages.
 - [ ] After you give name and email, the agent offers to book a call (times from the calendar, or the scheduling link) without waiting to be asked. Choose a time: the meeting appears under Meetings and the thread says Booked.
-- [ ] Ask "how much does it cost?", "what are your prices?", "do you have a quote?": the agent answers with "I love all of these questions. Would you be open to having a live discussion with one of our sales reps and they can provide answers?" and never names a figure. Say "yes": it moves to booking. The thread is NOT handed off by the pricing question alone.
+- [ ] Tone: replies read like a person typing. No em dashes or en dashes anywhere, no opening label like "Good fit" or "Great news", no "America/New_York" (it says "10:00 AM Eastern").
+- [ ] Ask two things in one message ("book me Wednesday at 10 and what else can you do for us?"): the booking goes through AND the second question is answered in the same turn, without asking again.
+- [ ] Send two messages a few seconds apart ("fine am is good", then "9"): one answer, no stale second reply that offers times again after the booking.
+- [ ] Reply time: a plain chat message gets its answer in about 4 to 8 seconds; one that needs the calendar a few seconds more. The Inngest run output shows `trace.modelMs` (each model call) and `trace.kbMs` (knowledge lookup).
+- [ ] Dates and times: in the conversation view, a divider (Today, Yesterday, or the date) appears whenever the day changes, and every message shows its time. Do the same in the website chat: each bubble has a small time, and a chat resumed the next day shows a day divider before the new message.
+- [ ] Ask "how much does it cost?", "what are your prices?", "do you have a quote?": the agent says in its own words that a sales rep is the right person for pricing and offers a call, worded differently each time (ask twice in one chat: the two answers differ), and never names a figure. Say "yes": it moves to booking. The thread is NOT handed off by the pricing question alone.
 - [ ] Put a price in Workspace → Knowledge (a text doc with "Plans start at $99") and ask about pricing again: still no figure.
 - [ ] Phone call (voice): ask about pricing; the agent gives the same line and offers a call with a sales rep.
 - [ ] Fast cadence switch on: a quiet lead is still nudged; a nudge never fails for "no reply".

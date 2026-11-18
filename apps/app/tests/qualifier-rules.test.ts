@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRICING_REPLY } from "../lib/qualifier/guard";
+import { PRICING_EXAMPLES } from "../lib/qualifier/guard";
 import { buildSystemPrompt } from "../lib/qualifier/prompt";
 import { buildVoicePrompt } from "../lib/voice/prompt";
 
@@ -19,12 +19,15 @@ const chat = (mode: Parameters<typeof buildSystemPrompt>[3] = "google") =>
 const email = () => buildSystemPrompt(profile, contact, [], "google", true, false, false, "", null);
 
 describe("Qualifier prompt: pricing is never discussed", () => {
-  it("gives the exact line to use when asked about pricing", () => {
-    expect(PRICING_REPLY).toBe(
-      "I love all of these questions. Would you be open to having a live discussion with one of our sales reps and they can provide answers?",
-    );
-    expect(chat()).toContain(PRICING_REPLY);
-    expect(email()).toContain(PRICING_REPLY);
+  it("gives examples of what to say about pricing, not one line to repeat", () => {
+    expect(PRICING_EXAMPLES.length).toBeGreaterThanOrEqual(3);
+    for (const example of PRICING_EXAMPLES) {
+      expect(chat()).toContain(example);
+      expect(email()).toContain(example);
+    }
+    expect(chat()).toMatch(/in your own words/i);
+    expect(chat()).toMatch(/different way each time/i);
+    expect(chat()).not.toContain("I love all of these questions");
   });
 
   it("forbids quoting prices, even ones found in the knowledge base", () => {
@@ -62,7 +65,42 @@ describe("Qualifier prompt: one question, always a reply", () => {
 
 describe("Voice prompt", () => {
   it("also never discusses pricing", () => {
-    expect(buildVoicePrompt({ companyName: "Acme IT" } as never, "open", true)).toContain(PRICING_REPLY);
+    expect(buildVoicePrompt({ companyName: "Acme IT" } as never, "open", true)).toContain(PRICING_EXAMPLES[0]);
+  });
+});
+
+describe("Qualifier prompt: sounds like a person", () => {
+  it("asks for plain, warm, human wording", () => {
+    const p = chat();
+    expect(p).toMatch(/like a real person/i);
+    expect(p).toMatch(/contractions/i);
+    expect(p).toMatch(/never open with a verdict/i);
+  });
+
+  it("bans long dashes and asks for full sentences instead", () => {
+    for (const p of [chat(), email()]) {
+      expect(p).toMatch(/never use dashes/i);
+      expect(p).toMatch(/full sentence/i);
+    }
+  });
+
+  it("says times in plain words, never a database name like America/New_York", () => {
+    expect(chat()).toMatch(/never say a timezone's technical name/i);
+  });
+});
+
+describe("Qualifier prompt: every question gets an answer", () => {
+  it("answers everything the contact asked in the one reply", () => {
+    expect(chat()).toMatch(/answer every question/i);
+    expect(chat()).toMatch(/limit of one question is about what you ask/i);
+  });
+
+  it("answers a second question even in the turn that books the meeting", () => {
+    expect(chat("google")).toMatch(/also asked something else/i);
+  });
+
+  it("puts the reply and the bookkeeping in the same turn", () => {
+    expect(chat()).toMatch(/same turn as reply_to_contact/i);
   });
 });
 

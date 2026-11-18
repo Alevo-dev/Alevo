@@ -46,6 +46,23 @@ export function fmtDate(value: Date | string | null | undefined, tz = DEFAULT_TI
   return formatter("date", tz).format(new Date(value));
 }
 
+/** The calendar day in the zone as `2026-11-17`, so two messages share a day only if the viewer would call it the same day. */
+export function dayKey(value: Date | string, tz = DEFAULT_TIMEZONE): string {
+  const timeZone = isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+/** WhatsApp-style divider text: `Today`, `Yesterday`, else `Nov 16, 2026`. */
+export function dayLabel(value: Date | string, tz = DEFAULT_TIMEZONE, now: Date = new Date()): string {
+  const key = dayKey(value, tz);
+  const today = dayKey(now, tz);
+  if (key === today) return "Today";
+  const before = new Date(`${today}T00:00:00Z`);
+  before.setUTCDate(before.getUTCDate() - 1);
+  if (key === before.toISOString().slice(0, 10)) return "Yesterday";
+  return fmtDate(value, tz);
+}
+
 /** Short zone name for the moment, e.g. `EDT`, to label a page's times. */
 export function tzLabel(tz = DEFAULT_TIMEZONE, at: Date = new Date()): string {
   const timeZone = isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;

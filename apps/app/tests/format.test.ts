@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmtDuration, utcOffsetLabel } from "../lib/format";
+import { dayKey, dayLabel, fmtDuration, utcOffsetLabel } from "../lib/format";
 import { timezoneOptions, timezoneRequiredError } from "../lib/timezones";
 
 const WINTER = new Date("2026-01-15T12:00:00Z");
@@ -20,6 +20,26 @@ describe("utcOffsetLabel", () => {
     expect(utcOffsetLabel("Asia/Kolkata", WINTER)).toBe("UTC+5:30");
     expect(utcOffsetLabel("Asia/Tokyo", WINTER)).toBe("UTC+9");
     expect(utcOffsetLabel("UTC", WINTER)).toBe("UTC+0");
+  });
+});
+
+/** The day dividers in a conversation thread, like WhatsApp: Today, Yesterday, then the date. */
+describe("dayLabel", () => {
+  const NOW = new Date("2026-11-18T15:00:00Z"); // 10:00 AM on Nov 18 in New York
+  const NY = "America/New_York";
+  it("says Today and Yesterday", () => {
+    expect(dayLabel("2026-11-18T13:00:00Z", NY, NOW)).toBe("Today");
+    expect(dayLabel("2026-11-17T20:00:00Z", NY, NOW)).toBe("Yesterday");
+  });
+  it("names yesterday by the viewer's zone, not UTC", () => {
+    expect(dayLabel("2026-11-18T04:00:44Z", NY, NOW)).toBe("Yesterday");
+  });
+  it("shows the date for older days", () => {
+    expect(dayLabel("2026-11-17T02:27:20Z", NY, NOW)).toBe("Nov 16, 2026");
+  });
+  it("keeps two messages a day apart on different days", () => {
+    expect(dayKey("2026-11-17T02:31:32Z", NY)).not.toBe(dayKey("2026-11-18T04:00:44Z", NY));
+    expect(dayKey("2026-11-17T20:00:00Z", NY)).toBe(dayKey("2026-11-17T15:00:00Z", NY));
   });
 });
 

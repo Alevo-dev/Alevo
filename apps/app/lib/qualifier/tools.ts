@@ -12,6 +12,7 @@ import { getBookingAdapter, type BookingConfig } from "@/lib/booking";
 import { daySlots, formatSlot, offerSlots } from "@/lib/booking/offer";
 import { CONTACT_DETAILS_TOOL, saveContactDetails } from "@/lib/contact-details";
 import { chatVisitorPresent } from "@/lib/chat/service";
+import { plainPunctuation } from "./punctuation";
 
 /** Statuses the Qualifier is allowed to set (booking needs a calendar — later). */
 const SETTABLE_STATUS = ["active", "disqualified", "handed_off", "closed"] as const;
@@ -226,7 +227,8 @@ async function bookingBroke(target: DispatchTarget, effects: QualifierEffects, f
  * and book_meeting's confirmation so delivery never depends on the model
  * remembering to call the reply tool afterwards.
  */
-async function deliverMessage(target: DispatchTarget, body: string): Promise<string> {
+async function deliverMessage(target: DispatchTarget, text: string): Promise<string> {
+  const body = plainPunctuation(text);
   let channel: Channel = target.channel;
   let providerRef: string | null = null;
   let note = "recorded in-app (no channel configured)";

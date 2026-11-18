@@ -63,6 +63,27 @@ describe("driveAgent: the contact always gets a reply", () => {
   });
 });
 
+describe("driveAgent: the reply goes out first", () => {
+  it("sends the reply before bookkeeping tools in the same turn, and answers every tool call", async () => {
+    const s = setup([tools("save_contact_details", "record_fit_score", "reply_to_contact"), text("done")]);
+    const order: string[] = [];
+    s.deps.dispatch = async (name: string) => {
+      order.push(name);
+      if (name === "reply_to_contact") s.effects.replied = true;
+      return `${name} ok`;
+    };
+    await driveAgent(s.messages, s.deps, { mustReply: true }, s.effects);
+    expect(order).toEqual(["reply_to_contact", "save_contact_details", "record_fit_score"]);
+    // the results still line up with the tool calls, in the model's own order
+    const results = (s.sent[1]!.at(-1)!.content as { tool_use_id: string; content: string }[]).map((r) => [r.tool_use_id, r.content]);
+    expect(results).toEqual([
+      ["t0", "save_contact_details ok"],
+      ["t1", "record_fit_score ok"],
+      ["t2", "reply_to_contact ok"],
+    ]);
+  });
+});
+
 describe("driveAgent: a message that arrives while the agent works", () => {
   it("is answered in the same run, and the first reply still counts", async () => {
     const s = setup([tools("reply_to_contact"), text("done"), tools("reply_to_contact"), text("done")], [["one more thing"], []]);

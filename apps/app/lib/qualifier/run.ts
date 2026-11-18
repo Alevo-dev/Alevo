@@ -49,7 +49,7 @@ export type QualifierContext = {
 
 export type QualifierResult =
   | { ran: false; skipped: string }
-  | ({ ran: true; trace: RunTrace } & QualifierEffects);
+  | ({ ran: true; trace: RunTrace & { kbMs: number } } & QualifierEffects);
 
 /**
  * Load everything the Qualifier needs for one conversation, scoped to the org
@@ -204,11 +204,15 @@ export async function runQualifier(
   const client = new Anthropic({ timeout: 90_000, maxRetries: 2 });
   // Ground the reply in the org's knowledge base, keyed on the latest message.
   const query = typeof last.content === "string" ? last.content : "";
+  const kbStarted = Date.now();
   const knowledge = await retrieveKbContext(ctx.orgId, query);
+  const kbMs = Date.now() - kbStarted;
   // Email conversations get the "one complete email" style; SMS/voice/chat stay
   // conversational (one question at a time).
   const emailStyle =
     (ctx.channel === "form" || ctx.channel === "email") && Boolean(ctx.contact.email);
+  // Chat and text are real-time: a person is watching the typing dots, so they get the fast setting. Email and forms can think longer.
+  const effort = ctx.channel === "chat" || ctx.channel === "sms" ? "low" : "medium";
   const system = buildSystemPrompt(ctx.profile, ctx.contact, knowledge, ctx.bookingMode, emailStyle, ctx.channel === "chat", ctx.status === "handed_off", ctx.profile.chatAgentName ?? "", ctx.status);
   // Cal.com / Google / M365 are API booking (slots + book); Calendly is link mode.
   const bookingTools =
@@ -261,7 +265,7 @@ export async function runQualifier(
           model: MODEL,
           max_tokens: 8192,
           thinking: { type: "adaptive" },
-          output_config: { effort: "medium" },
+          output_config: { effort },
           system,
           messages: msgs,
           tools,
@@ -281,5 +285,5 @@ export async function runQualifier(
     effects,
   );
 
-  return { ran: true, trace, ...effects };
+  return { ran: true, trace: { ...trace, kbMs }, ...effects };
 }

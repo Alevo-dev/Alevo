@@ -12,7 +12,7 @@ export const REPLY_NUDGE =
   "You have not replied to the contact yet and their message is still waiting. Reply now with the reply_to_contact tool: one message, following everything above. Saving details, scoring or setting a status does not count as a reply.";
 
 /** What a run did, returned with its result so the Inngest run page shows it. */
-export type RunTrace = { turns: number; tools: string[]; nudges: number; catchUps: number };
+export type RunTrace = { turns: number; tools: string[]; nudges: number; catchUps: number; modelMs: number[] };
 
 type Deps = {
   create: (messages: Anthropic.MessageParam[]) => Promise<Anthropic.Message>;
@@ -32,24 +32,30 @@ export async function driveAgent(
   opts: { mustReply: boolean },
   effects: { replied: boolean },
 ): Promise<RunTrace> {
-  const trace: RunTrace = { turns: 0, tools: [], nudges: 0, catchUps: 0 };
+  const trace: RunTrace = { turns: 0, tools: [], nudges: 0, catchUps: 0, modelMs: [] };
   let repliedEarlier = false;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const started = Date.now();
     const response = await deps.create(messages);
+    trace.modelMs.push(Date.now() - started);
     trace.turns++;
     const toolUses = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
 
     if (toolUses.length > 0) {
       // Preserve the full assistant turn (incl. thinking blocks) before replying.
       messages.push({ role: "assistant", content: response.content });
-      const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const call of toolUses) {
+      // The contact is waiting: the reply goes out first, then the bookkeeping that came with it.
+      const ordered = [...toolUses].sort((a, b) => Number(b.name === "reply_to_contact") - Number(a.name === "reply_to_contact"));
+      const content = new Map<string, string>();
+      for (const call of ordered) {
         trace.tools.push(call.name);
-        const content = await deps.dispatch(call.name, (call.input ?? {}) as Record<string, unknown>);
-        results.push({ type: "tool_result", tool_use_id: call.id, content });
+        content.set(call.id, await deps.dispatch(call.name, (call.input ?? {}) as Record<string, unknown>));
       }
-      messages.push({ role: "user", content: results });
+      messages.push({
+        role: "user",
+        content: toolUses.map((call): Anthropic.ToolResultBlockParam => ({ type: "tool_result", tool_use_id: call.id, content: content.get(call.id) ?? "" })),
+      });
       continue;
     }
 

@@ -106,3 +106,18 @@ describe.skipIf(!HAS_DB)("times in the right timezone", () => {
     expect(target.timezoneKnown).toBe(false);
   });
 });
+
+describe.skipIf(!HAS_DB)("replies carry no long dashes", () => {
+  it("stores and sends the reply with full sentences instead of an em dash", async () => {
+    const target = {
+      orgId, conversationId, contactId, channel: "chat", contactName: "x", contactEmail: null, contactPhone: null, contactPreference: null,
+      contactTimezone: "America/New_York", timezoneKnown: false, smsFromNumber: null, bookingConfig: {}, calendlyUrl: null, orgName: "Acme", businessAddress: null,
+    } as unknown as DispatchTarget;
+    const effects = { replied: false, score: null, status: null, escalated: false, booked: false, bookingFailed: false } as QualifierEffects;
+    await dispatchTool("reply_to_contact", { message: "Good fit — Alevo answers every lead — chat, forms and calls." }, target, effects);
+    const { messages } = await import("@alevo/db");
+    const { desc } = await import("drizzle-orm");
+    const [row] = await withService((tx) => tx.select({ body: messages.body }).from(messages).where(eq(messages.conversationId, conversationId)).orderBy(desc(messages.createdAt)).limit(1));
+    expect(row?.body).toBe("Good fit. Alevo answers every lead, chat, forms and calls.");
+  });
+});

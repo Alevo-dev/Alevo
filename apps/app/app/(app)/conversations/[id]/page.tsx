@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarCheck } from "lucide-react";
+import { Fragment } from "react";
 import { and, asc, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { calls, consents, contacts, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
 import { getCurrentRole, withOrg } from "@alevo/auth";
@@ -13,7 +14,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { Pill } from "@/components/ui/pill";
 import { cx } from "@/lib/cx";
-import { anonymousLabel, displayName, fmtDateTime, fmtDuration, fmtShort, fmtTime } from "@/lib/format";
+import { anonymousLabel, dayKey, dayLabel, displayName, fmtDateTime, fmtDuration, fmtShort, fmtTime } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { linkedRecords } from "@/lib/psa/writeback";
 import { CHANNEL_LABEL, CONVERSATION_STATUS, MEETING_STATUS, PROVIDER_LABEL } from "@/lib/ui/status";
@@ -279,31 +280,42 @@ export default async function ConversationThread({ params, searchParams }: { par
             <>
               <ol className="flex flex-col gap-3 p-3.5">
                 {entries.length === 0 && <li className="text-sm text-ink-muted">No messages yet.</li>}
-                {entries.filter((e) => tab === "thread" || e.kind === "call").map((e) => {
+                {entries.filter((e) => tab === "thread" || e.kind === "call").map((e, i, shown) => {
+                  // A day divider like WhatsApp, so a reply a day later never reads as minutes later.
+                  const day = dayKey(e.at, tz);
+                  const divider = i === 0 || day !== dayKey(shown[i - 1]!.at, tz) ? (
+                    <li key={`day-${day}`} className="self-center rounded-full border border-hairline bg-raised px-3 py-0.5 font-mono text-xs text-ink-muted">
+                      {dayLabel(e.at, tz)}
+                    </li>
+                  ) : null;
                   if (e.kind === "call") {
                     const c = e.c;
                     return (
-                      <CallCard
-                        key={c.id}
-                        tz={tz}
-                        canPlay={canPlay}
-                        call={{
-                          id: c.id,
-                          startedAt: c.startedAt,
-                          durationSec: c.durationSec,
-                          outcome: (c.outcome ?? "none") as CallOutcome,
-                          summary: c.summary,
-                          transcript: c.transcript,
-                          hasRecording: Boolean(c.recordingKey),
-                          messageTaken: thread.some((m) => m.providerRef === `call:${c.providerRef}:message`),
-                        }}
-                      />
+                      <Fragment key={c.id}>
+                        {divider}
+                        <CallCard
+                          tz={tz}
+                          canPlay={canPlay}
+                          call={{
+                            id: c.id,
+                            startedAt: c.startedAt,
+                            durationSec: c.durationSec,
+                            outcome: (c.outcome ?? "none") as CallOutcome,
+                            summary: c.summary,
+                            transcript: c.transcript,
+                            hasRecording: Boolean(c.recordingKey),
+                            messageTaken: thread.some((m) => m.providerRef === `call:${c.providerRef}:message`),
+                          }}
+                        />
+                      </Fragment>
                     );
                   }
                   const m = e.m;
                   const fromContact = m.author === "contact";
                   return (
-                    <li key={m.id} className={cx("flex max-w-[78%] flex-col", fromContact ? "self-start" : "ml-auto items-end self-end")}>
+                    <Fragment key={m.id}>
+                    {divider}
+                    <li className={cx("flex max-w-[78%] flex-col", fromContact ? "self-start" : "ml-auto items-end self-end")}>
                       <div className="mb-[3px] font-mono text-xs text-ink-muted">
                         {fromContact ? name : AUTHOR_LABEL[m.author]} · {channel} {fmtTime(m.createdAt, tz)}
                         {m.id === firstAgentId && firstReply != null ? ` · ${fmtDuration(firstReply)}` : ""}
@@ -317,6 +329,7 @@ export default async function ConversationThread({ params, searchParams }: { par
                         {m.body}
                       </div>
                     </li>
+                    </Fragment>
                   );
                 })}
               </ol>
