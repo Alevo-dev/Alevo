@@ -38,6 +38,7 @@ export default async function KnowledgePage() {
           error: kbDocuments.error,
           createdAt: kbDocuments.createdAt,
           sizeBytes: files.sizeBytes,
+          edited: sql<number>`(select count(*)::int from kb_chunks c where c.document_id = ${kbDocuments.id} and c.edited_at is not null)`,
         })
         .from(kbDocuments)
         .leftJoin(files, eq(files.r2Key, kbDocuments.sourceRef))
@@ -54,6 +55,7 @@ export default async function KnowledgePage() {
     error: r.error,
     added: fmtDate(r.createdAt, tz),
     size: r.sizeBytes != null ? fmtSize(r.sizeBytes) : null,
+    edited: r.edited,
   }));
 
   return (

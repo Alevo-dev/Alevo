@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KbDocStatus, KbSourceType } from "@alevo/db";
-import { AlignLeft, Check, Clock, FileText, Info, Link2, Loader2, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
+import { AlignLeft, Check, Clock, FileText, Info, Link2, List, Loader2, Plus, RefreshCw, Search, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmit } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import { Pill } from "@/components/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import type { Tone } from "@/lib/ui/status";
 import { toast, useActionToast } from "@/lib/ui/use-action-toast";
+import { ChunksDialog } from "./chunks-dialog";
 import { addDocument, addPdfDocument, deleteDocument, reingestDocument, type ActionState } from "./actions";
 
 const INITIAL: ActionState = {};
@@ -52,6 +53,8 @@ export type DocView = {
   added: string;
   /** PDF size, formatted; null for text/url sources. */
   size: string | null;
+  /** Passages a person edited by hand: a re-index would replace them. */
+  edited: number;
 };
 
 /** Add text / Add URL: a dialog with its own form, closed once the document is queued. */
@@ -251,6 +254,7 @@ function DocumentRow({ doc }: { doc: DocView }) {
   const [delState, delAction, delPending] = useActionState(deleteDocument, INITIAL);
   useActionToast(reState, "Re-indexing started.");
   useActionToast(delState, "Document deleted.");
+  const [viewing, setViewing] = useState(false);
   const s = STATUS[doc.status];
   const src = SOURCE[doc.sourceType];
 
@@ -279,12 +283,30 @@ function DocumentRow({ doc }: { doc: DocView }) {
       <Td className="whitespace-nowrap font-mono text-ink-muted">{doc.added}</Td>
       <Td className="text-right">
         <span className="inline-flex gap-1.5">
+          {doc.status === "ready" && (
+            <IconButton aria-label={`View passages of ${doc.title}`} title="View passages" onClick={() => setViewing(true)}>
+              <List className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+            </IconButton>
+          )}
           {doc.status !== "processing" && (
             <form action={reAction}>
               <input type="hidden" name="id" value={doc.id} />
-              <IconButton type="submit" loading={rePending} aria-label={doc.status === "failed" ? `Retry ${doc.title}` : `Re-index ${doc.title}`} title={doc.status === "failed" ? "Retry" : "Re-index"}>
-                <RefreshCw className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
-              </IconButton>
+              {doc.edited > 0 ? (
+                <ConfirmSubmit
+                  icon={RefreshCw}
+                  aria-label={`Re-index ${doc.title}`}
+                  loading={rePending}
+                  tone="primary"
+                  variant="secondary"
+                  title={`Re-index "${doc.title}"?`}
+                  description={`${doc.edited} edited ${doc.edited === 1 ? "passage" : "passages"} will be replaced by freshly extracted text.`}
+                  confirmLabel="Re-index"
+                />
+              ) : (
+                <IconButton type="submit" loading={rePending} aria-label={doc.status === "failed" ? `Retry ${doc.title}` : `Re-index ${doc.title}`} title={doc.status === "failed" ? "Retry" : "Re-index"}>
+                  <RefreshCw className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+                </IconButton>
+              )}
             </form>
           )}
           <form action={delAction}>
@@ -299,6 +321,7 @@ function DocumentRow({ doc }: { doc: DocView }) {
             />
           </form>
         </span>
+        {viewing && <ChunksDialog documentId={doc.id} title={doc.title} onClose={() => setViewing(false)} />}
       </Td>
     </Tr>
   );

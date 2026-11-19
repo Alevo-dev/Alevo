@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { kbChunks, kbDocuments, withService } from "@alevo/db";
 import { EMBEDDING_MODEL, embedDocuments } from "./embeddings";
-import { chunkText } from "./chunk";
+import { chunkByHeadings } from "./chunk";
 import { extractPdf, extractUrl } from "./extract";
 
 export type IngestResult = { status: string; chunks?: number; error?: string };
@@ -29,7 +29,7 @@ export async function ingestDocument(orgId: string, documentId: string): Promise
     else if (doc.sourceType === "url") text = await extractUrl(ref);
     else if (doc.sourceType === "pdf") text = await extractPdf(ref);
 
-    const chunks = chunkText(text);
+    const chunks = chunkByHeadings(text);
     if (chunks.length === 0) {
       await withService((tx) =>
         tx

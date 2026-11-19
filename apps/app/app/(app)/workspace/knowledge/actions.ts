@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
-import { files, kbDocuments, withService, safeErrorMessage } from "@alevo/db";
-import { getCurrentOrg, requireRole, withOrg } from "@alevo/auth";
+import { and, asc, count, eq, sql } from "drizzle-orm";
+import { files, kbChunks, kbDocuments, recordAudit, withService, safeErrorMessage } from "@alevo/db";
+import { getCurrentOrg, getCurrentUser, requireRole, withOrg } from "@alevo/auth";
+import { EMBEDDING_MODEL, embedDocuments } from "@/lib/kb/embeddings";
+import { CHUNKS_PER_PAGE, cleanChunk } from "@/lib/kb/chunk-edit";
 import * as Sentry from "@sentry/nextjs";
 import { inngest } from "@/lib/inngest/client";
 import { deleteObject } from "@/lib/r2";
@@ -174,5 +176,98 @@ export async function deleteDocument(_prev: ActionState, formData: FormData): Pr
     return { ok: true };
   } catch (error) {
     return { error: safeErrorMessage(error, "Something went wrong") };
+  }
+}
+
+// ── Passages (chunks): view, edit, delete ────────────────────────────────
+
+export type ChunkView = { id: string; index: number; content: string; edited: boolean };
+export type ChunkPage = { chunks: ChunkView[]; total: number; page: number; pages: number; title: string };
+export type ChunkResult = { ok?: boolean; error?: string };
+
+const inOrg = sql`(select app.current_org_id())`;
+
+/** One page of a document's passages, in order. Bounded per document, so a plain offset is fine here. */
+export async function loadChunks(documentId: string, page: number): Promise<ChunkPage | { error: string }> {
+  try {
+    await requireRole("admin");
+    const p = Math.max(1, Math.floor(page) || 1);
+    const [doc] = await withOrg((tx) =>
+      tx.select({ title: kbDocuments.title }).from(kbDocuments).where(and(eq(kbDocuments.id, documentId), sql`${kbDocuments.orgId} = ${inOrg}`)).limit(1),
+    );
+    if (!doc) return { error: "That document no longer exists." };
+    const where = and(eq(kbChunks.documentId, documentId), sql`${kbChunks.orgId} = ${inOrg}`);
+    const [rows, [{ n } = { n: 0 }]] = await Promise.all([
+      withOrg((tx) =>
+        tx
+          .select({ id: kbChunks.id, index: kbChunks.chunkIndex, content: kbChunks.content, editedAt: kbChunks.editedAt })
+          .from(kbChunks)
+          .where(where)
+          .orderBy(asc(kbChunks.chunkIndex))
+          .limit(CHUNKS_PER_PAGE)
+          .offset((p - 1) * CHUNKS_PER_PAGE),
+      ),
+      withOrg((tx) => tx.select({ n: count() }).from(kbChunks).where(where)),
+    ]);
+    return {
+      chunks: rows.map((r) => ({ id: r.id, index: r.index, content: r.content, edited: r.editedAt != null })),
+      total: n,
+      page: p,
+      pages: Math.max(1, Math.ceil(n / CHUNKS_PER_PAGE)),
+      title: doc.title,
+    };
+  } catch (error) {
+    return { error: safeErrorMessage(error, "Could not load the passages.") };
+  }
+}
+
+async function audit(action: string, target: string, metadata: Record<string, unknown>) {
+  const [me, org] = await Promise.all([getCurrentUser(), getCurrentOrg()]);
+  if (org) await recordAudit({ orgId: org.id, actorUserId: me?.id ?? null, action, target, metadata });
+}
+
+/** Save an edited passage. Re-embeds first: if Voyage fails nothing changes, so the search never drifts from the text. */
+export async function saveChunk(chunkId: string, content: string): Promise<ChunkResult> {
+  const clean = cleanChunk(content);
+  if (!clean.ok) return { error: clean.error };
+  try {
+    await requireRole("admin");
+    const [vector] = await embedDocuments([clean.text]);
+    if (!vector) return { error: "Could not index the new text. Try again." };
+    const [row] = await withOrg((tx) =>
+      tx
+        .update(kbChunks)
+        .set({ content: clean.text, embedding: vector, embeddingModel: EMBEDDING_MODEL, editedAt: new Date() })
+        .where(and(eq(kbChunks.id, chunkId), sql`${kbChunks.orgId} = ${inOrg}`))
+        .returning({ documentId: kbChunks.documentId }),
+    );
+    if (!row) return { error: "That passage no longer exists." };
+    await audit("kb.chunk_edited", chunkId, { document: row.documentId });
+    return { ok: true };
+  } catch (error) {
+    Sentry.captureException(error);
+    return { error: safeErrorMessage(error, "Could not save the passage.") };
+  }
+}
+
+/** Remove one passage and keep the document's count in step. */
+export async function deleteChunk(chunkId: string): Promise<ChunkResult> {
+  try {
+    await requireRole("admin");
+    const [row] = await withOrg((tx) =>
+      tx.delete(kbChunks).where(and(eq(kbChunks.id, chunkId), sql`${kbChunks.orgId} = ${inOrg}`)).returning({ documentId: kbChunks.documentId }),
+    );
+    if (!row) return { error: "That passage no longer exists." };
+    await withOrg((tx) =>
+      tx
+        .update(kbDocuments)
+        .set({ chunkCount: sql`greatest(${kbDocuments.chunkCount} - 1, 0)`, updatedAt: new Date() })
+        .where(and(eq(kbDocuments.id, row.documentId), sql`${kbDocuments.orgId} = ${inOrg}`)),
+    );
+    await audit("kb.chunk_deleted", chunkId, { document: row.documentId });
+    revalidatePath("/workspace/knowledge");
+    return { ok: true };
+  } catch (error) {
+    return { error: safeErrorMessage(error, "Could not delete the passage.") };
   }
 }

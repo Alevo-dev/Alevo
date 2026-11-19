@@ -45,6 +45,8 @@ export const kbChunks = pgTable(
     embedding: vector("embedding", { dimensions: 1024 }),
     /** Model that produced `embedding`; retrieval only searches the current one. */
     embeddingModel: text("embedding_model"),
+    /** Set when a person edited the text by hand (and it was re-embedded); a re-index replaces it. */
+    editedAt: timestamp("edited_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
