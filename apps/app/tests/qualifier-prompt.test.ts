@@ -158,3 +158,18 @@ describe("Qualifier prompt: always answer until a thank you", () => {
     expect(p).not.toContain('MARKED "NOT A FIT"');
   });
 });
+
+describe("sign-off", () => {
+  const signed = { ...(profile as object), signoff: "Acme Sales" } as never;
+  const build = (emailStyle: boolean) => buildSystemPrompt(signed, contact, [], null, emailStyle, !emailStyle, false, "", null);
+  it("is used at the end of an email only", () => {
+    const p = build(true);
+    expect(p).toContain("At the very END of the email");
+    expect(p).toContain("Acme Sales");
+  });
+  it("is never given for chat, text or phone", () => {
+    const p = build(false);
+    expect(p).not.toContain("Acme Sales");
+    expect(p).toContain("Do not sign your messages");
+  });
+});

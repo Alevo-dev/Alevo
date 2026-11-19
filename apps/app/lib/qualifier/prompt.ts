@@ -66,9 +66,12 @@ export function buildSystemPrompt(
     ? `\n\nKnowledge base: reference passages for answering specific questions accurately. If they don't cover something, say you'll check rather than inventing an answer:\n${fenceKnowledge(knowledge)}`
     : "";
 
-  const signoff = profile.signoff?.trim()
-    ? `Sign off your messages as: ${profile.signoff.trim()}`
-    : "Sign off warmly, without inventing a name you weren't given.";
+  // The sign-off belongs to emails only, once, after the last line. Chat, text and phone replies carry no signature.
+  const signoff = emailStyle
+    ? profile.signoff?.trim()
+      ? `At the very END of the email, on its own line after everything else, sign off as: ${profile.signoff.trim()}. Never put it anywhere else.`
+      : "At the very END of the email, sign off warmly, without inventing a name you weren't given."
+    : "Do not sign your messages: no name, signature or sign-off at the end. This is a live conversation, not a letter.";
 
   const who = [
     contactName && `Name: ${contactName}`,
