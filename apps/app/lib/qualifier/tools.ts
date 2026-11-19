@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull, sql } from "drizzle-orm";
 import * as Sentry from "@sentry/nextjs";
 import { contacts, conversations, isSuppressed, meetings, messages, replyOutcome, withService, type Channel } from "@alevo/db";
 import { requestPsaWriteback } from "@/lib/psa/request";
@@ -162,6 +162,27 @@ const clampScore = (n: unknown) =>
 
 /** Scope every write to this org + conversation (service path has no RLS). */
 /** Guard for status writes: the agent never overwrites a booking. */
+/**
+ * The contact's upcoming meeting from THIS conversation, if there is one. Its slot now shows as busy on the calendar
+ * because it is their own booking: without this the agent re-checked the calendar after a "thank you", read its own
+ * booking as a clash, "corrected" itself and booked a second, third meeting for the same person.
+ */
+async function upcomingMeeting(target: { orgId: string; conversationId: string }): Promise<Date | null> {
+  const [row] = await withService((tx) =>
+    tx
+      .select({ startAt: meetings.startAt })
+      .from(meetings)
+      .where(and(eq(meetings.orgId, target.orgId), eq(meetings.conversationId, target.conversationId), eq(meetings.status, "scheduled"), gt(meetings.startAt, new Date())))
+      .orderBy(asc(meetings.startAt))
+      .limit(1),
+  );
+  return row?.startAt ?? null;
+}
+
+function alreadyBooked(startAt: Date, tz: string): string {
+  return `This contact is ALREADY BOOKED for ${formatSlot(startAt.toISOString(), tz, "written")}. Do not check the calendar or book again: that slot looks busy because it is their own booking, and it is correct. Never offer other times or say the booking was wrong. If they say thank you, reply with one short friendly closing line. If they want to move or cancel it, call escalate_to_human.`;
+}
+
 function notBooked() {
   return sql`${conversations.status} <> 'booked'`;
 }
@@ -445,6 +466,8 @@ export async function dispatchTool(
 
     case "check_availability": {
       const tz = target.contactTimezone ?? "UTC";
+      const booked = await upcomingMeeting(target);
+      if (booked) return alreadyBooked(booked, tz);
       // Until the contact tells us theirs the times are in the org's: say so, so they can correct it.
       const zoneNote = target.timezoneKnown
         ? ""
@@ -473,6 +496,8 @@ export async function dispatchTool(
     }
 
     case "book_meeting": {
+      const booked = await upcomingMeeting(target);
+      if (booked) return alreadyBooked(booked, target.contactTimezone ?? "UTC");
       if (!target.contactEmail) return "Ask the contact for their email before booking.";
       const startIso = String(input.start ?? "").trim();
       if (!startIso || Number.isNaN(Date.parse(startIso))) {
