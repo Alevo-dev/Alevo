@@ -16,7 +16,7 @@ export { currentPeriod, getUsage, recordUsage, type UsageRow } from "./usage";
 export { hitRateLimit } from "./rate-limit";
 export { encodeCursor, finishPage, keysetOrder, keysetWhere, PAGE_SIZE, pageCount, parseCursor, type Cursor, type Page, type PageDir } from "./paginate";
 export { markAgentSkipped, countsTowardSpeed, replyOutcome, type AgentSkipReason } from "./conversation-flags";
-export { recordSpend, spendByOrg, spendSeries, spendSummary, type OrgSpend, type SpendEnv, type SpendEvent, type SpendRow } from "./vendor-spend";
+export { conversationSpend, recordSpend, spendByOrg, spendSeries, spendSummary, type ConversationSpend, type OrgSpend, type SpendEnv, type SpendEvent, type SpendRow } from "./vendor-spend";
 export { funnelByOrg, funnelSeries, type FunnelBucket, type OrgFunnel } from "./metrics";
 export { deletePlatformSecret, getPlatformSecret, platformSecretStatus, setPlatformSecret, type PlatformSecretKey } from "./platform-secrets";
 export { isSuppressed, addSuppression } from "./suppressions";

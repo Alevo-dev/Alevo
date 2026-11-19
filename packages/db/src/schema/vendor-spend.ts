@@ -15,6 +15,8 @@ export const vendorSpend = pgTable("vendor_spend", {
   costUsd: numeric("cost_usd", { precision: 12, scale: 6 }).notNull().default("0"),
   estimated: boolean("estimated").notNull().default(true),
   detail: text("detail"),
+  /** The conversation an AI call was for (0054); no foreign key. */
+  conversationId: uuid("conversation_id"),
   /** AI calls only (0053): what went in and what came out, with the cost of each. Null on older rows. */
   inputTokens: numeric("input_tokens"),
   outputTokens: numeric("output_tokens"),

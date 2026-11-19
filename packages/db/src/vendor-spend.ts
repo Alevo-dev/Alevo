@@ -10,6 +10,8 @@ export type SpendEvent = {
   provider: string;
   kind: string;
   orgId?: string | null;
+  /** The conversation an AI call was for. */
+  conversationId?: string | null;
   units: number;
   costUsd: number;
   /** false when the vendor reported the cost itself. */
@@ -27,6 +29,7 @@ export async function recordSpend(e: SpendEvent): Promise<void> {
       provider: e.provider,
       kind: e.kind,
       orgId: e.orgId ?? null,
+      conversationId: e.conversationId ?? null,
       units: String(e.units),
       costUsd: e.costUsd.toFixed(6),
       estimated: e.estimated ?? true,
@@ -90,7 +93,26 @@ export async function spendSummary(days: number): Promise<SpendRow[]> {
   return rows;
 }
 
-export type OrgSpend = { orgId: string | null; name: string | null; env: string; calls: number; costUsd: number };
+export type ConversationSpend = { model: string; calls: number; inputTokens: number; outputTokens: number; costUsd: number };
+
+/** What one conversation's AI calls cost, per model. Service path: scoped to the org here; only Alevo staff are shown it. */
+export async function conversationSpend(orgId: string, conversationId: string): Promise<ConversationSpend[]> {
+  return withService((tx) =>
+    tx
+      .select({
+        model: sql<string>`coalesce(${vendorSpend.detail}, 'unknown')`.as("model"),
+        calls: sql<number>`count(*)`.mapWith(Number),
+        inputTokens: sql<number>`coalesce(sum(${vendorSpend.inputTokens}), 0)`.mapWith(Number),
+        outputTokens: sql<number>`coalesce(sum(${vendorSpend.outputTokens}), 0)`.mapWith(Number),
+        costUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}), 0)`.mapWith(Number),
+      })
+      .from(vendorSpend)
+      .where(sql`${vendorSpend.orgId} = ${orgId} and ${vendorSpend.conversationId} = ${conversationId} and ${vendorSpend.provider} in ('anthropic', 'openai')`)
+      .groupBy(sql`model`),
+  );
+}
+
+export type OrgSpend ={ orgId: string | null; name: string | null; env: string; calls: number; costUsd: number };
 
 /** Spend over the same calendar window per organization and environment (`orgId` null = not tied to an org). */
 export async function spendByOrg(days: number): Promise<OrgSpend[]> {

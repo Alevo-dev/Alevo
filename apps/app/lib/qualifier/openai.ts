@@ -22,7 +22,7 @@ type ResponsesResult = { output?: ResponsesOutputItem[]; usage?: ResponsesUsage;
  * here for the rest of the run and sent back with the next turn. Throws on any failure, and the caller answers that
  * turn with Claude instead.
  */
-export function openaiRun(args: { system: string; tools: Anthropic.Tool[]; orgId: string }) {
+export function openaiRun(args: { system: string; tools: Anthropic.Tool[]; orgId: string; conversationId: string }) {
   const reasoning = new Map<string, ResponsesItem[]>();
   const tools = toResponsesTools(args.tools);
 
@@ -57,7 +57,7 @@ export function openaiRun(args: { system: string; tools: Anthropic.Tool[]; orgId
     const { message, reasoning: items } = fromResponsesOutput(json.output ?? [], json.usage, OPENAI_MODEL);
     const firstCall = message.content.find((b) => b.type === "tool_use");
     if (firstCall && items.length > 0) reasoning.set(firstCall.id, items);
-    trackOpenAI(OPENAI_MODEL, json.usage, "agent_turn", args.orgId);
+    trackOpenAI(OPENAI_MODEL, json.usage, "agent_turn", args.orgId, args.conversationId);
     return message;
   };
 }

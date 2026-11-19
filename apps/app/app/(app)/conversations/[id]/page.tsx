@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { CalendarCheck } from "lucide-react";
 import { Fragment } from "react";
 import { and, asc, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
-import { calls, consents, contacts, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
-import { getCurrentRole, withOrg } from "@alevo/auth";
+import { calls, consents, contacts, conversationSpend, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
+import { getCurrentRole, getCurrentUser, withOrg } from "@alevo/auth";
 import { CrumbTail } from "@/components/crumbs";
 import { CallCard } from "@/components/conversations/call-card";
 import { Panel, ScreenHeader, Strip, TabLinks } from "@/components/conversations/kit";
@@ -41,7 +41,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: row ? displayName(row.firstName, row.lastName, row.email ?? row.phone ?? anonymousLabel(row.channel)) : "Page not found" };
 }
 
-const AUTHOR_LABEL = { contact: "Contact", assistant: "Alevo agent", human: "Rep" } as const;
+const usd = (n: number) => (n < 1 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`);
+
+const AUTHOR_LABEL ={ contact: "Contact", assistant: "Alevo agent", human: "Rep" } as const;
 
 export default async function ConversationThread({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -79,7 +81,7 @@ export default async function ConversationThread({ params, searchParams }: { par
   // Wrong id, or another org's conversation (RLS + the explicit filter hide it).
   if (!conv) notFound();
 
-  const [tz, thread, [profile], meetingRows, psa, callRows, role, others, [consent]] = await Promise.all([
+  const [tz, threadRows, [profile], meetingRows, psa, callRows, role, me, others, [consent]] = await Promise.all([
     getOrgTimezone(),
     withOrg((tx) =>
       tx
@@ -90,6 +92,7 @@ export default async function ConversationThread({ params, searchParams }: { par
           body: messages.body,
           createdAt: messages.createdAt,
           providerRef: messages.providerRef,
+          model: messages.model,
         })
         .from(messages)
         .where(and(eq(messages.conversationId, id), sql`${messages.orgId} = ${inOrg}`))
@@ -128,6 +131,7 @@ export default async function ConversationThread({ params, searchParams }: { par
         .where(and(eq(calls.conversationId, id), sql`${calls.orgId} = ${inOrg}`)),
     ),
     getCurrentRole(),
+    getCurrentUser(),
     // The client's other conversations (any channel), for the aside link.
     withOrg((tx) =>
       tx
@@ -145,6 +149,11 @@ export default async function ConversationThread({ params, searchParams }: { par
         .limit(1),
     ),
   ]);
+  // Which AI model wrote each reply, and what the AI calls cost, are for Alevo staff only (testing and knowledge),
+  // never a client: the model is dropped here before anything is rendered.
+  const staff = me?.isPlatformAdmin === true;
+  const thread = threadRows.map((m) => ({ ...m, model: staff ? m.model : null }));
+  const aiSpend = staff ? await conversationSpend(conv.orgId, conv.id) : [];
   const meeting = meetingRows[0];
   const canAct = role === "rep" || role === "admin" || role === "owner";
   const tab = sp.tab === "calls" && callRows.length > 0 ? "calls" : sp.tab === "meetings" && meetingRows.length > 0 ? "meetings" : "thread";
@@ -249,6 +258,13 @@ export default async function ConversationThread({ params, searchParams }: { par
       <div className="grid items-start gap-3.5 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <Card boxed padding="none" aria-label={tab === "meetings" ? "Meetings" : "Messages"}>
           <CardHeader title={tab === "thread" ? "Thread" : tab === "calls" ? "Calls" : "Meetings"} hint={`${channel} · started ${fmtTime(conv.createdAt, tz)}`} aside={<RefreshButton label="Refresh" />} />
+          {tab === "thread" && aiSpend.length > 0 && (
+            <p className="border-b border-hairline bg-sunken px-4 py-2 font-mono text-xs text-ink-muted">
+              <span className="font-semibold text-violet-ink">Alevo staff only</span>
+              {" · AI: "}
+              {aiSpend.map((s) => `${s.model} ${s.calls} ${s.calls === 1 ? "call" : "calls"}, ${usd(s.costUsd)}`).join(" · ")}
+            </p>
+          )}
           {tab === "meetings" ? (
             <ul>
               {meetingRows.map((m) => {
@@ -321,6 +337,7 @@ export default async function ConversationThread({ params, searchParams }: { par
                       <div className="mb-[3px] font-mono text-xs text-ink-muted">
                         {fromContact ? name : AUTHOR_LABEL[m.author]} · {channel} {fmtTime(m.createdAt, tz)}
                         {m.id === firstAgentId && firstReply != null ? ` · ${fmtDuration(firstReply)}` : ""}
+                        {m.model ? <span className="text-violet-ink"> · {m.model}</span> : null}
                       </div>
                       <div
                         className={cx(

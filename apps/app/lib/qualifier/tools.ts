@@ -107,6 +107,8 @@ export type DispatchTarget = {
   orgName: string;
   /** Printed in every email footer (CAN-SPAM / CASL). */
   businessAddress: string | null;
+  /** The AI model that decided the tool call being run; stored on the reply it sends (staff-only display). */
+  model?: string | null;
 };
 
 /** Booking tools — added to the Qualifier's toolset only when booking is connected. */
@@ -341,6 +343,7 @@ async function deliverMessage(target: DispatchTarget, text: string): Promise<str
       channel,
       body,
       providerRef,
+      model: target.model ?? null,
     });
     await tx
       .update(conversations)

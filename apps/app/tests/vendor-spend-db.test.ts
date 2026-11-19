@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
-import { recordSpend, spendByOrg, spendSeries, spendSummary, vendorSpend, withService } from "@alevo/db";
+import { conversationSpend, recordSpend, spendByOrg, spendSeries, spendSummary, vendorSpend, withService } from "@alevo/db";
 import { claudeCost, claudeSplit } from "../lib/usage/spend";
 
 /** The Spend page's data: rows are grouped by environment and provider. Real Postgres (migration 0051). */
@@ -45,5 +45,18 @@ describe("vendor spend", () => {
     const old = rows.find((r) => r.kind === "call_summary" && r.model === TAG)!;
     expect(old.unsplitUnits).toBeGreaterThanOrEqual(40);
     expect(old.inputTokens).toBe(0);
+  });
+  it("totals a conversation's AI calls per model, for its org only", async () => {
+    const org = crypto.randomUUID();
+    const conv = crypto.randomUUID();
+    const base = { env: "development" as const, provider: "openai", kind: "agent_turn", orgId: org, conversationId: conv, units: 150, costUsd: 0.0002, detail: TAG };
+    await recordSpend({ ...base, split: { inputTokens: 100, outputTokens: 50, inputCostUsd: 0.0001, outputCostUsd: 0.0001 } });
+    await recordSpend({ ...base, provider: "anthropic", costUsd: 0.01 });
+    await recordSpend({ ...base, kind: "embedding", provider: "voyage" });
+    const rows = await conversationSpend(org, conv);
+    expect(rows).toHaveLength(1); // both AI rows share the tagged model id; the embedding is not an agent call
+    expect(rows[0]!.calls).toBe(2);
+    expect(rows[0]!.costUsd).toBeCloseTo(0.0102);
+    expect(await conversationSpend(crypto.randomUUID(), conv)).toEqual([]);
   });
 });

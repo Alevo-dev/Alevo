@@ -102,6 +102,8 @@ export const messages = pgTable(
     channel: channel("channel").notNull(),
     body: text("body").notNull(),
     providerRef: text("provider_ref"),
+    /** The AI model behind an agent reply (0054); shown to Alevo staff only. Null for everything else. */
+    model: text("model"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

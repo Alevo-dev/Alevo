@@ -1483,3 +1483,8 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 - [ ] Booking by chat with ChatGPT: offered times come from the calendar and the booked time is one of them.
 
 - [ ] Chat booking: book a time, then say thank you several times. The agent answers with one short closing line each time, never re-checks the calendar and never books again; Meetings shows ONE meeting.
+
+- [ ] Chat follow-up now waits longer first (replaces the 30s / 1m / 2m item above): after the agent replies and you stay quiet, nudges come 3 minutes later, then 2 minutes after that, then 1 minute after that, when the chat is paused.
+
+- [ ] Conversation thread as an Alevo staff member (platform admin): after a web chat, each agent reply shows its model after the time (for example gpt-6-luna, or claude-sonnet-5 for a fallback), and a strip above the thread lists calls and cost per model. Messages from before this change show no model.
+- [ ] The same thread as an ordinary workspace member (not a platform admin): no model names and no cost strip anywhere.

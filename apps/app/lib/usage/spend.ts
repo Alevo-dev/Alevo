@@ -29,7 +29,7 @@ const CLAUDE_RATES: [model: string, input: number, output: number][] = [
 ];
 /**
  * ChatGPT models, USD per million tokens: input, output, and what cached input counts as (a share of the input rate).
- * UNVERIFIED: aggregators disagree on gpt-6-luna's price, so confirm it on OpenAI's pricing page and fix it here.
+ * gpt-6-luna: $0.10 input, $0.50 output per million (confirmed by the owner). The cached-input share is an assumption: confirm it on OpenAI's pricing page.
  */
 const OPENAI_RATES: [model: string, input: number, output: number, cachedShare: number][] = [["gpt-6-luna", 0.1, 0.5, 0.1]];
 const VOYAGE_USD_PER_MTOK = 0.02;
@@ -65,13 +65,14 @@ export function claudeCost(model: string, usage: ClaudeUsage): number {
   return s.inputCostUsd + s.outputCostUsd;
 }
 
-export function trackClaude(model: string, usage: ClaudeUsage, kind: string, orgId?: string | null) {
+export function trackClaude(model: string, usage: ClaudeUsage, kind: string, orgId?: string | null, conversationId?: string | null) {
   const split = claudeSplit(model, usage);
   track({
     env: currentEnv(),
     provider: "anthropic",
     kind,
     orgId,
+    conversationId,
     units: split.inputTokens + split.outputTokens,
     costUsd: split.inputCostUsd + split.outputCostUsd,
     detail: model,
@@ -95,9 +96,9 @@ export function openaiSplit(model: string, usage: OpenAIUsage | undefined) {
   };
 }
 
-export function trackOpenAI(model: string, usage: OpenAIUsage | undefined, kind: string, orgId?: string | null) {
+export function trackOpenAI(model: string, usage: OpenAIUsage | undefined, kind: string, orgId?: string | null, conversationId?: string | null) {
   const split = openaiSplit(model, usage);
-  track({ env: currentEnv(), provider: "openai", kind, orgId, units: split.inputTokens + split.outputTokens, costUsd: split.inputCostUsd + split.outputCostUsd, detail: model, split });
+  track({ env: currentEnv(), provider: "openai", kind, orgId, conversationId, units: split.inputTokens + split.outputTokens, costUsd: split.inputCostUsd + split.outputCostUsd, detail: model, split });
 }
 
 export function trackEmbedding(model: string, tokens: number, orgId?: string | null) {

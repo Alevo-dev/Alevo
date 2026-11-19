@@ -28,6 +28,7 @@ import {
   dispatchTool,
   LINK_BOOKING_TOOLS,
   QUALIFIER_TOOLS,
+  type DispatchTarget,
   type QualifierEffects,
 } from "./tools";
 import { retrieveKbContext } from "@/lib/kb/retrieve";
@@ -231,7 +232,7 @@ export async function runQualifier(
     "unknown contact";
   const contactTz = isValidTimeZone(ctx.contact.timezone) ? ctx.contact.timezone : null;
   const orgTz = isValidTimeZone(ctx.profile.timezone) ? ctx.profile.timezone : DEFAULT_TIMEZONE;
-  const target = {
+  const target: DispatchTarget = {
     orgId: ctx.orgId,
     conversationId: ctx.conversationId,
     contactId: ctx.contactId,
@@ -261,7 +262,7 @@ export async function runQualifier(
   // the last turn and skip them).
   const known = new Set(ctx.thread.flatMap((m) => (m.id ? [m.id] : [])));
   // Web chats may be answered by ChatGPT (the admin switch). Any ChatGPT failure answers that turn with Claude instead, so a contact is never left waiting.
-  const chatgpt = ctx.channel === "chat" && (await webChatModel()) === "chatgpt" ? openaiRun({ system, tools, orgId: ctx.orgId }) : null;
+  const chatgpt = ctx.channel === "chat" && (await webChatModel()) === "chatgpt" ? openaiRun({ system, tools, orgId: ctx.orgId, conversationId: ctx.conversationId }) : null;
   const used: string[] = [];
   let fallbacks = 0;
   const trace = await driveAgent(
@@ -288,10 +289,14 @@ export async function runQualifier(
           messages: msgs,
           tools,
         });
-        trackClaude(MODEL, res.usage, "agent_turn", ctx.orgId);
+        trackClaude(MODEL, res.usage, "agent_turn", ctx.orgId, ctx.conversationId);
         return res;
       },
-      dispatch: (name, input) => dispatchTool(name, input, target, effects),
+      // The reply this tool call writes is stamped with the model that decided it (shown to Alevo staff only).
+      dispatch: (name, input) => {
+        target.model = used.at(-1) ?? null;
+        return dispatchTool(name, input, target, effects);
+      },
       fresh: async () => {
         const rows = await contactMessagesNotIn(ctx.orgId, ctx.conversationId, known);
         for (const r of rows) known.add(r.id);
