@@ -30,6 +30,8 @@
     }
   }
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // A phone or tablet (touch is the main pointer): Enter is a new line (the send button sends), and the keyboard only opens when the visitor taps the box.
+  var touch = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
 
   fetch(api, { headers: { accept: "application/json" } })
     .then(function (r) {
@@ -122,7 +124,10 @@
       ".alevo-chat-new{display:flex;align-items:center;gap:6px;margin:0 0 8px;padding:4px 8px 4px 6px;border:0;border-radius:8px;background:transparent;color:#5c6578;font:inherit;font-size:12px;cursor:pointer}" +
       ".alevo-chat-new[hidden]{display:none}.alevo-chat-new:hover{background:#eef0f4;color:#1b2030}.alevo-chat-new:focus-visible{outline:2px solid var(--a);outline-offset:1px}.alevo-chat-new svg{width:14px;height:14px}" +
       ".alevo-chat-row{display:flex;gap:8px;align-items:flex-end}" +
-      ".alevo-chat-row textarea{flex:1;resize:none;font:inherit;color:inherit;border:1px solid #cfd5e0;border-radius:10px;padding:9px 12px;max-height:120px;min-height:40px}" +
+      ".alevo-chat-row textarea{flex:1;resize:none;font:inherit;color:inherit;border:1px solid #cfd5e0;border-radius:10px;padding:9px 12px;line-height:20px;max-height:80px;min-height:40px;overflow-y:hidden}" +
+      "@supports not selector(::-webkit-scrollbar){.alevo-chat-log,.alevo-chat-row textarea{scrollbar-width:thin;scrollbar-color:#c3c9d6 transparent}}" +
+      ".alevo-chat-log::-webkit-scrollbar,.alevo-chat-row textarea::-webkit-scrollbar{width:8px}.alevo-chat-log::-webkit-scrollbar-track,.alevo-chat-row textarea::-webkit-scrollbar-track{background:transparent}" +
+      ".alevo-chat-log::-webkit-scrollbar-thumb,.alevo-chat-row textarea::-webkit-scrollbar-thumb{background:#c3c9d6;border-radius:8px;border:2px solid transparent;background-clip:content-box}.alevo-chat-log::-webkit-scrollbar-thumb:hover,.alevo-chat-row textarea::-webkit-scrollbar-thumb:hover{background-color:#a9b1c2}" +
       ".alevo-chat-row textarea:focus{outline:2px solid var(--a);outline-offset:1px;border-color:var(--a)}" +
       ".alevo-chat-send{width:40px;height:40px;border-radius:10px;border:0;background:var(--a);color:var(--on);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}" +
       ".alevo-chat-send:disabled{opacity:.5;cursor:not-allowed}.alevo-chat-send svg{width:18px;height:18px}" +
@@ -386,7 +391,7 @@
           poll();
         }
         setTimeout(function () {
-          input.focus();
+          if (!touch) input.focus();
         }, 50);
       } else {
         clearTimeout(pollTimer);
@@ -406,8 +411,8 @@
       reset();
       err.textContent = "";
       input.value = "";
-      input.style.height = "auto";
-      input.focus();
+      fit();
+      if (!touch) input.focus();
     });
     root.querySelector(".alevo-chat-close").addEventListener("click", function () {
       setOpen(false);
@@ -418,12 +423,17 @@
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden && open && session) poll();
     });
-    input.addEventListener("input", function () {
+    // The box grows with what is typed up to three lines (80px with its padding), then scrolls with the slim scrollbar.
+    // It is border-box, so the border is added back to scrollHeight; without that it ends up 2px short and always scrolls.
+    function fit() {
       input.style.height = "auto";
-      input.style.height = Math.min(input.scrollHeight, 120) + "px";
-    });
+      var want = input.scrollHeight + (input.offsetHeight - input.clientHeight);
+      input.style.height = Math.min(want, 80) + "px";
+      input.style.overflowY = want > 80 ? "auto" : "hidden";
+    }
+    input.addEventListener("input", fit);
     input.addEventListener("keydown", function (ev) {
-      if (ev.key === "Enter" && !ev.shiftKey) {
+      if (ev.key === "Enter" && !ev.shiftKey && !touch) {
         ev.preventDefault();
         form.requestSubmit();
       }
@@ -458,7 +468,7 @@
             save();
           }
           input.value = "";
-          input.style.height = "auto";
+          fit();
           addMessages([r.json.message]);
           expectReply();
         })
@@ -468,7 +478,7 @@
         .then(function () {
           sendBtn.disabled = false;
           input.disabled = false;
-          input.focus();
+          if (!touch) input.focus();
         });
     });
   }

@@ -1488,3 +1488,7 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 
 - [ ] Conversation thread as an Alevo staff member (platform admin): after a web chat, each agent reply shows its model after the time (for example gpt-6-luna, or claude-sonnet-5 for a fallback), and a strip above the thread lists calls and cost per model. Messages from before this change show no model.
 - [ ] The same thread as an ordinary workspace member (not a platform admin): no model names and no cost strip anywhere.
+
+- [ ] Chat widget input: a one-line message shows no scrollbar; typing grows the box to three lines; more than three lines shows the slim rounded scrollbar (no arrows). The message window uses the same slim scrollbar once a conversation is long enough to scroll. Sending clears the box back to one line.
+
+- [ ] Chat widget on a phone or tablet: the keyboard Enter key adds a new line and never sends; only the send button sends. The keyboard does not open by itself when the chat opens, after a message is sent, or after New conversation; it opens when the box is tapped. On a desktop, Enter still sends and Shift+Enter adds a line.
