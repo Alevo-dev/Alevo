@@ -8,9 +8,9 @@ import { contacts, conversations, messages, orgProfiles, withService } from "@al
  * the gap since the previous message. Fixed lines: no model call, so a quiet chat costs nothing.
  */
 export const CHAT_NUDGES: ReadonlyArray<{ after: string; body: string; closes?: boolean }> = [
-  { after: "30s", body: "Still there? I'm happy to help whenever you're ready." },
-  { after: "1m", body: "Just checking in. Is there anything else I can answer for you?" },
-  { after: "2m", body: "I'll pause this chat for now. Send a message any time and we'll pick it right back up.", closes: true },
+  { after: "3m", body: "Still there? I'm happy to help whenever you're ready." },
+  { after: "2m", body: "Just checking in. Is there anything else I can answer for you?" },
+  { after: "1m", body: "I'll pause this chat for now. Send a message any time and we'll pick it right back up.", closes: true },
 ];
 
 /** Statuses a chat can still be nudged in; anything else (booked, handed off, closed...) ends the cadence. */
