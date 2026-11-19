@@ -299,13 +299,13 @@ https://claude.ai/artifact/P58fQnHgrovgCjc87ERLe1). Hand-check each screen at de
 - [x] Confirmation dialogs also guard: Members â†’ Remove / Revoke, Knowledge â†’ Delete, Integrations â†’ Clear, Qualifier â†’ Disconnect calendar.
 
 ### Meetings, board layout (2026-11-13)
-- [ ] "Last:" window menu (Today / 7 / 30 / 90 days, Alt+1..4) changes the four tiles, their bars and the chart; the list below does not change.
-- [ ] Info strip shows show rate (or "Nothing marked yet"), next meeting, and the booking calendar with a Connected pill; the gear opens Integrations.
-- [ ] Tiles show a green delta when the move is good (more booked, fewer no-shows) and a plain grey line otherwise.
-- [ ] Outcome is a Pending / Showed / No-show segmented control; picking saves and toasts; Converted toggles with its check.
-- [ ] Reschedule and Cancel are icon buttons with names for screen readers; Cancel still asks first, Reschedule still opens the dialog.
-- [ ] Preferences (`/preferences`): Appearance and Plan cards at 760px, Compare plans has an arrow.
-- [ ] Sign in / Create account: unchanged flow; the "or" divider appears once.
+- [x] "Last:" window menu (Today / 7 / 30 / 90 days, Alt+1..4) changes the four tiles, their bars and the chart; the list below does not change.
+- [x] Info strip shows show rate (or "Nothing marked yet"), next meeting, and the booking calendar with a Connected pill; the gear opens Integrations.
+- [x] Tiles show a green delta when the move is good (more booked, fewer no-shows) and a plain grey line otherwise.
+- [x] Outcome is a Pending / Showed / No-show segmented control; picking saves and toasts; Converted toggles with its check.
+- [x] Reschedule and Cancel are icon buttons with names for screen readers; Cancel still asks first, Reschedule still opens the dialog.
+- [x] Preferences (`/preferences`): Appearance and Plan cards at 760px, Compare plans has an arrow.
+- [x] Sign in / Create account: unchanged flow; the "or" divider appears once.
 ## Settings
 - [x] **Qualifier**: Booking calendar card shows a Connected / Not connected pill; the form is split into cards (The agent â†’ toggle; Your business; Follow-up; Channels and booking; Calendar booking) with label-left / control-right rows; per-field errors render under the control; **Save changes** bottom-right.
 - [x] **Qualifier â€“ save bar**: no Save button until you change something; then a **floating "Unsaved changes" bar** slides in bottom-right with Discard + Save changes. Discard puts every field (dropdowns included) back to the saved values and hides the bar. Save shows the toast and hides the bar. A form-level error shows inside the bar.
@@ -926,7 +926,7 @@ still works, Sentry gets the error).
 Matches the Claude Design dashboard mockup. Dashboards: **App** `/dashboard`, **Supabase** (`conversations`, `meetings`, `calls`, `usage_counters`).
 
 - [x] Header has a **Last: [7 days ▾]** dropdown (Today, 7 days, 30 days, 90 days; each row shows its Alt+1…Alt+4 shortcut); the choice sits in the URL (`?window=30`), survives refresh, and the description reads "last N days".
-- [ ] Alt+1 → Today: 24 hourly bars (12 AM … 11 PM), labels say "Today" / "Per hour, today"; Alt+2/3/4 → 7/30/90 days. Shortcuts don't fire while typing in a field.
+- [x] Alt+1 → Today: 24 hourly bars (12 AM … 11 PM), labels say "Today" / "Per hour, today"; Alt+2/3/4 → 7/30/90 days. Shortcuts don't fire while typing in a field.
 - [x] Switching re-scopes everything: the four tiles, Leads per day, Speed to lead, Meetings booked, Where leads come from. **Plan usage** stays "This billing month".
 - [x] 7 and 30 days: tiles and charts bucket per day; 90 days: per week (13 bars, labels like "Oct 20"). Tooltips on the 90-day charts show the full week range ("Oct 14 – Oct 20").
 - [x] Leads per day is an **area chart**: line + soft fill + a dot per point, gridlines at 0 / half / max, x labels never collide at any window (30 days shows every 4th day plus the last; the meetings card at a third width shows fewer).
@@ -970,15 +970,15 @@ One pass covers everything Sprint 5 built. Repeat it after any change to the das
 - [x] Without `INTERNAL_ALERTS_SLACK_WEBHOOK`: `posted: false` with the "isn't set" error, no crash.
 
 **6. ConnectWise** (Workspace → Integrations → Connect a tool → ConnectWise)
-- [ ] Save only the site: the card appears as "Needs setup" and Needs attention names what's missing; the Agent still works.
-- [ ] Fill every field + both keys, Save: card reads "Connected", keys show as saved (never their values). "Test connection" reports the Manage version and finds the member; a wrong private key gives an inline error, not a toast.
-- [ ] Hand a lead off (reply as contact → the agent escalates, or set status in a conversation): Inngest shows `psa-writeback` with steps load → company → contact → activity-handed_off. In Manage: the company (or the matched existing one), the contact with the email, an activity "Alevo handed off a lead: …" assigned to the member. The conversation page shows "In ConnectWise" with the three ids.
-- [ ] Book a meeting (agent or Cal.com webhook): a second run adds `activity-booked` and `opportunity`; Manage has the opportunity "Company — inbound via Alevo (Name)" with the meeting time in its notes.
-- [ ] Re-send the same event (Inngest → Replay): the run completes with the same ids and Manage has no duplicates.
-- [ ] Clear a key: card drops to "Needs setup", the next hand-off run ends at `load` with `skipped: no-psa`.
-- [ ] An org without ConnectWise: hand-offs still produce a run that ends `skipped: no-psa` — no error.
-- [ ] (2026-11-02) A written-back contact merges into an older one (call in from a new number, give the written-back email): `psa_links` for the loser now point at the keeper; the keeper's next hand-off reuses the same ConnectWise contact (no duplicate in Manage).
-- [ ] Voice hand-off: a call that ends in `take_message` / `set_status handed_off` also produces a `psa-writeback` run with an activity; a booked call adds the opportunity.
+- [x] Save only the site: the card appears as "Needs setup" and Needs attention names what's missing; the Agent still works.
+- [x] Fill every field + both keys, Save: card reads "Connected", keys show as saved (never their values). "Test connection" reports the Manage version and finds the member; a wrong private key gives an inline error, not a toast.
+- [x] Hand a lead off (reply as contact → the agent escalates, or set status in a conversation): Inngest shows `psa-writeback` with steps load → company → contact → activity-handed_off. In Manage: the company (or the matched existing one), the contact with the email, an activity "Alevo handed off a lead: …" assigned to the member. The conversation page shows "In ConnectWise" with the three ids.
+- [x] Book a meeting (agent or Cal.com webhook): a second run adds `activity-booked` and `opportunity`; Manage has the opportunity "Company — inbound via Alevo (Name)" with the meeting time in its notes.
+- [x] Re-send the same event (Inngest → Replay): the run completes with the same ids and Manage has no duplicates.
+- [x] Clear a key: card drops to "Needs setup", the next hand-off run ends at `load` with `skipped: no-psa`.
+- [x] An org without ConnectWise: hand-offs still produce a run that ends `skipped: no-psa` — no error.
+- [x] (2026-11-02) A written-back contact merges into an older one (call in from a new number, give the written-back email): `psa_links` for the loser now point at the keeper; the keeper's next hand-off reuses the same ConnectWise contact (no duplicate in Manage).
+- [x] Voice hand-off: a call that ends in `take_message` / `set_status handed_off` also produces a `psa-writeback` run with an activity; a booked call adds the opportunity.
 
 **7. Clean up** — delete the seeded contacts (bottom of the seed file); remove the test company / contact / opportunity in the sandbox if you want it clean.
 
@@ -1238,12 +1238,12 @@ Run `npx supabase db push --remote` first: 0034 renames `org_profiles.form_accen
 
 Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voice_name`, `voice_names`, `last_voice`, `voice_labels`).
 
-- [ ] Workspace → Agent → **Channels** holds the SMS number, **Phone calls**, **Voice** and **Outside office hours**. There is no separate Phone calls card and only one Save bar for the page's Agent form.
-- [ ] With the SMS number empty the Phone calls switch is disabled and the hint says to add a number. Type a number: the switch enables without saving first. Clear the field again: it switches off and disables.
-- [ ] Type a new number, turn Phone calls on, **Save once**: the number is saved and calls are on. In Vapi's dashboard the number exists with no assistant and the Server URL ending in `/api/webhooks/vapi`.
-- [ ] **Voices** lists Clara (first, the default), Savannah, Emma (female) and Elliot, Nico, Sid (male), each with a switch and a play button. Play plays a short sample, pressing it again stops it, and playing another voice stops the first. Savannah is on for a new org.
-- [ ] Each voice box has a **Name callers hear (optional)** field. Give Savannah "Sophie" and Elliot "Max", turn both on, Save, and call a few times: the greeting is "Thanks for calling <company>, this is Sophie. This call may be recorded…" when Savannah answers and "…this is Max…" when Elliot does. Ask who you are speaking to: it answers with that voice's name. A voice with no name just says "Thanks for calling <company>." with no introduction.
-- [ ] A name with digits or symbols ("Agent 007", "<b>") turns only that voice's box red, with "Use letters, spaces, . ' and - only, up to 30 characters." under it (the other five stay normal and keep what you typed), and nothing is saved.
+- [x] Workspace → Agent → **Channels** holds the SMS number, **Phone calls**, **Voice** and **Outside office hours**. There is no separate Phone calls card and only one Save bar for the page's Agent form.
+- [x] With the SMS number empty the Phone calls switch is disabled and the hint says to add a number. Type a number: the switch enables without saving first. Clear the field again: it switches off and disables.
+- [x] Type a new number, turn Phone calls on, **Save once**: the number is saved and calls are on. In Vapi's dashboard the number exists with no assistant and the Server URL ending in `/api/webhooks/vapi`.
+- [x] **Voices** lists Clara (first, the default), Savannah, Emma (female) and Elliot, Nico, Sid (male), each with a switch and a play button. Play plays a short sample, pressing it again stops it, and playing another voice stops the first. Savannah is on for a new org.
+- [x] Each voice box has a **Name callers hear (optional)** field. Give Savannah "Sophie" and Elliot "Max", turn both on, Save, and call a few times: the greeting is "Thanks for calling <company>, this is Sophie. This call may be recorded…" when Savannah answers and "…this is Max…" when Elliot does. Ask who you are speaking to: it answers with that voice's name. A voice with no name just says "Thanks for calling <company>." with no introduction.
+- [x] A name with digits or symbols ("Agent 007", "<b>") turns only that voice's box red, with "Use letters, spaces, . ' and - only, up to 30 characters." under it (the other five stay normal and keep what you typed), and nothing is saved.
 - [ ] Turn on two or three voices, Save, and call several times: each call uses one of the voices you turned on, never one that is off, and never the same voice as the call just before it (with two on they alternate; with one on it is always that one). The last voice that is on cannot be switched off. Turn all but one off, Save, call: always that voice.
 - [ ] If Vapi refuses (for example a bad key), the number and other settings are still saved and the error appears under the Phone calls switch.
 - [ ] Clear the number with calls on, Save: calls are off. Call the old number: you hear only "This phone is not in service right now." and no conversation is created in any org.
@@ -1251,210 +1251,225 @@ Run `npx supabase db push --remote` first: 0041-0044 add the voice columns (`voi
 - [ ] Put a number that another org already uses: the error under the SMS number reads "That number is already used by another organization."
 
 ## Links that jump between workspace pages
-- [ ] Agent → Notifications, click **Integrations**: you land on Integrations scrolled to **Communication**, and that section flashes a brand outline once.
-- [ ] Agent → Booking, click **Change** (or **Connect a booking tool**): Integrations opens scrolled to **Booking** with the same flash.
-- [ ] Dashboard → Getting started: the Booking item opens Integrations at Booking, Slack opens it at Communication, and Phone opens Agent at **Channels**.
-- [ ] Open `/workspace/agent#booking` straight in the address bar (a full page load): the page scrolls to the Booking card and it flashes.
-- [ ] With "reduce motion" on in your system settings the section is still scrolled to, just without the flash.
+- [x] Agent → Notifications, click **Integrations**: you land on Integrations scrolled to **Communication**, and that section flashes a brand outline once.
+- [x] Agent → Booking, click **Change** (or **Connect a booking tool**): Integrations opens scrolled to **Booking** with the same flash.
+- [x] Dashboard → Getting started: the Booking item opens Integrations at Booking, Slack opens it at Communication, and Phone opens Agent at **Channels**.
+- [x] Open `/workspace/agent#booking` straight in the address bar (a full page load): the page scrolls to the Booking card and it flashes.
+- [x] With "reduce motion" on in your system settings the section is still scrolled to, just without the flash.
 
 ## Preferences and gear icons
-- [ ] The sidebar has no plan card and no theme switch. **Preferences** (gear) sits at the bottom, above "Agent: Online", and opens `/preferences` with an **Appearance** card (Light / Dark / System, applies at once and survives refresh) and a **Plan** card (plan name, renewal date, Compare plans). The phone menu has the same Settings link.
-- [ ] "Manage" is a gear icon everywhere, each with a screen-reader name: by the agent status, in the workspace picker (opens the workspace dialog), on the Agent booking card (when booking is off), on Brand colour, on connection cards under Integrations, and in the Meetings table header.
+- [x] The sidebar has no plan card and no theme switch. **Preferences** (gear) sits at the bottom, above "Agent: Online", and opens `/preferences` with an **Appearance** card (Light / Dark / System, applies at once and survives refresh) and a **Plan** card (plan name, renewal date, Compare plans). The phone menu has the same Settings link.
+- [x] "Manage" is a gear icon everywhere, each with a screen-reader name: by the agent status, in the workspace picker (opens the workspace dialog), on the Agent booking card (when booking is off), on Brand colour, on connection cards under Integrations, and in the Meetings table header.
 
 ## Workspace → Manage tab (replaces the workspace picker's Manage dialog; the earlier "Manage workspace dialog" section above is superseded)
-- [ ] Workspace has no tab bar: its five pages (Business profile, Agent, Knowledge, Integrations, **Manage**) are a sub-menu under Workspace in the side nav, open only while you are in Workspace, the current page highlighted; the phone menu has the same list and closes when you pick one.
-- [ ] Manage is the last page. The workspace picker's header no longer has a gear/Manage button; the picker still switches and creates workspaces.
-- [ ] As an owner or admin: **General** (Update profile, Workspace ID with copy, Leave, Delete) and **Members** (search, Invite, role selects, remove, Invitations sub-tab) all work as before, with the same confirm dialogs.
-- [ ] As a viewer or rep: Manage opens, with a line saying only owners and admins can change it. General shows the profile, Workspace ID and **Leave workspace** only (no Update profile, no Delete). Members is a list with a role pill per person: no Invite, no Invitations tab, no role select, no remove.
-- [ ] `/workspace/members` (old link) lands on Manage; the "See who can help" button on the 403 page does too.
+- [x] Workspace has no tab bar: its five pages (Business profile, Agent, Knowledge, Integrations, **Manage**) are a sub-menu under Workspace in the side nav, open only while you are in Workspace, the current page highlighted; the phone menu has the same list and closes when you pick one.
+- [x] Manage is the last page. The workspace picker's header no longer has a gear/Manage button; the picker still switches and creates workspaces.
+- [x] As an owner or admin: **General** (Update profile, Workspace ID with copy, Leave, Delete) and **Members** (search, Invite, role selects, remove, Invitations sub-tab) all work as before, with the same confirm dialogs.
+- [x] As a viewer or rep: Manage opens, with a line saying only owners and admins can change it. General shows the profile, Workspace ID and **Leave workspace** only (no Update profile, no Delete). Members is a list with a role pill per person: no Invite, no Invitations tab, no role select, no remove.
+- [x] `/workspace/members` (old link) lands on Manage; the "See who can help" button on the 403 page does too.
 
 ## Brand colour moved to Business profile (supersedes the Integrations lines in "Brand colour, embed colours…" above)
-- [ ] Integrations has no Brand colour card any more. Workspace → **Brand** (sub-menu, after Manage) holds the **Brand colour** card: two swatches (Colour, Font colour, each showing its hex or "Default (…)") and a gear at the top right. It has no button-shaped preview.
-- [ ] Gear opens the same dialog as before; Save → toast, the swatches update, the form and chat bubble use the new colour. The dialog's preview is a small rectangle "Aa Sample text", not a pill.
-- [ ] Brand also has **Tone and sign-off** (Tone, Sign off as; Save and Cancel appear only after a change; saving shows a toast and keeps the value after reload). The Profile page no longer has a tone or sign-off field, saving Profile leaves them as they were, and the website import no longer suggests them. Settings is admins-only like Profile.
+- [x] Integrations has no Brand colour card any more. Workspace → **Brand** (sub-menu, after Manage) holds the **Brand colour** card: two swatches (Colour, Font colour, each showing its hex or "Default (…)") and a gear at the top right. It has no button-shaped preview.
+- [x] Gear opens the same dialog as before; Save → toast, the swatches update, the form and chat bubble use the new colour. The dialog's preview is a small rectangle "Aa Sample text", not a pill.
+- [x] Brand also has **Tone and sign-off** (Tone, Sign off as; Save and Cancel appear only after a change; saving shows a toast and keeps the value after reload). The Profile page no longer has a tone or sign-off field, saving Profile leaves them as they were, and the website import no longer suggests them. Settings is admins-only like Profile.
 
-- [ ] The Workspace page formerly called Business profile is now **Profile**: sub-menu entry, page title, save toast ("Profile saved."), the Agent page's "Profile first" link, and the Getting started row.
+- [x] The Workspace page formerly called Business profile is now **Profile**: sub-menu entry, page title, save toast ("Profile saved."), the Agent page's "Profile first" link, and the Getting started row.
 
 ## Integrations rework (step 6; run `npx supabase db push --remote` first: migration 0045)
-- [ ] Integrations is 70% wide, left-aligned on desktop. No Connection health / Needs attention cards on top; a slim warning bar appears only while a tool needs attention (one line each, Review opens its dialog). Nothing wrong → no bar.
-- [ ] Four sections, each with connected tools as rows (mark, name, state, gear). Each section header has its own add button (Add booking tool, Add channel, Add CRM or PSA; none for Lead capture while everything is already listed). It opens a picker right under the header with a search box; picking a tool opens its settings dialog; once connected it becomes a row. There is no single "Connect a tool" list any more.
-- [ ] Connection health is the last section: one coloured line per service, a chip per service with its 24h rate. Press a chip: only that line, the big rate and failed count switch to it; press again: all. A connected tool with no activity shows "No data".
-- [ ] With data (`supabase/seed-dev-health.sql`, dev only): quiet hours are gaps in a line, not interpolated; a failing tool pulls the axis floor down; all nine possible services have different colours, none red.
-- [ ] Recording: send a Slack test, an agent email/SMS, a booking, a call setup: each adds an outbound row for that service; webhooks from Resend, Twilio, Cal.com, Calendly and Vapi add inbound rows. Check `select provider, direction, outcome, count(*) from webhook_deliveries group by 1,2,3`.
+- [x] Integrations is 70% wide, left-aligned on desktop. No Connection health / Needs attention cards on top; a slim warning bar appears only while a tool needs attention (one line each, Review opens its dialog). Nothing wrong → no bar.
+- [x] Four sections, each with connected tools as rows (mark, name, state, gear). Each section header has its own add button (Add booking tool, Add channel, Add CRM or PSA; none for Lead capture while everything is already listed). It opens a picker right under the header with a search box; picking a tool opens its settings dialog; once connected it becomes a row. There is no single "Connect a tool" list any more.
+- [x] Connection health is the last section: one coloured line per service, a chip per service with its 24h rate. Press a chip: only that line, the big rate and failed count switch to it; press again: all. A connected tool with no activity shows "No data".
+- [x] With data (`supabase/seed-dev-health.sql`, dev only): quiet hours are gaps in a line, not interpolated; a failing tool pulls the axis floor down; all nine possible services have different colours, none red.
+- [x] Recording: send a Slack test, an agent email/SMS, a booking, a call setup: each adds an outbound row for that service; webhooks from Resend, Twilio, Cal.com, Calendly and Vapi add inbound rows. Check `select provider, direction, outcome, count(*) from webhook_deliveries group by 1,2,3`.
 
 ## Profile, Agent and Knowledge restyled to the boards (Profile v2, Agent, Knowledge)
 
-- [ ] Profile: status strip on top; sections Company / Who you sell to / Contact details with bare underline fields; the underline turns to the brand gradient on focus; counters read "n of 600" and stop typing at 600.
-- [ ] Profile: "On this page" list on the right (hidden under 980px) highlights the section in view; a green dot marks a finished one; clicking jumps to the section.
-- [ ] Profile: type in a field -> a bottom bar slides in ("Unsaved changes", Discard, Save changes). Discard restores; Save toasts. Leaving the page asks first.
-- [ ] Profile: with the agent on, clear Company name -> error in red under that field, not a toast.
-- [ ] Profile: Import from website still fills the fields and shows "Filled N fields. Review them, then save."
-- [ ] Agent: four sub-tabs (General, Booking, Channels, Notifications); typing in one tab and switching keeps it; ONE bottom Save covers every tab.
-- [ ] Agent: a link to `/workspace/agent#booking` or `#channels` opens that tab and flashes the panel.
-- [ ] Agent: Voices are chips (at least one stays on); Play sample plays the voice you touched last; Voice names shows a box per voice that is on, a name on a switched-off voice is kept.
-- [ ] Agent: turn booking on with a calendar connected -> Meeting length and Working hours appear; save; reload shows the same.
-- [ ] Knowledge: Add text and Add URL open a dialog, Upload PDF opens the file chooser; the new row shows Indexing then Ready.
-- [ ] Knowledge: Filter documents narrows the table; a failed document shows its reason under the title and a Retry button; Delete asks first.
+- [x] Profile: status strip on top; sections Company / Who you sell to / Contact details with bare underline fields; the underline turns to the brand gradient on focus; counters read "n of 600" and stop typing at 600.
+- [x] Profile: "On this page" list on the right (hidden under 980px) highlights the section in view; a green dot marks a finished one; clicking jumps to the section.
+- [x] Profile: type in a field -> a bottom bar slides in ("Unsaved changes", Discard, Save changes). Discard restores; Save toasts. Leaving the page asks first.
+- [x] Profile: with the agent on, clear Company name -> error in red under that field, not a toast.
+- [x] Profile: Import from website still fills the fields and shows "Filled N fields. Review them, then save."
+- [x] Agent: four sub-tabs (General, Booking, Channels, Notifications); typing in one tab and switching keeps it; ONE bottom Save covers every tab.
+- [x] Agent: a link to `/workspace/agent#booking` or `#channels` opens that tab and flashes the panel.
+- [x] Agent: Voices are chips (at least one stays on); Play sample plays the voice you touched last; Voice names shows a box per voice that is on, a name on a switched-off voice is kept.
+- [x] Agent: turn booking on with a calendar connected -> Meeting length and Working hours appear; save; reload shows the same.
+- [x] Knowledge: Add text and Add URL open a dialog, Upload PDF opens the file chooser; the new row shows Indexing then Ready.
+- [x] Knowledge: Filter documents narrows the table; a failed document shows its reason under the title and a Retry button; Delete asks first.
 
 ## Dashboard, Conversations, Client and thread restyled to the boards
 
-- [ ] Dashboard: title row has "Last:" menu (Alt+1..4) and an icon Refresh button; the info strip reads Agent, Open leads, Median reply, Window (dates), Timezone, Plan.
-- [ ] Dashboard: as an owner with setup left, a blue note says "Getting started: N of M done"; "Open checklist" expands the panel with a progress bar, each step linking to its page; an x skips a skippable step; "Close checklist" folds it.
-- [ ] Dashboard: four tiles (Leads, Qualified, Meetings booked, Handed to a person) each with "▲/▼ n vs prior ..." in green or red; speed card shows median, 95th percentile, a bar against 60s, "N leads answered"; plan usage shows the month and plan; live activity table has the Live chip and "View all conversations".
-- [ ] Conversations: info strip, tabs with counts (All, Open, Handed off, Booked, Not a fit) filter the table; the window menu changes the tiles and both charts; "Filter clients" searches name, company, email, phone (Enter); `%` matches nothing odd.
-- [ ] Conversations: rows show status icon, channel icons, pill, fit meter; footer reads "Showing a-b of N clients" with Previous/Next that keep the tab and search.
-- [ ] Client: header pill, best-fit card (ring, verdict, scale), "Open latest thread"; tabs Overview, Conversations (All/Open/Closed), Calls (play recording is admin only), Meetings, PSA (only with ConnectWise records).
-- [ ] Thread: company title, status pill, info strip with First reply; blue/grey bubbles; meeting note under the thread; Reply as contact still sends and the agent answers; Fit score, Details, In ConnectWise and Timeline panels on the right.
-- [ ] Light theme: all four screens stay readable (text, pills, bars).
+- [x] Dashboard: title row has "Last:" menu (Alt+1..4) and an icon Refresh button; the info strip reads Agent, Open leads, Median reply, Window (dates), Timezone, Plan.
+- [x] Dashboard: as an owner with setup left, a blue note says "Getting started: N of M done"; "Open checklist" expands the panel with a progress bar, each step linking to its page; an x skips a skippable step; "Close checklist" folds it.
+- [x] Dashboard: four tiles (Leads, Qualified, Meetings booked, Handed to a person) each with "▲/▼ n vs prior ..." in green or red; speed card shows median, 95th percentile, a bar against 60s, "N leads answered"; plan usage shows the month and plan; live activity table has the Live chip and "View all conversations".
+- [x] Conversations: info strip, tabs with counts (All, Open, Handed off, Booked, Not a fit) filter the table; the window menu changes the tiles and both charts; "Filter clients" searches name, company, email, phone (Enter); `%` matches nothing odd.
+- [x] Conversations: rows show status icon, channel icons, pill, fit meter; footer reads "Showing a-b of N clients" with Previous/Next that keep the tab and search.
+- [x] Client: header pill, best-fit card (ring, verdict, scale), "Open latest thread"; tabs Overview, Conversations (All/Open/Closed), Calls (play recording is admin only), Meetings, PSA (only with ConnectWise records).
+- [x] Thread: company title, status pill, info strip with First reply; blue/grey bubbles; meeting note under the thread; Reply as contact still sends and the agent answers; Fit score, Details, In ConnectWise and Timeline panels on the right.
+- [x] Light theme: all four screens stay readable (text, pills, bars).
 
 ## Integrations, Manage and Settings restyled to the boards
 
-- [ ] Integrations: full width; title, then an info strip (Connected tools, Booking tool, Webhooks 24h); four panels with a header bar (title, grey hint, add button at the right).
-- [ ] Integrations: an add button opens the picker under the header (search, tool chips, "Soon" on placeholders); picking a tool opens its dialog; the button stays highlighted while open.
-- [ ] Integrations: rows show a 30px mark, name and one-line hint, a state dot + label, then the gear; a connected, chosen calendar reads "In use for bookings".
-- [ ] Integrations: rows show no test buttons, only the gear (and "Finish setup" for a half-set-up tool, which opens the dialog). Slack "Send test" and "Test connection" (Google, Microsoft 365, ConnectWise) are inside each Manage dialog and show their result there (no toast).
-- [ ] Integrations: Needs attention is one amber note with a pill per issue; hidden when nothing is wrong.
-- [ ] Integrations: Connection health chips dim the other lines (not remove them); press the chip again to restore; keyboard works (Tab, Space).
-- [ ] Manage: General rows (profile, ID with copy button, Leave, Delete) with grey one-line descriptions; Delete hidden for non-admins; Leave and Delete still confirm.
-- [ ] Manage: Members panel has the Members / Invitations switch with counts, search, Invite; role is a dropdown for admins, a pill for viewers; the trash button asks to confirm.
-- [ ] Brand (admin): title row says "Owners and admins only"; Discard and Save appear after editing Tone or Sign off and disappear after saving; an error shows under its field.
-- [ ] Brand: Brand colour shows two swatches with hex and a gear that opens the same dialog as before.
-- [ ] Light theme: the three pages stay readable.
+- [x] Integrations: full width; title, then an info strip (Connected tools, Booking tool, Webhooks 24h); four panels with a header bar (title, grey hint, add button at the right).
+- [x] Integrations: an add button opens the picker under the header (search, tool chips, "Soon" on placeholders); picking a tool opens its dialog; the button stays highlighted while open.
+- [x] Integrations: rows show a 30px mark, name and one-line hint, a state dot + label, then the gear; a connected, chosen calendar reads "In use for bookings".
+- [x] Integrations: rows show no test buttons, only the gear (and "Finish setup" for a half-set-up tool, which opens the dialog). Slack "Send test" and "Test connection" (Google, Microsoft 365, ConnectWise) are inside each Manage dialog and show their result there (no toast).
+- [x] Integrations: Needs attention is one amber note with a pill per issue; hidden when nothing is wrong.
+- [x] Integrations: Connection health chips dim the other lines (not remove them); press the chip again to restore; keyboard works (Tab, Space).
+- [x] Manage: General rows (profile, ID with copy button, Leave, Delete) with grey one-line descriptions; Delete hidden for non-admins; Leave and Delete still confirm.
+- [x] Manage: Members panel has the Members / Invitations switch with counts, search, Invite; role is a dropdown for admins, a pill for viewers; the trash button asks to confirm.
+- [x] Brand (admin): title row says "Owners and admins only"; Discard and Save appear after editing Tone or Sign off and disappear after saving; an error shows under its field.
+- [x] Brand: Brand colour shows two swatches with hex and a gear that opens the same dialog as before.
+- [x] Light theme: the three pages stay readable.
 
 
 ## Meeting reps, Calendar panel, Website field, Soon placeholders, Brand / Preferences names
 Run `npx supabase db push --remote` first (migrations 0046 and 0047).
-- [ ] Meetings: a Rep column sits between Status and Source; new agent bookings read Unassigned.
-- [ ] Meetings (rep / admin / owner): pick a member in the Rep dropdown; a toast says "Rep updated.", the donut and column update. Support staff are not in the list. Viewer: plain text, no dropdown.
-- [ ] Meetings: "Booked by rep" donut next to the chart shows counts per rep plus Unassigned for the selected window and changes with the window switch; empty window says no meetings.
-- [ ] Integrations: Calendar panel ends with Your calendar and Team calendars; with a calendar connected everyone shows Connected, with none connected everyone shows Not connected. No Send reminder.
-- [ ] Integrations: Add lead source lists Facebook Lead Ads, Webhook and Custom API with a Soon chip; clicking does nothing.
-- [ ] Profile > Company: a Website field. `acme.com` saves as https://acme.com; `http://` is upgraded; `not a url`, `ftp://x.com` and `localhost` show a red error under the field and nothing saves. Blank is fine.
-- [ ] Profile: Import from website opens with the saved website filled in.
-- [ ] The workspace rail item and page title read Brand (tone, brand colour); the sidebar bottom item and its page title read Preferences; Cmd+K lists Preferences. No "Settings" left in the app.
+- [x] Meetings: a Rep column sits between Status and Source; new agent bookings read Unassigned.
+- [x] Meetings (rep / admin / owner): pick a member in the Rep dropdown; a toast says "Rep updated.", the donut and column update. Support staff are not in the list. Viewer: plain text, no dropdown.
+- [x] Meetings: "Booked by rep" donut next to the chart shows counts per rep plus Unassigned for the selected window and changes with the window switch; empty window says no meetings.
+- [x] Integrations: Calendar panel ends with Your calendar and Team calendars; with a calendar connected everyone shows Connected, with none connected everyone shows Not connected. No Send reminder.
+- [x] Integrations: Add lead source lists Facebook Lead Ads, Webhook and Custom API with a Soon chip; clicking does nothing.
+- [x] Profile > Company: a Website field. `acme.com` saves as https://acme.com; `http://` is upgraded; `not a url`, `ftp://x.com` and `localhost` show a red error under the field and nothing saves. Blank is fine.
+- [x] Profile: Import from website opens with the saved website filled in.
+- [x] The workspace rail item and page title read Brand (tone, brand colour); the sidebar bottom item and its page title read Preferences; Cmd+K lists Preferences. No "Settings" left in the app.
 
 ## Conversations: actions, export, columns, status words
-- [ ] Status words match everywhere (list, client, thread, dashboard): Active, Booked, Handed off (violet), Not a fit (grey, not red), Closed. "Where clients end up" shows Not a fit in grey.
-- [ ] Thread (rep+): "Hand off to a person" sets Handed off, a toast confirms, Slack and email alert the team once, ConnectWise write-back is requested; the button disappears once handed off. Viewer sees no action buttons.
-- [ ] Thread (rep+): "Mark as not a fit" asks first, then the status reads Not a fit and the agent sends no more follow-ups. Not offered on a booked conversation.
-- [ ] Thread (admin+): "Delete" asks first ("cannot be undone"), then lands on the list; the conversation, its messages and call rows are gone and an audit entry exists. A rep does not see Delete.
-- [ ] Client (rep+): "Mark as not a fit" appears only with open conversations; the dialog says how many; afterwards they all read Not a fit.
-- [ ] Thread: Calls and Meetings tabs appear only when there are any; Calls shows just the calls; Meetings lists each with Outcome buttons and Reschedule / Cancel for reps. Details show Timezone and Consent source.
-- [ ] Client: Meetings tab has Outcome buttons and Reschedule / Cancel (rep+; viewers read text); the info strip shows Timezone; Consent lists "via hosted_form" etc.
-- [ ] List: Export downloads a CSV of the current tab and search (name, company, email, phone, channels, status, fit, open, timezone, consent source, last activity); a name starting with `=` opens as text in Excel.
-- [ ] List: Columns menu ticks columns on and off (Client always stays); the choice survives a reload; Timezone and Consent source are off by default.
-- [ ] List: clicking a header sorts the loaded page (arrow shows direction; a third click restores the activity order); paging still goes by activity.
-- [ ] List: one Refresh only (the header one); the "Open now" strip stays.
+- [x] Status words match everywhere (list, client, thread, dashboard): Active, Booked, Handed off (violet), Not a fit (grey, not red), Closed. "Where clients end up" shows Not a fit in grey.
+- [x] Thread (rep+): "Hand off to a person" sets Handed off, a toast confirms, Slack and email alert the team once, ConnectWise write-back is requested; the button disappears once handed off. Viewer sees no action buttons.
+- [x] Thread (rep+): "Mark as not a fit" asks first, then the status reads Not a fit and the agent sends no more follow-ups. Not offered on a booked conversation.
+- [x] Thread (admin+): "Delete" asks first ("cannot be undone"), then lands on the list; the conversation, its messages and call rows are gone and an audit entry exists. A rep does not see Delete.
+- [x] Client (rep+): "Mark as not a fit" appears only with open conversations; the dialog says how many; afterwards they all read Not a fit.
+- [x] Thread: Calls and Meetings tabs appear only when there are any; Calls shows just the calls; Meetings lists each with Outcome buttons and Reschedule / Cancel for reps. Details show Timezone and Consent source.
+- [x] Client: Meetings tab has Outcome buttons and Reschedule / Cancel (rep+; viewers read text); the info strip shows Timezone; Consent lists "via hosted_form" etc.
+- [x] List: Export downloads a CSV of the current tab and search (name, company, email, phone, channels, status, fit, open, timezone, consent source, last activity); a name starting with `=` opens as text in Excel.
+- [x] List: Columns menu ticks columns on and off (Client always stays); the choice survives a reload; Timezone and Consent source are off by default.
+- [x] List: clicking a header sorts the loaded page (arrow shows direction; a third click restores the activity order); paging still goes by activity.
+- [x] List: one Refresh only (the header one); the "Open now" strip stays.
 
 ## Platform admin as owner
 
-- [ ] Admin console → Organizations → a workspace you joined as support → Members: your row shows "Alevo support" and a "Make owner" button. Click it: the role pill reads Owner, the seat count goes up by one.
-- [ ] In the product app, Workspace → Manage lists you as Owner (not "Alevo support"), and owner-only actions work.
-- [ ] Change your Clerk role or re-sync (membership.updated): you stay Owner.
-- [ ] "Back to support" returns the row to "Alevo support" and removes the seat.
-- [ ] A non-admin member row shows no button.
+- [x] Admin console → Organizations → a workspace you joined as support → Members: your row shows "Alevo support" and a "Make owner" button. Click it: the role pill reads Owner, the seat count goes up by one.
+- [x] In the product app, Workspace → Manage lists you as Owner (not "Alevo support"), and owner-only actions work.
+- [x] Change your Clerk role or re-sync (membership.updated): you stay Owner.
+- [x] "Back to support" returns the row to "Alevo support" and removes the seat.
+- [x] A non-admin member row shows no button.
 
 ## Support button
 
-- [ ] The top bar has a Support icon beside the avatar (hover shows "Support"). It opens "Report a problem".
-- [ ] Send it empty: red field errors under "What is the problem?" and "What happened?", nothing is sent.
-- [ ] Fill it in, add a screenshot by choosing a file and another by pasting (Ctrl+V), remove one with the x. A 4th is refused.
-- [ ] Send: a toast says thanks and the dialog closes. Alevo's internal Slack channel (Admin → Settings → Internal alerts) gets a message with who, workspace, page, browser, the text and the screenshots. Nothing goes to the workspace's own Slack.
-- [ ] With no internal webhook saved, sending shows "We could not send your report just now" inside the dialog.
-- [ ] Send 6 reports within an hour: the 6th says to wait a little.
+- [x] The top bar has a Support icon beside the avatar (hover shows "Support"). It opens "Report a problem".
+- [x] Send it empty: red field errors under "What is the problem?" and "What happened?", nothing is sent.
+- [x] Fill it in, add a screenshot by choosing a file and another by pasting (Ctrl+V), remove one with the x. A 4th is refused.
+- [x] Send: a toast says thanks and the dialog closes. Alevo's internal Slack channel (Admin → Settings → Internal alerts) gets a message with who, workspace, page, browser, the text and the screenshots. Nothing goes to the workspace's own Slack.
+- [x] With no internal webhook saved, sending shows "We could not send your report just now" inside the dialog.
+- [x] Send 6 reports within an hour: the 6th says to wait a little.
 
 ## Save bar and leaving with unsaved changes
 
-- [ ] Brand: change the tone, the sign-off or a colour (pick it, or type a hex in the picker). The bottom bar shows Unsaved changes, Discard and Save changes. Discard puts everything back.
-- [ ] Save changes saves tone, sign-off and both colours together and toasts once. The header has no Save or Discard.
-- [ ] With an unsaved change, click any sidebar link: a dialog offers Stay, Discard and leave, and Save and leave. Save and leave saves, then opens the page you clicked. If a field is invalid it stays on the page with the error.
-- [ ] Same bar and dialog on Agent, Profile and Manage → General (Update profile: change the name), and in the admin console on Settings (type a webhook) and an organization's Plan (pick another plan).
-- [ ] Dialogs (Manage dialogs on Integrations, Add document, Reschedule, Account) keep their own Save in the dialog footer.
+- [x] Brand: change the tone, the sign-off or a colour (pick it, or type a hex in the picker). The bottom bar shows Unsaved changes, Discard and Save changes. Discard puts everything back.
+- [x] Save changes saves tone, sign-off and both colours together and toasts once. The header has no Save or Discard.
+- [x] With an unsaved change, click any sidebar link: a dialog offers Stay, Discard and leave, and Save and leave. Save and leave saves, then opens the page you clicked. If a field is invalid it stays on the page with the error.
+- [x] Same bar and dialog on Agent, Profile and Manage → General (Update profile: change the name), and in the admin console on Settings (type a webhook) and an organization's Plan (pick another plan).
+- [x] Dialogs (Manage dialogs on Integrations, Add document, Reschedule, Account) keep their own Save in the dialog footer.
 
 ## Integrations windows
 
-- [ ] Integrations has an "On this page" list on the right (hidden under 980px): a dot per section (green set up, amber needs attention, grey nothing yet), the open one highlighted. Clicking a name opens that tab.
-- [ ] Website form window: tabs Embed on your site / Your own form. Switch "Use Brand colour" off and `data-accent` and `data-color` appear in the code; switch "Phone, address and hours" off and `data-details="false"` appears. Copy copies the code shown.
-- [ ] Your own form tab: the request code, the Fields list (name, email, message, consent required) and the three responses.
-- [ ] Chat widget window: the On / Off switch is beside the close button. Typing in Greeting or Agent name updates the preview at once and the footer reads "1 unsaved change" with Discard and Save changes. Discard puts it back. Bubble position moves the bubble in the preview and `data-position` in the code.
-- [ ] Slack window: a masked box with Replace and a trash button once saved (never the saved URL), Replace shows an input with Save and Cancel, Send test shows "delivered at <time>" or the reason it failed.
+- [x] Integrations has an "On this page" list on the right (hidden under 980px): a dot per section (green set up, amber needs attention, grey nothing yet), the open one highlighted. Clicking a name opens that tab.
+- [x] Website form window: tabs Embed on your site / Your own form. Switch "Use Brand colour" off and `data-accent` and `data-color` appear in the code; switch "Phone, address and hours" off and `data-details="false"` appears. Copy copies the code shown.
+- [x] Your own form tab: the request code, the Fields list (name, email, message, consent required) and the three responses.
+- [x] Chat widget window: the On / Off switch is beside the close button. Typing in Greeting or Agent name updates the preview at once and the footer reads "1 unsaved change" with Discard and Save changes. Discard puts it back. Bubble position moves the bubble in the preview and `data-position` in the code.
+- [x] Slack window: a masked box with Replace and a trash button once saved (never the saved URL), Replace shows an input with Save and Cancel, Send test shows "delivered at <time>" or the reason it failed.
 
 ## Chat avatar
 
-- [ ] Integrations → Chat widget: Avatar → Upload image with a large photo. The field and the chat preview show it in a circle filled edge to edge and the footer reads "1 unsaved change: Avatar". Small / Medium / Large change its diameter (44 / 60 / 80px) in the preview; Large is not clipped.
-- [ ] Save changes: the window closes. Open `/api/chat/<workspace id>` and `avatarUrl` is set (it can lag up to a minute: the response is cached). The image URL returns a small WebP (typically 10 to 30 KB).
-- [ ] On a page with the chat snippet, open the bubble: the picture is in the header at the chosen size. With no picture, a circle with the first letter.
-- [ ] Replace image, then Remove: the old file is deleted from R2 (its old URL now returns 404). A wide logo fills the circle and its left and right sides are cut off, nothing is stretched.
-- [ ] The code in the Website form and Chat widget windows has one attribute per line, scrolls sideways when long, and Copy copies it as shown.
+- [x] Integrations → Chat widget: Avatar → Upload image with a large photo. The field and the chat preview show it in a circle filled edge to edge and the footer reads "1 unsaved change: Avatar". Small / Medium / Large change its diameter (44 / 60 / 80px) in the preview; Large is not clipped.
+- [x] Save changes: the window closes. Open `/api/chat/<workspace id>` and `avatarUrl` is set (it can lag up to a minute: the response is cached). The image URL returns a small WebP (typically 10 to 30 KB).
+- [x] On a page with the chat snippet, open the bubble: the picture is in the header at the chosen size. With no picture, a circle with the first letter.
+- [x] Replace image, then Remove: the old file is deleted from R2 (its old URL now returns 404). A wide logo fills the circle and its left and right sides are cut off, nothing is stretched.
+- [x] The code in the Website form and Chat widget windows has one attribute per line, scrolls sideways when long, and Copy copies it as shown.
 
 ## Not a fit: the agent keeps answering
 
-- [ ] In a chat or email thread, mark the lead Not a fit (Conversations → the thread → Not a fit), then reply as the contact with a question. The agent answers once, friendly, without pitching or repeating that they are not a fit.
-- [ ] Reply again, and again: it answers every time, one reply each. It does not go quiet.
-- [ ] Then say you do want to book (or that you match the criteria): the thread goes back to Active (or Handed off) and the agent carries on normally.
-- [ ] SMS: text the workspace number from a lead marked Not a fit. The message lands in the SAME thread (no new conversation) and gets a reply.
+- [x] In a chat or email thread, mark the lead Not a fit (Conversations → the thread → Not a fit), then reply as the contact with a question. The agent answers once, friendly, without pitching or repeating that they are not a fit.
+- [x] Reply again, and again: it answers every time, one reply each. It does not go quiet.
+- [x] Then say you do want to book (or that you match the criteria): the thread goes back to Active (or Handed off) and the agent carries on normally.
+- [x] SMS: text the workspace number from a lead marked Not a fit. The message lands in the SAME thread (no new conversation) and gets a reply.
 
 ## Always answer, and fast cadence
 
-- [ ] On a chat or email thread, send questions after each of: marked Not a fit, Handed off, Booked, Closed. The agent answers every time, once, and does not go quiet. On a Booked thread it does not book a second meeting.
-- [ ] Reply with only "thank you": one short closing line, the thread becomes Closed (a Booked one stays Booked) and no follow-up nudges are sent. Write again afterwards: it answers.
-- [ ] Admin console → Settings → Testing: turn Fast cadence on, Save changes. Within about 15 seconds a quiet lead is nudged after 20s, 30s and 40s, and an unanswered message alerts after 30s. Turn it off again.
+- [x] On a chat or email thread, send questions after each of: marked Not a fit, Handed off, Booked, Closed. The agent answers every time, once, and does not go quiet. On a Booked thread it does not book a second meeting.
+- [x] Reply with only "thank you": one short closing line, the thread becomes Closed (a Booked one stays Booked) and no follow-up nudges are sent. Write again afterwards: it answers.
+- [x] Admin console → Settings → Testing: turn Fast cadence on, Save changes. Within about 15 seconds a quiet lead is nudged after 20s, 30s and 40s, and an unanswered message alerts after 30s. Turn it off again.
 
 ## Contact preference and the phone chat
 
-- [ ] The website form (embed, hosted page `/form/<id>`) has a dropdown "How should we reach you?" with Email (selected) and Text message. Pick Text message: the phone label says "(required for Text)". Submit with no phone: an error under Phone. With a phone: it sends.
-- [ ] POST the API without `contactPreference` (an old custom form): it still works and counts as email. POST `"contactPreference": "carrier pigeon"`: 400 with "Choose email or text.".
-- [ ] The thread's Details shows "Prefers: Text message" (or Email). As that lead, the agent's first reply arrives as a text when the workspace has an SMS number (and by email when it does not).
-- [ ] On a phone (or a 390px-wide window): open the chat bubble; the window fills the screen with the avatar and name bar at the top. Tap the message box: the keyboard slides up, the whole chat moves up with it, the bar stays at the top and the last message stays visible above the box. The page behind does not scroll and the screen does not zoom in.
+- [x] The website form (embed, hosted page `/form/<id>`) has a dropdown "How should we reach you?" with Email (selected) and Text message. Pick Text message: the phone label says "(required for Text)". Submit with no phone: an error under Phone. With a phone: it sends.
+- [x] POST the API without `contactPreference` (an old custom form): it still works and counts as email. POST `"contactPreference": "carrier pigeon"`: 400 with "Choose email or text.".
+- [x] The thread's Details shows "Prefers: Text message" (or Email). As that lead, the agent's first reply arrives as a text when the workspace has an SMS number (and by email when it does not).
+- [x] On a phone (or a 390px-wide window): open the chat bubble; the window fills the screen with the avatar and name bar at the top. Tap the message box: the keyboard slides up, the whole chat moves up with it, the bar stays at the top and the last message stays visible above the box. The page behind does not scroll and the screen does not zoom in.
 
 ## Chat: New conversation button (2026-11-18)
 
-- [ ] Open the chat on a fresh browser: no "New conversation" button yet (there is nothing to close). Send a message: a small "+ New conversation" button appears just above the message box.
-- [ ] Click it: the thread clears to the greeting, the button disappears, and the box is empty and focused. The old conversation shows as Closed in Conversations; it is not deleted.
-- [ ] Send a message: a brand-new conversation (and no link to the old one) starts, and the agent replies in it.
-- [ ] Reload the page after clicking it: the chat is still the new, empty one. Click it on a booked or handed-off chat: the widget starts fresh, but that conversation keeps its Booked / Handed off status.
-- [ ] On a phone: the button is easy to tap and does not push the message box off the screen.
+- [x] Open the chat on a fresh browser: no "New conversation" button yet (there is nothing to close). Send a message: a small "+ New conversation" button appears just above the message box.
+- [x] Click it: the thread clears to the greeting, the button disappears, and the box is empty and focused. The old conversation shows as Closed in Conversations; it is not deleted.
+- [x] Send a message: a brand-new conversation (and no link to the old one) starts, and the agent replies in it.
+- [x] Reload the page after clicking it: the chat is still the new, empty one. Click it on a booked or handed-off chat: the widget starts fresh, but that conversation keeps its Booked / Handed off status.
+- [x] On a phone: the button is easy to tap and does not push the message box off the screen.
 
 ## Chat follow-up and pause (2026-11-18)
 
 Needs Inngest running (dev server or staging) and a chat with the widget on. Watch Inngest → Runs → `chat-cadence`.
 
-- [ ] Send a message, get the agent's reply, then say nothing. After about 30 seconds a short line appears ("Still there? ..."); about a minute after that, a second one; about two minutes after that, a closing line and a grey note "This chat is paused. Send a message to pick it back up."
-- [ ] The conversation shows as Closed in Conversations after the pause.
-- [ ] Type a message in the paused chat: the agent replies as usual, the status goes back to Active, and the 30s / 1m / 2m nudges start again after the reply.
-- [ ] Reply during the wait (before the second nudge): no more nudges arrive until the agent's next reply, and the run shows Cancelled.
-- [ ] A chat that was handed off or booked gets no nudges and is not paused.
-- [ ] Give an email in the chat, then leave without replying: after the pause the days-long email follow-up starts (Inngest → `conversation-cadence`; turn on Admin → Settings → Testing → fast cadence to see it in seconds) and the first nudge arrives by email.
-- [ ] Give only a phone number (no email), then leave: the first follow-up arrives as a text from the org's number.
-- [ ] A chat with no email and no phone just stays paused and never gets the days-long follow-up.
+- [x] Send a message, get the agent's reply, then say nothing. After about 30 seconds a short line appears ("Still there? ..."); about a minute after that, a second one; about two minutes after that, a closing line and a grey note "This chat is paused. Send a message to pick it back up."
+- [x] The conversation shows as Closed in Conversations after the pause.
+- [x] Type a message in the paused chat: the agent replies as usual, the status goes back to Active, and the 30s / 1m / 2m nudges start again after the reply.
+- [x] Reply during the wait (before the second nudge): no more nudges arrive until the agent's next reply, and the run shows Cancelled.
+- [x] A chat that was handed off or booked gets no nudges and is not paused.
+- [x] Give an email in the chat, then leave without replying: after the pause the days-long email follow-up starts (Inngest → `conversation-cadence`; turn on Admin → Settings → Testing → fast cadence to see it in seconds) and the first nudge arrives by email.
+- [x] Give only a phone number (no email), then leave: the first follow-up arrives as a text from the org's number.
+- [x] A chat with no email and no phone just stays paused and never gets the days-long follow-up.
 
 ## Chat agent: always replies, one question, no pricing (2026-11-17)
 
 Run against staging with a fresh chat (Integrations → Chat widget on). Watch Inngest → staging → Runs: each `qualify-conversation` output now has a `trace`.
 
-- [ ] Reply time: send a message and time the answer. It should arrive in about 5 to 8 seconds (it was about 12).
-- [ ] Say "my name is Sam": the agent saves the name AND replies in the same turn (it used to go quiet). Then "Sam, sam@example.com": it replies too. In Inngest the run output shows `replied: true`.
-- [ ] Send two messages a second or two apart ("hi" then "I need help with IT"): you get a reply to both; neither is skipped. The output may show `catchUps: 1`.
-- [ ] Every agent message asks at most ONE question (name + email together counts as one). Try a long chat of 8 messages.
-- [ ] After you give name and email, the agent offers to book a call (times from the calendar, or the scheduling link) without waiting to be asked. Choose a time: the meeting appears under Meetings and the thread says Booked.
-- [ ] Tone: replies read like a person typing. No em dashes or en dashes anywhere, no opening label like "Good fit" or "Great news", no "America/New_York" (it says "10:00 AM Eastern").
-- [ ] Ask two things in one message ("book me Wednesday at 10 and what else can you do for us?"): the booking goes through AND the second question is answered in the same turn, without asking again.
-- [ ] Send two messages a few seconds apart ("fine am is good", then "9"): one answer, no stale second reply that offers times again after the booking.
-- [ ] Reply time: a plain chat message gets its answer in about 4 to 8 seconds; one that needs the calendar a few seconds more. The Inngest run output shows `trace.modelMs` (each model call) and `trace.kbMs` (knowledge lookup).
-- [ ] Dates and times: in the conversation view, a divider (Today, Yesterday, or the date) appears whenever the day changes, and every message shows its time. Do the same in the website chat: each bubble has a small time, and a chat resumed the next day shows a day divider before the new message.
-- [ ] Ask "how much does it cost?", "what are your prices?", "do you have a quote?": the agent says in its own words that a sales rep is the right person for pricing and offers a call, worded differently each time (ask twice in one chat: the two answers differ), and never names a figure. Say "yes": it moves to booking. The thread is NOT handed off by the pricing question alone.
-- [ ] Put a price in Workspace → Knowledge (a text doc with "Plans start at $99") and ask about pricing again: still no figure.
-- [ ] Phone call (voice): ask about pricing; the agent gives the same line and offers a call with a sales rep.
-- [ ] Fast cadence switch on: a quiet lead is still nudged; a nudge never fails for "no reply".
-- [ ] Timezones: open the chat from a browser in a different timezone than the org's. The agent offers times in YOUR timezone (it knows it from the browser). Ask "what time is it?": it answers in your timezone.
-- [ ] A contact whose timezone is unknown (email or text lead): the agent offers times in the organization's timezone and names it with each time ("10:00 AM EST"), inviting a correction. Say "I'm in Pacific": it saves it and gives the times again in Pacific.
-- [ ] Workspace → Agent → Default timezone: one entry per zone with its hours from UTC ("Eastern (UTC-5)"). With none chosen, turning the agent on is refused with "Choose the organization's timezone".
-- [ ] Agree to a time, then check the calendar: the event is at the time you said, in your timezone. If the calendar is disconnected the agent says it couldn't book and hands off.
+- [x] Reply time: send a message and time the answer. It should arrive in about 5 to 8 seconds (it was about 12).
+- [x] Say "my name is Sam": the agent saves the name AND replies in the same turn (it used to go quiet). Then "Sam, sam@example.com": it replies too. In Inngest the run output shows `replied: true`.
+- [x] Send two messages a second or two apart ("hi" then "I need help with IT"): you get a reply to both; neither is skipped. The output may show `catchUps: 1`.
+- [x] Every agent message asks at most ONE question (name + email together counts as one). Try a long chat of 8 messages.
+- [x] After you give name and email, the agent offers to book a call (times from the calendar, or the scheduling link) without waiting to be asked. Choose a time: the meeting appears under Meetings and the thread says Booked.
+- [x] Tone: replies read like a person typing. No em dashes or en dashes anywhere, no opening label like "Good fit" or "Great news", no "America/New_York" (it says "10:00 AM Eastern").
+- [x] Ask two things in one message ("book me Wednesday at 10 and what else can you do for us?"): the booking goes through AND the second question is answered in the same turn, without asking again.
+- [x] Send two messages a few seconds apart ("fine am is good", then "9"): one answer, no stale second reply that offers times again after the booking.
+- [x] Reply time: a plain chat message gets its answer in about 4 to 8 seconds; one that needs the calendar a few seconds more. The Inngest run output shows `trace.modelMs` (each model call) and `trace.kbMs` (knowledge lookup).
+- [x] Dates and times: in the conversation view, a divider (Today, Yesterday, or the date) appears whenever the day changes, and every message shows its time. Do the same in the website chat: each bubble has a small time, and a chat resumed the next day shows a day divider before the new message.
+- [x] Ask "how much does it cost?", "what are your prices?", "do you have a quote?": the agent says in its own words that a sales rep is the right person for pricing and offers a call, worded differently each time (ask twice in one chat: the two answers differ), and never names a figure. Say "yes": it moves to booking. The thread is NOT handed off by the pricing question alone.
+- [x] Put a price in Workspace → Knowledge (a text doc with "Plans start at $99") and ask about pricing again: still no figure.
+- [x] Phone call (voice): ask about pricing; the agent gives the same line and offers a call with a sales rep.
+- [x] Fast cadence switch on: a quiet lead is still nudged; a nudge never fails for "no reply".
+- [x] Timezones: open the chat from a browser in a different timezone than the org's. The agent offers times in YOUR timezone (it knows it from the browser). Ask "what time is it?": it answers in your timezone.
+- [x] A contact whose timezone is unknown (email or text lead): the agent offers times in the organization's timezone and names it with each time ("10:00 AM EST"), inviting a correction. Say "I'm in Pacific": it saves it and gives the times again in Pacific.
+- [x] Workspace → Agent → Default timezone: one entry per zone with its hours from UTC ("Eastern (UTC-5)"). With none chosen, turning the agent on is refused with "Choose the organization's timezone".
+- [x] Agree to a time, then check the calendar: the event is at the time you said, in your timezone. If the calendar is disconnected the agent says it couldn't book and hands off.
 
 ## Spend (admin console)
 
-- [ ] Admin console → Spend shows a tile and a table for Production, Staging and Development, with a Today / 7 / 30 / 90 day switch (Alt+1 to Alt+4 pick them, like the app). A "By model" table lists each AI and embedding model on its own (calls, tokens, average price per 1M tokens, cost); a new model is priced from `CLAUDE_RATES` in `apps/app/lib/usage/spend.ts`. A "By organization" table lists each org's spend per environment, biggest first (spend with no org shows as "Not tied to an organization"). Today draws 24 hourly bars; the same switch on Dashboard and Organizations also offers Today.
-- [ ] Send a chat message to the agent in dev: Development gets an "Agent replies" row (AI, estimated). On staging the same lands under Staging.
-- [ ] Send a text and an email through the agent: "Texts sent" / "Emails sent" appear. Reply by text: "Texts received".
-- [ ] Add a knowledge-base document: "Knowledge base" (embeddings) appears.
-- [ ] Make a test phone call: "Calls" appears with the figure marked "From vendor".
+- [x] Admin console → Spend shows a tile and a table for Production, Staging and Development, with a Today / 7 / 30 / 90 day switch (Alt+1 to Alt+4 pick them, like the app). A "By model" table lists each AI and embedding model on its own (calls, tokens, average price per 1M tokens, cost); a new model is priced from `CLAUDE_RATES` in `apps/app/lib/usage/spend.ts`. A "By organization" table lists each org's spend per environment, biggest first (spend with no org shows as "Not tied to an organization"). Today draws 24 hourly bars; the same switch on Dashboard and Organizations also offers Today.
+- [x] Send a chat message to the agent in dev: Development gets an "Agent replies" row (AI, estimated). On staging the same lands under Staging.
+- [x] Send a text and an email through the agent: "Texts sent" / "Emails sent" appear. Reply by text: "Texts received".
+- [x] Add a knowledge-base document: "Knowledge base" (embeddings) appears.
+- [x] Make a test phone call: "Calls" appears with the figure marked "From vendor".
+
+
+## Knowledge: view and edit passages (2026-11-18)
+
+- [x] Workspace → Knowledge: a Ready document has a list icon; it opens its passages in order (25 a page, Previous / Next when more).
+- [x] Edit a passage, Save: toast, an "Edited" tag appears, and the agent quotes the new text on the next question.
+- [x] Empty text or over 3000 characters shows an error under the box and saves nothing.
+- [x] Delete a passage (confirm): it goes, and the document's Chunks count drops by one.
+- [x] Re-index a document with edited passages: a confirm warns they will be replaced.
+
+- [x] Knowledge: add a web page URL (or Re-index one): its passages each start with a heading path and contain no menu or footer text.
+- [x] Knowledge: upload a PDF with headings (a handbook, a price list): its passages start with a heading path and carry no page numbers or running header. A PDF with no headings still indexes in plain chunks.
+- [x] Knowledge: paste text with lines like `PRICING` or `2.1 Website plan`: the passages start with those headings.
+
+- [ ] Admin → Spend → By model: each AI model shows input tokens and cost, output tokens and cost, and the price per 1M in / out. Send a chat message in the app, reload: that model's input and output figures grow. A note under the table counts tokens recorded before the split.

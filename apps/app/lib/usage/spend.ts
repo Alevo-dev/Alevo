@@ -20,11 +20,11 @@ export function currentEnv(): SpendEnv {
  */
 const CLAUDE_RATES: [model: string, input: number, output: number][] = [
   ["claude-haiku-5-5", 1, 5],
-  ["claude-sonnet-5", 3, 15],
+  ["claude-sonnet-5", 2, 10],
   ["claude-opus-5-5", 15, 75],
   // Family fallbacks for a model id not listed above.
   ["claude-haiku", 1, 5],
-  ["claude-sonnet", 3, 15],
+  ["claude-sonnet", 2, 10],
   ["claude-opus", 15, 75],
 ];
 const VOYAGE_USD_PER_MTOK = 0.02;
@@ -37,27 +37,47 @@ function track(e: Parameters<typeof recordSpend>[0]) {
 
 type ClaudeUsage = { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null };
 
-/** What one Claude call costs at that model's rate. Cached input is billed at about a tenth of a normal input token, so it counts at that rate. */
-export function claudeCost(model: string, usage: ClaudeUsage): number {
+/**
+ * What one Claude call costs at that model's rate, split into the prompt side and the reply side. Cached input is
+ * billed differently from a normal input token (a write 1.25x, a read about a tenth), so it counts at that rate and
+ * the input token count is every token sent, cached or not.
+ */
+export function claudeSplit(model: string, usage: ClaudeUsage) {
   const [, inRate, outRate] = CLAUDE_RATES.find(([m]) => model === m) ?? CLAUDE_RATES.find(([m]) => model.startsWith(m)) ?? CLAUDE_RATES[1]!;
-  const input = usage.input_tokens + (usage.cache_creation_input_tokens ?? 0) * 1.25 + (usage.cache_read_input_tokens ?? 0) * 0.1;
-  return (input * inRate + usage.output_tokens * outRate) / 1e6;
+  const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  const weighted = usage.input_tokens + cacheWrite * 1.25 + cacheRead * 0.1;
+  return {
+    inputTokens: usage.input_tokens + cacheWrite + cacheRead,
+    outputTokens: usage.output_tokens,
+    inputCostUsd: (weighted * inRate) / 1e6,
+    outputCostUsd: (usage.output_tokens * outRate) / 1e6,
+  };
+}
+
+export function claudeCost(model: string, usage: ClaudeUsage): number {
+  const s = claudeSplit(model, usage);
+  return s.inputCostUsd + s.outputCostUsd;
 }
 
 export function trackClaude(model: string, usage: ClaudeUsage, kind: string, orgId?: string | null) {
+  const split = claudeSplit(model, usage);
   track({
     env: currentEnv(),
     provider: "anthropic",
     kind,
     orgId,
-    units: usage.input_tokens + usage.output_tokens,
-    costUsd: claudeCost(model, usage),
+    units: split.inputTokens + split.outputTokens,
+    costUsd: split.inputCostUsd + split.outputCostUsd,
     detail: model,
+    split,
   });
 }
 
 export function trackEmbedding(model: string, tokens: number, orgId?: string | null) {
-  track({ env: currentEnv(), provider: "voyage", kind: "embedding", orgId, units: tokens, costUsd: (tokens * VOYAGE_USD_PER_MTOK) / 1e6, detail: model });
+  const costUsd = (tokens * VOYAGE_USD_PER_MTOK) / 1e6;
+  // An embedding is all input: nothing comes back to be billed.
+  track({ env: currentEnv(), provider: "voyage", kind: "embedding", orgId, units: tokens, costUsd, detail: model, split: { inputTokens: tokens, outputTokens: 0, inputCostUsd: costUsd, outputCostUsd: 0 } });
 }
 
 export function trackSms(direction: "in" | "out", segments: number, orgId: string) {

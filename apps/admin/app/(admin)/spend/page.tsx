@@ -38,6 +38,9 @@ const KINDS: Record<string, string> = {
 
 const usd = (n: number) => (n >= 100 ? `$${Math.round(n).toLocaleString("en-US")}` : n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(n === 0 ? 0 : 4)}`);
 const sum = (rows: SpendRow[]) => rows.reduce((t, r) => t + r.costUsd, 0);
+const tok = (n: number) => Math.round(n).toLocaleString("en-US");
+/** The price per million tokens a figure works out to (cached input counts at its own rate, so this can sit below the list price). */
+const rate = (cost: number, tokens: number) => (tokens > 0 ? usd((cost / tokens) * 1e6) : "—");
 
 /** What our vendors cost us, by environment, so dev and staging testing is visible next to production. */
 export default async function SpendPage({ searchParams }: { searchParams: Promise<{ window?: string }> }) {
@@ -53,12 +56,18 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
   }
   const orgs = [...byOrg.values()].sort((a, b) => b.total - a.total);
   // Every model separately, all environments together, so a price change or a new model is easy to see.
-  const byModel = new Map<string, { provider: string; model: string; calls: number; units: number; costUsd: number }>();
+  type ModelRow = { provider: string; model: string; calls: number; inTok: number; outTok: number; inUsd: number; outUsd: number; unsplitTok: number; unsplitUsd: number; costUsd: number };
+  const byModel = new Map<string, ModelRow>();
   for (const r of rows) {
     if (!r.model) continue;
-    const m = byModel.get(`${r.provider}/${r.model}`) ?? { provider: r.provider, model: r.model, calls: 0, units: 0, costUsd: 0 };
+    const m = byModel.get(`${r.provider}/${r.model}`) ?? { provider: r.provider, model: r.model, calls: 0, inTok: 0, outTok: 0, inUsd: 0, outUsd: 0, unsplitTok: 0, unsplitUsd: 0, costUsd: 0 };
     m.calls += r.calls;
-    m.units += r.units;
+    m.inTok += r.inputTokens;
+    m.outTok += r.outputTokens;
+    m.inUsd += r.inputCostUsd;
+    m.outUsd += r.outputCostUsd;
+    m.unsplitTok += r.unsplitUnits;
+    m.unsplitUsd += r.unsplitCostUsd;
     m.costUsd += r.costUsd;
     byModel.set(`${r.provider}/${r.model}`, m);
   }
@@ -113,35 +122,49 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
       </Card>
 
       <Card padding="none">
-        <CardHeader title="By model" hint="Each AI and embedding model priced at its own rate, every environment together." aside={usd(models.reduce((t, m) => t + m.costUsd, 0))} />
+        <CardHeader title="By model" hint="Input (what we send: the prompt and the passages) and output (the reply) are priced separately, per model, every environment together." aside={usd(models.reduce((t, m) => t + m.costUsd, 0))} />
         <Table>
           <thead>
             <tr>
               <Th>Model</Th>
-              <Th>Vendor</Th>
               <Th className="text-right">Calls</Th>
-              <Th className="text-right">Tokens</Th>
-              <Th className="text-right">Avg per 1M tokens</Th>
-              <Th className="text-right">Cost</Th>
+              <Th className="text-right">Input tokens</Th>
+              <Th className="text-right">Input cost</Th>
+              <Th className="text-right">Output tokens</Th>
+              <Th className="text-right">Output cost</Th>
+              <Th className="text-right">Price per 1M in / out</Th>
+              <Th className="text-right">Total</Th>
             </tr>
           </thead>
           <tbody>
             {models.length === 0 ? (
-              <EmptyRow colSpan={6}>No AI spend recorded in this window.</EmptyRow>
+              <EmptyRow colSpan={8}>No AI spend recorded in this window.</EmptyRow>
             ) : (
               models.map((m) => (
                 <Tr key={`${m.provider}/${m.model}`}>
-                  <Td className="font-mono font-medium text-ink">{m.model}</Td>
-                  <Td className="text-ink-muted">{PROVIDERS[m.provider]?.label ?? m.provider}</Td>
+                  <Td>
+                    <span className="font-mono font-medium text-ink">{m.model}</span>
+                    <span className="block text-label text-ink-muted">{PROVIDERS[m.provider]?.label ?? m.provider}</span>
+                  </Td>
                   <Td className={NUM}>{m.calls.toLocaleString("en-US")}</Td>
-                  <Td className={NUM}>{Math.round(m.units).toLocaleString("en-US")}</Td>
-                  <Td className={NUM}>{m.units > 0 ? usd((m.costUsd / m.units) * 1e6) : "—"}</Td>
-                  <Td className={NUM}>{usd(m.costUsd)}</Td>
+                  <Td className={NUM}>{tok(m.inTok)}</Td>
+                  <Td className={NUM}>{usd(m.inUsd)}</Td>
+                  <Td className={NUM}>{tok(m.outTok)}</Td>
+                  <Td className={NUM}>{usd(m.outUsd)}</Td>
+                  <Td className={NUM}>
+                    {rate(m.inUsd, m.inTok)} / {m.provider === "voyage" ? "n/a" : rate(m.outUsd, m.outTok)}
+                  </Td>
+                  <Td className={`${NUM} font-medium text-ink`}>{usd(m.costUsd)}</Td>
                 </Tr>
               ))
             )}
           </tbody>
         </Table>
+        {models.some((m) => m.unsplitTok > 0) && (
+          <p className="border-t border-hairline px-4 py-2.5 text-label text-ink-muted">
+            {`${tok(models.reduce((t, m) => t + m.unsplitTok, 0))} tokens (${usd(models.reduce((t, m) => t + m.unsplitUsd, 0))}) were recorded before input and output were tracked separately. They are in each model's total but not in the input and output columns.`}
+          </p>
+        )}
       </Card>
 
       {ENVS.map((e) => {
@@ -173,6 +196,9 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
                       <Td className={NUM}>{r.calls.toLocaleString("en-US")}</Td>
                       <Td className={NUM}>
                         {Math.round(r.units).toLocaleString("en-US")} <span className="text-ink-muted">{PROVIDERS[r.provider]?.unit}</span>
+                        {r.inputTokens + r.outputTokens > 0 && r.provider === "anthropic" && (
+                          <span className="block text-label text-ink-muted">{`${tok(r.inputTokens)} in · ${tok(r.outputTokens)} out`}</span>
+                        )}
                       </Td>
                       <Td className={NUM}>{usd(r.costUsd)}</Td>
                       <Td>

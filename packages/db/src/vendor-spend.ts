@@ -15,6 +15,8 @@ export type SpendEvent = {
   /** false when the vendor reported the cost itself. */
   estimated?: boolean;
   detail?: string | null;
+  /** AI calls: the split behind `units` and `costUsd` (input includes cached input at its own rate). */
+  split?: { inputTokens: number; outputTokens: number; inputCostUsd: number; outputCostUsd: number };
 };
 
 /** Write one vendor call's cost. Service path; callers must not let a failure here break the call they measured. */
@@ -29,6 +31,10 @@ export async function recordSpend(e: SpendEvent): Promise<void> {
       costUsd: e.costUsd.toFixed(6),
       estimated: e.estimated ?? true,
       detail: e.detail ?? null,
+      inputTokens: e.split ? String(e.split.inputTokens) : null,
+      outputTokens: e.split ? String(e.split.outputTokens) : null,
+      inputCostUsd: e.split ? e.split.inputCostUsd.toFixed(6) : null,
+      outputCostUsd: e.split ? e.split.outputCostUsd.toFixed(6) : null,
     }),
   );
 }
@@ -36,7 +42,23 @@ export async function recordSpend(e: SpendEvent): Promise<void> {
 /** The model behind a row: AI and embedding rows store it in `detail`; other vendors have none. */
 const modelOf = sql<string | null>`case when ${vendorSpend.provider} in ('anthropic', 'voyage') then ${vendorSpend.detail} end`;
 
-export type SpendRow = { env: string; provider: string; kind: string; model: string | null; calls: number; units: number; costUsd: number; estimatedUsd: number };
+export type SpendRow = {
+  env: string;
+  provider: string;
+  kind: string;
+  model: string | null;
+  calls: number;
+  units: number;
+  costUsd: number;
+  estimatedUsd: number;
+  /** AI rows written since 0053 carry the split; `unsplit*` is what older rows hold (combined only). */
+  inputTokens: number;
+  outputTokens: number;
+  inputCostUsd: number;
+  outputCostUsd: number;
+  unsplitUnits: number;
+  unsplitCostUsd: number;
+};
 
 /** Spend over the last `days` days, grouped by environment, provider and kind. Cross-tenant: the admin console only. */
 export async function spendSummary(days: number): Promise<SpendRow[]> {
@@ -53,6 +75,13 @@ export async function spendSummary(days: number): Promise<SpendRow[]> {
         units: sql<number>`coalesce(sum(${vendorSpend.units}), 0)`.mapWith(Number),
         costUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}), 0)`.mapWith(Number),
         estimatedUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}) filter (where ${vendorSpend.estimated}), 0)`.mapWith(Number),
+        inputTokens: sql<number>`coalesce(sum(${vendorSpend.inputTokens}), 0)`.mapWith(Number),
+        outputTokens: sql<number>`coalesce(sum(${vendorSpend.outputTokens}), 0)`.mapWith(Number),
+        inputCostUsd: sql<number>`coalesce(sum(${vendorSpend.inputCostUsd}), 0)`.mapWith(Number),
+        outputCostUsd: sql<number>`coalesce(sum(${vendorSpend.outputCostUsd}), 0)`.mapWith(Number),
+        // AI rows that predate the split: only their combined figures exist.
+        unsplitUnits: sql<number>`coalesce(sum(${vendorSpend.units}) filter (where ${vendorSpend.inputTokens} is null and ${vendorSpend.provider} in ('anthropic', 'voyage')), 0)`.mapWith(Number),
+        unsplitCostUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}) filter (where ${vendorSpend.inputTokens} is null and ${vendorSpend.provider} in ('anthropic', 'voyage')), 0)`.mapWith(Number),
       })
       .from(vendorSpend)
       .where(sql`${vendorSpend.createdAt} >= ${since}`)
