@@ -56,6 +56,21 @@ export async function saveFastCadence(_prev: SettingsState, formData: FormData):
   }
 }
 
+/** Which model answers web chats: ChatGPT while the switch is on, Claude (no setting) while off. Read by the app's agent within about 15 seconds. */
+export async function saveWebChatModel(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
+  try {
+    const me = await requirePlatformAdmin();
+    const chatgpt = formData.get("chatgpt") === "on";
+    if (chatgpt) await setPlatformSecret("web_chat_model", "chatgpt");
+    else await deletePlatformSecret("web_chat_model");
+    await recordAudit({ orgId: null, actorUserId: me.id, action: chatgpt ? "platform.web_chat_model_chatgpt" : "platform.web_chat_model_claude", target: "web_chat_model" });
+    revalidatePath("/settings");
+    return { ok: true };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
 /** Post a test line to the saved webhook, so the channel is confirmed before the watch needs it. */
 export async function sendTestInternal(_prev: SettingsState, _formData: FormData): Promise<SettingsState> {
   try {

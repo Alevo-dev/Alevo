@@ -3,6 +3,7 @@ import { getPlatformSecret, platformSecretStatus } from "@alevo/db";
 import { Card, CardHeader } from "@alevo/ui/card";
 import { PageHeader } from "@alevo/ui/page-header";
 import { fmtWhen } from "@/lib/metrics-format";
+import { ChatModelForm } from "./chat-model-form";
 import { FastCadenceForm } from "./fast-cadence-form";
 import { InternalAlertsForm } from "./internal-alerts-form";
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const webhook = await platformSecretStatus("internal_alerts_slack_webhook");
   const fastCadence = (await getPlatformSecret("cadence_fast")) === "1";
+  const chatgpt = (await getPlatformSecret("web_chat_model")) === "chatgpt";
 
   return (
     <div className="space-y-6">
@@ -24,6 +26,12 @@ export default async function SettingsPage() {
         />
         <div className="mt-6">
           <InternalAlertsForm isSet={webhook.isSet} savedAt={webhook.updatedAt ? fmtWhen(webhook.updatedAt) : null} />
+        </div>
+      </Card>
+      <Card className="max-w-2xl">
+        <CardHeader title="Web chat model" hint="Which AI answers the chat widget on customers' websites. Email, texts, forms and phone calls always use Claude." />
+        <div className="mt-6">
+          <ChatModelForm initial={chatgpt} />
         </div>
       </Card>
       <Card className="max-w-2xl">

@@ -27,6 +27,11 @@ const CLAUDE_RATES: [model: string, input: number, output: number][] = [
   ["claude-sonnet", 2, 10],
   ["claude-opus", 15, 75],
 ];
+/**
+ * ChatGPT models, USD per million tokens: input, output, and what cached input counts as (a share of the input rate).
+ * UNVERIFIED: aggregators disagree on gpt-6-luna's price, so confirm it on OpenAI's pricing page and fix it here.
+ */
+const OPENAI_RATES: [model: string, input: number, output: number, cachedShare: number][] = [["gpt-6-luna", 0.1, 0.5, 0.1]];
 const VOYAGE_USD_PER_MTOK = 0.02;
 const SMS_USD_PER_SEGMENT = 0.0083; // Twilio US/Canada long code, either direction
 const EMAIL_USD = 0.0004; // Resend Pro, per email
@@ -72,6 +77,27 @@ export function trackClaude(model: string, usage: ClaudeUsage, kind: string, org
     detail: model,
     split,
   });
+}
+
+type OpenAIUsage = { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number } };
+
+/** One ChatGPT call. `input_tokens` already includes the cached ones; reasoning tokens are part of `output_tokens` and billed as output. */
+export function openaiSplit(model: string, usage: OpenAIUsage | undefined) {
+  const [, inRate, outRate, cachedShare] = OPENAI_RATES.find(([m]) => model === m) ?? OPENAI_RATES[0]!;
+  const input = usage?.input_tokens ?? 0;
+  const cached = Math.min(usage?.input_tokens_details?.cached_tokens ?? 0, input);
+  const output = usage?.output_tokens ?? 0;
+  return {
+    inputTokens: input,
+    outputTokens: output,
+    inputCostUsd: ((input - cached + cached * cachedShare) * inRate) / 1e6,
+    outputCostUsd: (output * outRate) / 1e6,
+  };
+}
+
+export function trackOpenAI(model: string, usage: OpenAIUsage | undefined, kind: string, orgId?: string | null) {
+  const split = openaiSplit(model, usage);
+  track({ env: currentEnv(), provider: "openai", kind, orgId, units: split.inputTokens + split.outputTokens, costUsd: split.inputCostUsd + split.outputCostUsd, detail: model, split });
 }
 
 export function trackEmbedding(model: string, tokens: number, orgId?: string | null) {

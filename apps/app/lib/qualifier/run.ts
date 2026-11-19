@@ -17,7 +17,10 @@ import {
 import { bookingConfigFromProfile } from "@/lib/booking";
 import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/cadence/send-window";
 import { contactMessagesNotIn } from "./fresh";
+import * as Sentry from "@sentry/nextjs";
 import { trackClaude } from "@/lib/usage/spend";
+import { webChatModel } from "./model-choice";
+import { OPENAI_MODEL, openaiRun } from "./openai";
 import { driveAgent, type RunTrace } from "./loop";
 import { buildSystemPrompt, type BookingMode, type ContactInfo } from "./prompt";
 import {
@@ -49,7 +52,7 @@ export type QualifierContext = {
 
 export type QualifierResult =
   | { ran: false; skipped: string }
-  | ({ ran: true; trace: RunTrace & { kbMs: number } } & QualifierEffects);
+  | ({ ran: true; trace: RunTrace & { kbMs: number; models: string[]; fallbacks: number } } & QualifierEffects);
 
 /**
  * Load everything the Qualifier needs for one conversation, scoped to the org
@@ -257,10 +260,25 @@ export async function runQualifier(
   // Messages the contact sends while this run works are answered in the same run (a later run would see our reply as
   // the last turn and skip them).
   const known = new Set(ctx.thread.flatMap((m) => (m.id ? [m.id] : [])));
+  // Web chats may be answered by ChatGPT (the admin switch). Any ChatGPT failure answers that turn with Claude instead, so a contact is never left waiting.
+  const chatgpt = ctx.channel === "chat" && (await webChatModel()) === "chatgpt" ? openaiRun({ system, tools, orgId: ctx.orgId }) : null;
+  const used: string[] = [];
+  let fallbacks = 0;
   const trace = await driveAgent(
     messagesForClaude,
     {
       create: async (msgs) => {
+        if (chatgpt) {
+          try {
+            const res = await chatgpt(msgs);
+            used.push(OPENAI_MODEL);
+            return res;
+          } catch (err) {
+            fallbacks++;
+            Sentry.captureException(err);
+          }
+        }
+        used.push(MODEL);
         const res = await client.messages.create({
           model: MODEL,
           max_tokens: 8192,
@@ -285,5 +303,5 @@ export async function runQualifier(
     effects,
   );
 
-  return { ran: true, trace: { ...trace, kbMs }, ...effects };
+  return { ran: true, trace: { ...trace, kbMs, models: used, fallbacks }, ...effects };
 }

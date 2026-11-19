@@ -40,7 +40,7 @@ export async function recordSpend(e: SpendEvent): Promise<void> {
 }
 
 /** The model behind a row: AI and embedding rows store it in `detail`; other vendors have none. */
-const modelOf = sql<string | null>`case when ${vendorSpend.provider} in ('anthropic', 'voyage') then ${vendorSpend.detail} end`;
+const modelOf = sql<string | null>`case when ${vendorSpend.provider} in ('anthropic', 'openai', 'voyage') then ${vendorSpend.detail} end`;
 
 export type SpendRow = {
   env: string;
@@ -80,8 +80,8 @@ export async function spendSummary(days: number): Promise<SpendRow[]> {
         inputCostUsd: sql<number>`coalesce(sum(${vendorSpend.inputCostUsd}), 0)`.mapWith(Number),
         outputCostUsd: sql<number>`coalesce(sum(${vendorSpend.outputCostUsd}), 0)`.mapWith(Number),
         // AI rows that predate the split: only their combined figures exist.
-        unsplitUnits: sql<number>`coalesce(sum(${vendorSpend.units}) filter (where ${vendorSpend.inputTokens} is null and ${vendorSpend.provider} in ('anthropic', 'voyage')), 0)`.mapWith(Number),
-        unsplitCostUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}) filter (where ${vendorSpend.inputTokens} is null and ${vendorSpend.provider} in ('anthropic', 'voyage')), 0)`.mapWith(Number),
+        unsplitUnits: sql<number>`coalesce(sum(${vendorSpend.units}) filter (where ${vendorSpend.inputTokens} is null and ${vendorSpend.provider} in ('anthropic', 'openai', 'voyage')), 0)`.mapWith(Number),
+        unsplitCostUsd: sql<number>`coalesce(sum(${vendorSpend.costUsd}) filter (where ${vendorSpend.inputTokens} is null and ${vendorSpend.provider} in ('anthropic', 'openai', 'voyage')), 0)`.mapWith(Number),
       })
       .from(vendorSpend)
       .where(sql`${vendorSpend.createdAt} >= ${since}`)

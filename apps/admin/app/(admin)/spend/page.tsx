@@ -20,6 +20,7 @@ const ENVS = [
 /** What each provider is, and what its `units` count. */
 const PROVIDERS: Record<string, { label: string; unit: string }> = {
   anthropic: { label: "AI (Claude)", unit: "tokens" },
+  openai: { label: "AI (ChatGPT)", unit: "tokens" },
   voyage: { label: "Embeddings (Voyage)", unit: "tokens" },
   twilio: { label: "Text messages (Twilio)", unit: "segments" },
   resend: { label: "Email (Resend)", unit: "emails" },
@@ -196,7 +197,7 @@ export default async function SpendPage({ searchParams }: { searchParams: Promis
                       <Td className={NUM}>{r.calls.toLocaleString("en-US")}</Td>
                       <Td className={NUM}>
                         {Math.round(r.units).toLocaleString("en-US")} <span className="text-ink-muted">{PROVIDERS[r.provider]?.unit}</span>
-                        {r.inputTokens + r.outputTokens > 0 && r.provider === "anthropic" && (
+                        {r.inputTokens + r.outputTokens > 0 && (r.provider === "anthropic" || r.provider === "openai") && (
                           <span className="block text-label text-ink-muted">{`${tok(r.inputTokens)} in · ${tok(r.outputTokens)} out`}</span>
                         )}
                       </Td>

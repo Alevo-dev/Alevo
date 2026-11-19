@@ -1473,3 +1473,13 @@ Run against staging with a fresh chat (Integrations → Chat widget on). Watch I
 - [x] Knowledge: paste text with lines like `PRICING` or `2.1 Website plan`: the passages start with those headings.
 
 - [ ] Admin → Spend → By model: each AI model shows input tokens and cost, output tokens and cost, and the price per 1M in / out. Send a chat message in the app, reload: that model's input and output figures grow. A note under the table counts tokens recorded before the split.
+
+## Web chat model switch (2026-11-18)
+
+- [ ] Admin → Settings → Web chat model: the switch defaults to Claude; turning it on and saving shows a success note.
+- [ ] With `OPENAI_API_KEY` set and the switch on, a web chat message is answered; the Inngest run's trace shows `models: ["gpt-6-luna"]`, and Spend → By model lists gpt-6-luna with input and output.
+- [ ] With the switch on but no key (or a wrong key), the chat is still answered, by Claude: trace shows `fallbacks` above 0 and `models: ["claude-sonnet-5"]`.
+- [ ] Email, text and phone conversations are unchanged with the switch on.
+- [ ] Booking by chat with ChatGPT: offered times come from the calendar and the booked time is one of them.
+
+- [ ] Chat booking: book a time, then say thank you several times. The agent answers with one short closing line each time, never re-checks the calendar and never books again; Meetings shows ONE meeting.

@@ -11,7 +11,8 @@ import { open, seal } from "./crypto";
 
 /** The keys the admin console manages. */
 /** `cadence_fast` is a switch, not a secret: "1" while on, absent while off (kept here to reuse the store; no migration). */
-export type PlatformSecretKey = "internal_alerts_slack_webhook" | "cadence_fast";
+/** `web_chat_model` is "chatgpt" while web chats are answered by ChatGPT; absent means Claude. */
+export type PlatformSecretKey = "internal_alerts_slack_webhook" | "cadence_fast" | "web_chat_model";
 
 export async function setPlatformSecret(keyName: PlatformSecretKey, plaintext: string): Promise<void> {
   const sealed = seal(plaintext);
