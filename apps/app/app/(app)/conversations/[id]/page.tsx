@@ -6,6 +6,7 @@ import { Fragment } from "react";
 import { and, asc, count, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { calls, consents, contacts, conversations, emailSuppressions, meetings, messages, orgProfiles, type CallOutcome } from "@alevo/db";
 import { getCurrentRole, withOrg } from "@alevo/auth";
+import { CrumbTail } from "@/components/crumbs";
 import { CallCard } from "@/components/conversations/call-card";
 import { Panel, ScreenHeader, Strip, TabLinks } from "@/components/conversations/kit";
 import { RefreshButton } from "@/components/conversations/refresh-button";
@@ -202,6 +203,7 @@ export default async function ConversationThread({ params, searchParams }: { par
 
   return (
     <div className="flex flex-col gap-3.5">
+      <CrumbTail items={[{ label: "Client", href: `/conversations/client/${conv.contactId}` }, { label: "Conversation" }]} />
       <ScreenHeader title={conv.company ?? name} badge={<Pill tone={ls.tone}>{ls.label}</Pill>} sub={conv.company ? name : undefined}>
         <Link href={`/conversations/client/${conv.contactId}`} transitionTypes={["nav-back"]} className={buttonClass("secondary", "sm")}>
           Open client

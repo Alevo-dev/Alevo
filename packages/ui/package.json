@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Alevo shared UI — the design-system theme mapping and the components every surface renders (cards, pills, tables, forms, dialogs, stat tiles, status screens, theme toggle).",
   "exports": {
+    "./breadcrumb": "./src/breadcrumb.tsx",
     "./button": "./src/button.tsx",
     "./card": "./src/card.tsx",
     "./confirm-dialog": "./src/confirm-dialog.tsx",

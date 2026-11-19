@@ -12,6 +12,7 @@ import { Tabs } from "@/components/ui/nav-kit";
 import { Pill } from "@/components/ui/pill";
 import { EmptyRow, Table, Td, Th, Tr } from "@/components/ui/table";
 import { CLIENT_CONVERSATIONS_CAP, clientDetail, type ClientConversation, type ClientDetail } from "@/lib/clients/detail";
+import { CrumbTail } from "@/components/crumbs";
 import { anonymousLabel, displayName, fmtDate, fmtDateTime, fmtDuration, fmtShort } from "@/lib/format";
 import { getOrgTimezone } from "@/lib/org-timezone";
 import { ClientNotFit } from "../../[id]/thread-actions";
@@ -83,6 +84,7 @@ export default async function ClientPage({
 
   return (
     <div className="flex flex-col gap-3.5">
+      <CrumbTail items={[{ label: "Client" }]} />
       <ScreenHeader title={name} badge={latestStatus && <Pill tone={latestStatus.tone}>{latestStatus.label}</Pill>} sub={contact.company}>
         {bestFit != null && <FitCard score={bestFit} />}
         {latest && (

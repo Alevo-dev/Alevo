@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { getCurrentOrg, getCurrentUser } from "@alevo/auth";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Crumbs } from "@/components/crumbs";
+import { Crumbs, CrumbsProvider } from "@/components/crumbs";
 import { TopBar } from "@/components/top-bar";
 import { getAgentOn } from "@/lib/agent-on";
 import { getCurrentUsage } from "@/lib/usage/current";
@@ -22,11 +22,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <AppSidebar />
         </div>
         <main className="min-w-0 flex-1 px-4 pb-6 pt-4 md:px-5 md:pb-8">
-          <div className="mx-auto max-w-[1200px]">
-            {org && <Crumbs org={org.name} />}
-            <UsageBanner rows={usage} />
-            {children}
-          </div>
+          <CrumbsProvider>
+            <div className="mx-auto max-w-[1200px]">
+              {org && <Crumbs org={org.name} />}
+              <UsageBanner rows={usage} />
+              {children}
+            </div>
+          </CrumbsProvider>
         </main>
       </div>
     </div>
