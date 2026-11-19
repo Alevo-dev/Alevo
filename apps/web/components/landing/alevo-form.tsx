@@ -2,12 +2,10 @@
 
 import { useEffect, useRef } from "react";
 
-// Alevo's own workspace on staging. Point these at production (app.getalevo.com and its org id) when the site goes live.
-const EMBED = {
-  src: "https://app.staging.getalevo.com/embed.js",
-  org: "a3aa5ecd-9662-4a7b-863d-9612239c63a8",
-  company: "Alevo's Organization",
-};
+import { embedConfig } from "@/lib/site";
+
+// The same app and workspace as the chat widget (see embedConfig): local in dev, staging once deployed until launch.
+const EMBED = { src: `${embedConfig.appOrigin}/embed.js`, org: embedConfig.orgId, company: embedConfig.company };
 
 /**
  * The "send a note" form: Alevo's own embed, the same snippet a customer pastes into their site. The script reads its

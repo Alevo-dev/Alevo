@@ -3,7 +3,7 @@ import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Script from "next/script";
 import "./globals.css";
-import { siteConfig } from "@/lib/site";
+import { embedConfig, siteConfig } from "@/lib/site";
 import { CookieBanner } from "@/components/landing/cookie-banner";
 
 // Editorial serif for h1–h4 (a base rule applies it). Body text is Geist everywhere:
@@ -130,12 +130,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
           <CookieBanner />
         </ThemeProvider>
-        {/* Alevo's own chat widget (staging workspace for now: switch the src and data-org to production at launch). */}
+        {/* Alevo's own chat widget: the local app in dev, the staging workspace once deployed until launch (see embedConfig). */}
         <Script
           id="alevo-chat"
-          src="https://app.staging.getalevo.com/chat.js"
+          src={`${embedConfig.appOrigin}/chat.js`}
           strategy="afterInteractive"
-          data-org="a3aa5ecd-9662-4a7b-863d-9612239c63a8"
+          data-org={embedConfig.orgId}
           data-position="right"
           data-accent="#21a6ef"
           data-color="#fafafa"

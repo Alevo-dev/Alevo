@@ -31,6 +31,21 @@ export const siteConfig = {
   },
 } as const;
 
+/**
+ * Alevo's own chat widget and contact form on this site: which app serves them and which workspace they belong to.
+ * Local dev uses your local app (`:3001`), so a change to the widget or the agent can be tried on this site. A deployed
+ * site keeps using the staging app and its workspace until launch; set `NEXT_PUBLIC_EMBED_APP_URL` and
+ * `NEXT_PUBLIC_EMBED_ORG_ID` (Vercel, per environment) to point it at production. Dev and staging share one database,
+ * so the staging workspace id works against the local app too.
+ */
+const STAGING_APP = "https://app.staging.getalevo.com";
+const STAGING_ORG = "a3aa5ecd-9662-4a7b-863d-9612239c63a8";
+export const embedConfig = {
+  appOrigin: process.env.NEXT_PUBLIC_EMBED_APP_URL ?? (process.env.NODE_ENV === "production" ? STAGING_APP : "http://localhost:3001"),
+  orgId: process.env.NEXT_PUBLIC_EMBED_ORG_ID ?? STAGING_ORG,
+  company: "Alevo's Organization",
+} as const;
+
 /** Convenience helpers for app links (match the app's Clerk auth routes). */
 export const appLinks = {
   signup: `${siteConfig.appUrl}/sign-up`,
